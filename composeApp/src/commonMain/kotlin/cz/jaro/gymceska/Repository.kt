@@ -329,9 +329,9 @@ class Repository(
     }.stateIn(scope, SharingStarted.Eagerly, -1)
 
     private suspend fun jePotrebaAktualizovatAplikaci(): Boolean {
-        val jeDebug = false//BuildConfig.DEBUG todo
+        val mistniVerze = BuildKonfig.versionName.toVersion(false)
 
-        if (jeDebug) return false
+        if (mistniVerze.isPreRelease) return false
 
         val document = try {
             Ksoup.parseGetRequest("https://raw.githubusercontent.com/jaro-jaro/gymceska-multiplatform/main/composeApp/version.txt")
@@ -340,7 +340,6 @@ class Repository(
             return false
         }
 
-        val mistniVerze = BuildKonfig.versionName.toVersion(false)
         val nejnovejsiVerze = document.text().trim().toVersion(false)
 
         return mistniVerze < nejnovejsiVerze
