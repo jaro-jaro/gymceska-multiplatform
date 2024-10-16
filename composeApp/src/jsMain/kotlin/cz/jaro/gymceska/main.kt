@@ -16,7 +16,6 @@ import dev.gitlive.firebase.initialize
 import kotlinx.browser.window
 import org.jetbrains.skiko.wasm.onWasmReady
 import org.koin.dsl.module
-import org.w3c.dom.url.URLSearchParams
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalSettingsApi::class)
 fun main() {
@@ -77,6 +76,3 @@ fun main() {
         }
     }
 }
-
-inline fun URLSearchParams.forEach(crossinline action: (String, String) -> Unit) =
-    asDynamic().forEach({ key, value -> action(key.toString(), value.toString()) })
