@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "public": "composeApp/build/processedResources/js/main",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}

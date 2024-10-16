@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Gymceska</string>
+    <string name="rozvrh">Rozvrh</string>
+    <string name="domaci_ukoly">Domácí úkoly</string>
+    <string name="ukoly">Úkoly</string>
+    <string name="spravovat_ukoly">Spravovat úkoly</string>
+    <string name="nacitani">Načítání…</string>
+    <string name="neni_stazeno">Data nejsou stažena</string>
+    <string name="stahnout_vsechny_rozvrhy">Stáhnout všechny rozvrhy</string>
+    <string name="nastaveni">Nastavení</string>
+    <string name="dnes_widget_popis">Dnešní rozvrh</string>
+    <string name="ukoly_widget_popis">Domácí úkoly</string>
+    <string name="tmavy_rezim">Tmavý režim</string>
+    <string name="zvolte_svou_tridu">Vaše třída</string>
+    <string name="zvolte_sve_skupiny">Vaše skupiny</string>
+    <string name="verze_aplikace">Verze aplikace: %1$s (%2$s)</string>
+    <string name="urcit_tmavy_rezim_podle_systemu">Určit tmavý režim podle systému</string>
+    <string name="zpet">Zpět</string>
+    <string name="splnene_ukoly">Splněné úkoly:</string>
+    <string name="zapnout_na_mym">Zapnout aplikaci s mým rozvrhem</string>
+</resources>

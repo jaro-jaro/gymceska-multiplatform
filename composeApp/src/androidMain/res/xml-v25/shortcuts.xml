@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="rozvrh"
+        android:icon="@drawable/ic_baseline_table_chart_24"
+        android:shortcutShortLabel="@string/rozvrh" >
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="cz.jaro.gymceska"
+            android:targetClass="cz.jaro.gymceska.MainActivity" >
+            <extra
+                android:name="rozvrh"
+                android:value="true" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+        <capability-binding android:key="actions.intent.CREATE_MESSAGE" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="ukoly"
+        android:icon="@drawable/ic_baseline_format_list_bulleted_24"
+        android:shortcutLongLabel="@string/domaci_ukoly"
+        android:shortcutShortLabel="@string/ukoly" >
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="cz.jaro.gymceska"
+            android:targetClass="cz.jaro.gymceska.MainActivity" >
+            <extra
+                android:name="ukoly"
+                android:value="true" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+        <capability-binding android:key="actions.intent.CREATE_MESSAGE" />
+    </shortcut>
+</shortcuts>
