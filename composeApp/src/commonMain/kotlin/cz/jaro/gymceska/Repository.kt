@@ -334,7 +334,7 @@ class Repository(
         if (jeDebug) return false
 
         val document = try {
-            Ksoup.parseGetRequest("https://raw.githubusercontent.com/jaro-jaro/gymceska-mobile/main/app/version.txt")
+            Ksoup.parseGetRequest("https://raw.githubusercontent.com/jaro-jaro/gymceska-multiplatform/main/composeApp/version.txt")
         } catch (e: IOException) {
 //            Firebase.crashlytics.recordException(e) todo
             return false

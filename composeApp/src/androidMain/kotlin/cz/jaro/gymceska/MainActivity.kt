@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
             lifecycle.coroutineScope.launch(Dispatchers.IO) {
                 val document = try {
                     withContext(Dispatchers.IO) {
-                        Ksoup.parseGetRequest("https://raw.githubusercontent.com/jaro-jaro/gymceska-mobile/main/app/version.txt")
+                        Ksoup.parseGetRequest("https://raw.githubusercontent.com/jaro-jaro/gymceska-multiplatform/main/composeApp/version.txt")
                     }
                 } catch (e: SocketTimeoutException) {
                     Firebase.crashlytics.recordException(e)
@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
                 startActivity(Intent().apply {
                     action = Intent.ACTION_VIEW
                     data =
-                        Uri.parse("https://github.com/jaro-jaro/gymceska-mobile/releases/download/v$nejnovejsiVerze/Gymceska-v$nejnovejsiVerze.apk")
+                        Uri.parse("https://github.com/jaro-jaro/gymceska-multiplatform/releases/download/v$nejnovejsiVerze/Gymceska-v$nejnovejsiVerze.apk")
                 })
             }
             Unit
@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
                             onClick = {
                                 startActivity(Intent().apply {
                                     action = Intent.ACTION_VIEW
-                                    data = Uri.parse("https://github.com/jaro-jaro/gymceska-mobile/releases/latest")
+                                    data = Uri.parse("https://github.com/jaro-jaro/gymceska-multiplatform/releases/latest")
                                 })
                             }
                         ) {
