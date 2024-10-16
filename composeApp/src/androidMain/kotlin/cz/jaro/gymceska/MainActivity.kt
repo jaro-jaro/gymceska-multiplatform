@@ -32,6 +32,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 //        enableEdgeToEdge(SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT), SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT))
 
+        val uri = intent?.action?.equals(Intent.ACTION_VIEW)?.let { intent?.data }?.run { toString().removePrefix("${scheme}://${host}/#") }
+
         val rozvrh = intent.getBooleanExtra("rozvrh", false) || intent.getStringExtra("rozvrh") == "true"
         val ukoly = intent.getBooleanExtra("ukoly", false) || intent.getStringExtra("ukoly") == "true"
 
@@ -50,7 +52,8 @@ class MainActivity : ComponentActivity() {
 
                 startActivity(Intent().apply {
                     action = Intent.ACTION_VIEW
-                    data = Uri.parse("https://github.com/jaro-jaro/gymceska-mobile/releases/download/v$nejnovejsiVerze/Gymceska-v$nejnovejsiVerze.apk")
+                    data =
+                        Uri.parse("https://github.com/jaro-jaro/gymceska-mobile/releases/download/v$nejnovejsiVerze/Gymceska-v$nejnovejsiVerze.apk")
                 })
             }
             Unit
@@ -95,8 +98,13 @@ class MainActivity : ComponentActivity() {
                 )
 
                 MainContent(
-                    rozvrh = rozvrh,
-                    ukoly = ukoly,
+                    deeplink = when {
+                        rozvrh -> "rozvrh"
+                        ukoly -> "ukoly"
+                        uri != null -> uri
+                        else -> ""
+                    },
+                    onNavigate = { _, _ -> },
                     jePotrebaAktualizovatAplikaci = jePotrebaAktualizovatAplikaci,
                     aktualizovatAplikaci = aktualizovatAplikaci,
                     koin = getKoin(),

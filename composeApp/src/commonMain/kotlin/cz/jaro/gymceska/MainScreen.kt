@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
@@ -25,6 +26,9 @@ import cz.jaro.gymceska.nastaveni.Nastaveni
 import cz.jaro.gymceska.rozvrh.Rozvrh
 import cz.jaro.gymceska.ukoly.SpravceUkolu
 import cz.jaro.gymceska.ukoly.Ukoly
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.analytics.analytics
+import dev.gitlive.firebase.analytics.logEvent
 import org.koin.core.Koin
 import kotlin.reflect.KType
 
@@ -33,13 +37,14 @@ inline fun <reified T : Route> typeMap() = when (T::class) {
         serializationTypePair<Int?>(),
         serializationTypePair<Boolean?>(),
     )
+
     else -> emptyMap<KType, NavType<*>>()
 }
 
 @Composable
 fun MainContent(
-    rozvrh: Boolean,
-    ukoly: Boolean,
+    deeplink: String,
+    onNavigate: (Route, String) -> Unit,
     jePotrebaAktualizovatAplikaci: Boolean,
     aktualizovatAplikaci: () -> Unit,
     koin: Koin,
@@ -79,27 +84,43 @@ fun MainContent(
         )
     }
     Surface {
+        cz.jaro.compose_dialog.AlertDialog(dialogState)
         val navController = rememberNavController()
 
         LaunchedEffect(Unit) {
-            if (rozvrh) navController.navigate(Route.Rozvrh())
-            if (ukoly) navController.navigate(Route.Ukoly)
+            if (deeplink.isBlank()) return@LaunchedEffect
+            while (navController.graphOrNull == null) Unit
+            navController.navigate(deeplink)
         }
 
         LaunchedEffect(Unit) {
             val destinationFlow = navController.currentBackStackEntryFlow
 
             destinationFlow.collect { destination ->
-//                Firebase.analytics.logEvent("navigation") {
-//                    param("route", destination.generateRouteWithArgs() ?: "")
-//                } todo
+                val route = destination.getRoute()
+                val path = destination.generateRouteWithArgs().orEmpty()
+                onNavigate(route ?: Route.Rozvrh(""), path)
+                Firebase.analytics.logEvent("navigation") {
+                    param("route", path)
+                }
             }
         }
 
-        cz.jaro.compose_dialog.AlertDialog(dialogState)
+        val navigator = remember(navController) {
+            object : Navigator {
+                override fun navigate(route: Route) {
+                    navController.navigate(route)
+                }
+
+                override fun navigateUp() {
+                    navController.navigateUp()
+                }
+            }
+        }
+
         NavHost(
             navController = navController,
-            startDestination = Route.Rozvrh(),
+            startDestination = Route.Rozvrh(""),
             popEnterTransition = {
                 scaleIn(
                     animationSpec = tween(
@@ -125,21 +146,22 @@ fun MainContent(
                 )
             },
         ) {
-            route<Route.Rozvrh> { Rozvrh(args = it, navController = navController, koin = koin) }
-            route<Route.Ukoly> { Ukoly(args = it, navController = navController, koin = koin) }
-            route<Route.SpravceUkolu> { SpravceUkolu(args = it, navController = navController, koin = koin) }
-            route<Route.Nastaveni> { Nastaveni(args = it, navController = navController, koin = koin) }
+            route<Route.Rozvrh> { Rozvrh(args = it, navigator = navigator, koin = koin) }
+            route<Route.Ukoly> { Ukoly(args = it, navigator = navigator, koin = koin) }
+            route<Route.SpravceUkolu> { SpravceUkolu(args = it, navigator = navigator, koin = koin) }
+            route<Route.Nastaveni> { Nastaveni(args = it, navigator = navigator, koin = koin) }
         }
     }
 }
 
-val NavController.navigate
-    get() = navigate@{ route: Route ->
-        try {
-            navigate(route.also(::println))
-        } catch (e: IllegalStateException) {
-            e.printStackTrace()
-//            Firebase.crashlytics.log("Pokus o navigaci na $route")
-//            Firebase.crashlytics.recordException(e) todo
-        }
+interface Navigator {
+    fun navigate(route: Route)
+    fun navigateUp()
+}
+
+private val NavController.graphOrNull: NavGraph?
+    get() = try {
+        graph
+    } catch (e: IllegalStateException) {
+        null
     }

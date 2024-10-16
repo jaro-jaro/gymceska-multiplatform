@@ -69,25 +69,24 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import cz.jaro.compose_dialog.dialogState
 import cz.jaro.compose_dialog.show
 import cz.jaro.gymceska.Error
+import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
-import cz.jaro.gymceska.navigate
 import org.koin.core.Koin
 
 @Composable
 fun Rozvrh(
     args: Route.Rozvrh,
-    navController: NavController,
+    navigator: Navigator,
     koin: Koin,
 ) {
     val horScrollState = rememberScrollState(args.horScroll ?: Int.MAX_VALUE)
@@ -108,7 +107,7 @@ fun Rozvrh(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.navigovat = navController.navigate
+        viewModel.navigovat = navigator::navigate
     }
 
     val tabulka by viewModel.result.collectAsStateWithLifecycle()
@@ -130,7 +129,7 @@ fun Rozvrh(
         vybratRozvrh = viewModel::vybratRozvrh,
         zmenitStalost = viewModel::zmenitStalost,
         stahnoutVse = viewModel.stahnoutVse,
-        navigate = navController.navigate,
+        navigate = navigator::navigate,
         najdiMiVolnouTridu = viewModel::najdiMivolnouTridu,
         najdiMiVolnehoUcitele = viewModel::najdiMiVolnehoUcitele,
         tridy = tridy,
@@ -295,7 +294,7 @@ private fun Vybiratko(
                     ) { Icon(if (mujRozvrh) Icons.Default.PeopleAlt else Icons.Default.Person, null) }
                     else IconButton(
                         onClick = {
-                            vybratRozvrh(Vjec.TridaVjec("HOME"))
+                            vybratRozvrh(Vjec.TridaVjec.HOME)
                             expanded = false
                             focusManager.clearFocus()
                         }

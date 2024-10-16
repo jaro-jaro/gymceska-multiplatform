@@ -68,7 +68,7 @@ fun RozvrhNavigation(
     actions = {
         Actions(stahnoutVse, result, vybratRozvrh, najdiMiVolnouTridu, najdiMiVolnehoUcitele)
     },
-    currentDestination = Route.Rozvrh(),
+    currentDestination = Route.Rozvrh(""),
     navigateToDestination = navigate,
     content = content,
     minorNavigationItems = {

@@ -9,6 +9,7 @@ sealed interface Vjec {
     val zkratka: String
 
     fun toStringArgument() = when (this) {
+        TridaVjec.HOME -> ""
         is DenVjec -> "D-$zkratka"
         is HodinaVjec -> "H-$zkratka"
         is MistnostVjec -> "M-$zkratka"
@@ -35,6 +36,9 @@ sealed interface Vjec {
         override val nazev: String,
         val odkaz: String? = null,
     ) : Vjec {
+        companion object {
+            val HOME = TridaVjec("")
+        }
         override val zkratka: String get() = nazev
     }
 

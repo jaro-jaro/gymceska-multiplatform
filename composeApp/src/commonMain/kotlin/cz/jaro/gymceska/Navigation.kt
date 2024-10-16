@@ -245,7 +245,7 @@ private fun Rail(
         NavigationRailItem(
             selected = currentDestination is Route.Rozvrh,
             onClick = {
-                navigateToDestination(Route.Rozvrh())
+                navigateToDestination(Route.Rozvrh(""))
             },
             icon = {
                 Icon(Icons.Default.TableChart, null)
@@ -278,7 +278,7 @@ private fun BottomBar(
         NavigationBarItem(
             selected = currentDestination is Route.Rozvrh,
             onClick = {
-                navigateToDestination(Route.Rozvrh())
+                navigateToDestination(Route.Rozvrh(""))
             },
             icon = {
                 Icon(Icons.Default.TableChart, null)

@@ -16,10 +16,11 @@ import dev.gitlive.firebase.initialize
 import kotlinx.browser.window
 import org.jetbrains.skiko.wasm.onWasmReady
 import org.koin.dsl.module
+import org.w3c.dom.url.URLSearchParams
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalSettingsApi::class)
 fun main() {
-    val location = window.location.pathname.split("/").lastOrNull() ?: ""
+    val location = window.location.hash.removePrefix("#") + window.location.search
 
     val koinApp = initKoin(module {
         single {
@@ -41,7 +42,7 @@ fun main() {
         }
         single {
             UserIdProvider {
-                "None"
+                ""
             }
         }
 
@@ -64,8 +65,10 @@ fun main() {
                 theme = nastaveni.tema,
             ) {
                 MainContent(
-                    rozvrh = location == "rozvrh",
-                    ukoly = location == "ukoly",
+                    deeplink = location,
+                    onNavigate = { _, path ->
+                        window.history.pushState(null, "", "#$path")
+                    },
                     jePotrebaAktualizovatAplikaci = false,
                     aktualizovatAplikaci = {},
                     koin = koinApp.koin,
@@ -74,3 +77,6 @@ fun main() {
         }
     }
 }
+
+inline fun URLSearchParams.forEach(crossinline action: (String, String) -> Unit) =
+    asDynamic().forEach({ key, value -> action(key.toString(), value.toString()) })

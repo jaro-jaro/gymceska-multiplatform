@@ -43,10 +43,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
+import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Route
-import cz.jaro.gymceska.navigate
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -59,7 +58,7 @@ import kotlin.uuid.Uuid
 @Composable
 fun SpravceUkolu(
     args: Route.SpravceUkolu,
-    navController: NavController,
+    navigator: Navigator,
     koin: Koin,
 ) {
     val repo = koin.get<Repository>()
@@ -76,8 +75,8 @@ fun SpravceUkolu(
         pridatUkol = viewModel::pridatUkol,
         odebratUkol = viewModel::odebratUkol,
         zmenitUkol = viewModel::upravitUkol,
-        navigateBack = navController::navigateUp,
-        navigate = navController.navigate,
+        navigateBack = navigator::navigateUp,
+        navigate = navigator::navigate,
     )
 }
 

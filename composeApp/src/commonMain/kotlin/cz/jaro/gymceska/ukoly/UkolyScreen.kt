@@ -19,12 +19,10 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
+import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Route
-import cz.jaro.gymceska.navigate
 import org.koin.core.Koin
-import org.koin.core.KoinApplication
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -32,7 +30,7 @@ import kotlin.uuid.Uuid
 @Composable
 fun Ukoly(
     args: Route.Ukoly,
-    navController: NavController,
+    navigator: Navigator,
     koin: Koin,
 ) {
     val repo = koin.get<Repository>()
@@ -50,7 +48,7 @@ fun Ukoly(
         state = state,
         skrtnout = viewModel::skrtnout,
         odskrtnout = viewModel::odskrtnout,
-        navigate = navController.navigate,
+        navigate = navigator::navigate,
         jeOffline = !jeOnline,
         jeInteligentni = jeInteligentni,
     )

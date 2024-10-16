@@ -21,6 +21,7 @@ gms-google-services = "4.4.2"
 koin = "3.5.3"
 koin-compose = "1.1.2"
 androidx-lifecycle = "2.8.3"
+routing-compose = "0.4.0"
 semver = "1.4.2"
 adaptive = "1.0.0-alpha03"
 multiplatform-settings = "1.2.0"
@@ -72,6 +73,7 @@ ksoup-network = { group = "com.fleeksoft.ksoup", name = "ksoup-network-ktor2", v
 koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin" }
 koin-compose = { group = "io.insert-koin", name = "koin-compose", version.ref = "koin-compose" }
 # Semantic versioning
+routing-compose = { module = "app.softwork:routing-compose", version.ref = "routing-compose" }
 semver = { module = "io.github.z4kn4fein:semver", version.ref = "semver" }
 # Filekit
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit-core" }

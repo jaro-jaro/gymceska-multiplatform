@@ -22,7 +22,7 @@ class RozvrhViewModel(
     private val repo: Repository,
 ) : ViewModel() {
     data class Parameters(
-        val vjec: String?,
+        val vjec: String,
         val stalost: Stalost?,
         val mujRozvrh: Boolean?,
         val horScrollState: ScrollState,
@@ -43,7 +43,7 @@ class RozvrhViewModel(
         repo.nastaveni, tridy, vyucujici, mistnosti,
         SharingStarted.WhileSubscribed(5.seconds),
     ) { nastaveni, tridy, vyucujici, mistnosti ->
-        params.vjec?.let { Vjec.fromString(it, tridy, mistnosti, vyucujici) } ?: nastaveni.mojeTrida
+        params.vjec.ifBlank { null }?.let { Vjec.fromString(it, tridy, mistnosti, vyucujici) } ?: nastaveni.mojeTrida
     }
 
     val stalost = params.stalost ?: Stalost.dnesniEntries().first()
@@ -66,7 +66,7 @@ class RozvrhViewModel(
         viewModelScope.launch {
             navigovat(
                 Route.Rozvrh(
-                    vjec = (if (vjec.nazev == "HOME") repo.nastaveni.value.mojeTrida else vjec).toStringArgument(),
+                    vjec = vjec.toStringArgument(),
                     mujRozvrh = _mujRozvrh.value,
                     stalost = stalost.name,
                 )
@@ -129,14 +129,16 @@ class RozvrhViewModel(
             }
 
             is Vjec.VyucujiciVjec,
-            is Vjec.MistnostVjec -> TvorbaRozvrhu.vytvoritRozvrhPodleJinych(
+            is Vjec.MistnostVjec,
+                -> TvorbaRozvrhu.vytvoritRozvrhPodleJinych(
                 vjec = vjec,
                 stalost = stalost,
                 repo = repo
             )
 
             is Vjec.DenVjec,
-            is Vjec.HodinaVjec -> TvorbaRozvrhu.vytvoritSpecialniRozvrh(
+            is Vjec.HodinaVjec,
+                -> TvorbaRozvrhu.vytvoritSpecialniRozvrh(
                 vjec = vjec,
                 stalost = stalost,
                 repo = repo
@@ -157,7 +159,7 @@ class RozvrhViewModel(
         hodiny: List<Int>,
         filtry: List<FiltrNajdiMi>,
         progress: (String) -> Unit,
-        onComplete: (List<Vjec.MistnostVjec>?) -> Unit
+        onComplete: (List<Vjec.MistnostVjec>?) -> Unit,
     ) {
         viewModelScope.launch {
             val plneTridy = tridy.value.drop(1).flatMap { trida ->
@@ -195,7 +197,7 @@ class RozvrhViewModel(
         hodiny: List<Int>,
         filtry: List<FiltrNajdiMi>,
         progress: (String) -> Unit,
-        onComplete: (List<Vjec.VyucujiciVjec>?) -> Unit
+        onComplete: (List<Vjec.VyucujiciVjec>?) -> Unit,
     ) {
         viewModelScope.launch {
             val zaneprazdneniUcitele = tridy.value.drop(1).flatMap { trida ->
@@ -214,7 +216,8 @@ class RozvrhViewModel(
             }
             progress("Už to skoro je")
 
-            val vysledek = vyucujici.value.drop(1).filter { it.zkratka !in zaneprazdneniUcitele && it.zkratka in vyucujici2.value }.toMutableList()
+            val vysledek =
+                vyucujici.value.drop(1).filter { it.zkratka !in zaneprazdneniUcitele && it.zkratka in vyucujici2.value }.toMutableList()
 
             val ucitele = repo.ziskaUcitele(repo.nastaveni.first().mojeTrida)
             if (FiltrNajdiMi.JenSvi in filtry) vysledek.retainAll {

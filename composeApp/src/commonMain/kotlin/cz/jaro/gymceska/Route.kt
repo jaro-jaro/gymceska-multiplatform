@@ -13,7 +13,7 @@ sealed interface Route {
     @Serializable
     @SerialName("rozvrh")
     data class Rozvrh(
-        val vjec: String? = null,
+        val vjec: String,
         val stalost: String? = null,
         val mujRozvrh: Boolean? = null,
         val horScroll: Int? = null,

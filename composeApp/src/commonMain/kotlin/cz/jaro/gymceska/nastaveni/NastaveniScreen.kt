@@ -50,13 +50,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import cz.jaro.gymceska.BuildKonfig
 import cz.jaro.gymceska.Nastaveni
+import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.PrepnoutRozvrhWidget
 import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Route
-import cz.jaro.gymceska.navigate
 import cz.jaro.gymceska.rozvrh.Stalost
 import cz.jaro.gymceska.rozvrh.Vjec
 import cz.jaro.gymceska.rozvrh.Vybiratko
@@ -69,7 +68,7 @@ import org.koin.core.Koin
 @Composable
 fun Nastaveni(
     args: Route.Nastaveni,
-    navController: NavController,
+    navigator: Navigator,
     koin: Koin,
 ) {
     val repo = koin.get<Repository>()
@@ -84,8 +83,8 @@ fun Nastaveni(
     val skupiny by viewModel.skupiny.collectAsStateWithLifecycle(null)
 
     NastaveniContent(
-        navigateBack = navController::navigateUp,
-        navigate = navController.navigate,
+        navigateBack = navigator::navigateUp,
+        navigate = navigator::navigate,
         nastaveni = nastaveni,
         upravitNastaveni = viewModel::upravitNastaveni,
         tridy = tridy,

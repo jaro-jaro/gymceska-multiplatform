@@ -52,7 +52,6 @@ kotlin {
             implementation(libs.bundles.androidx.jetpack.glance)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.firebase.crashlytics)
-            implementation(libs.firebase.analytics)
         }
         jsMain {
             dependsOn(commonMain.get())
@@ -87,6 +86,7 @@ kotlin {
             implementation(libs.multiplatform.settings)
             implementation(libs.multiplatform.settings.coroutines)
             implementation(libs.androidx.navigation.compose)
+            implementation(libs.firebase.analytics)
         }
     }
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
@@ -106,12 +106,12 @@ buildkonfig {
 
 android {
     namespace = "cz.jaro.gymceska"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "cz.jaro.gymceska"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
     }
