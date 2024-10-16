@@ -1,14 +1,14 @@
 [versions]
 compose-plugin = "1.7.0"
 
-androidx-activity-compose = "1.9.2"
+androidx-activity-compose = "1.9.3"
 androidx-core = "1.13.1"
 desugar_jdk_libs = "2.1.2"
 filekit-core = "0.8.7"
 firebase = "2.1.0"
 firebase-crashlytics-gradle = "3.0.2"
-androidx-glance = "1.1.0"
-androidx-compose = "1.7.3"
+androidx-glance = "1.1.1"
+androidx-compose = "1.7.4"
 ksoup = "0.1.9"
 kotlin = "2.0.20"
 kotlinx-coroutines = "1.9.0"
