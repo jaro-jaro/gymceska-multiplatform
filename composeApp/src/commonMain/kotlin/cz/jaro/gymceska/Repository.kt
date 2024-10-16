@@ -64,7 +64,6 @@ class Repository(
         fun rozvrhPosledni(trida: Vjec.TridaVjec, stalost: Stalost) = "rozvrh-_${trida.nazev}_${stalost.nazev}_posledni"
         const val SKRTLE_UKOLY = "skrtle_ukoly"
         const val UKOLY = "ukoly"
-        const val VERZE = "verze"
     }
 
     private val database = Firebase.database(firebase, "https://gymceska-b9b4c-default-rtdb.europe-west1.firebasedatabase.app/")
@@ -336,7 +335,7 @@ class Repository(
         val document = try {
             Ksoup.parseGetRequest("https://raw.githubusercontent.com/jaro-jaro/gymceska-multiplatform/main/composeApp/version.txt")
         } catch (e: IOException) {
-//            Firebase.crashlytics.recordException(e) todo
+            recordException(e)
             return false
         }
 

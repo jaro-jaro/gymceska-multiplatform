@@ -35,7 +35,7 @@ inline fun <reified T : Route> NavGraphBuilder.route(
             it.toRoute<T>()
         } catch (e: SerializationException) {
             e.printStackTrace()
-//            Firebase.crashlytics.recordException(e)
+            recordException(e)
             null
         }
         if (args != null) content(args)
@@ -52,7 +52,7 @@ private val NavBackStackEntry.route
         }?.serializer()?.decodeArguments(arguments ?: Bundle(), destination.typeMap())
     } catch (e: SerializationException) {
         e.printStackTrace()
-//        Firebase.crashlytics.recordException(e) todo
+        recordException(e)
         null
     }
 
