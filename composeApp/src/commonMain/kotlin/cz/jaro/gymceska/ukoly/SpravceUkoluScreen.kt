@@ -76,7 +76,7 @@ fun SpravceUkolu(
         odebratUkol = viewModel::odebratUkol,
         zmenitUkol = viewModel::upravitUkol,
         navigateBack = navigator::navigateUp,
-        navigate = navigator::navigate,
+        navigator = navigator,
     )
 }
 
@@ -88,7 +88,7 @@ fun SpravceUkoluContent(
     odebratUkol: (Uuid) -> Unit,
     zmenitUkol: (Ukol) -> Unit,
     navigateBack: () -> Unit,
-    navigate: (Route) -> Unit,
+    navigator: Navigator,
 ) = Surface {
     var upravovat by rememberSaveable { mutableStateOf(null as Uuid?) }
     var datum by rememberSaveable { mutableStateOf("") }
@@ -263,7 +263,7 @@ fun SpravceUkoluContent(
                 update()
             }
         },
-        navigate = navigate,
+        navigator = navigator,
     ) { paddingValues ->
         if (ukoly == null) LinearProgressIndicator(Modifier.padding(paddingValues))
         else LazyColumn(

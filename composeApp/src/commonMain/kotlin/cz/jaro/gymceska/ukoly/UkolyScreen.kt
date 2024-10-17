@@ -48,7 +48,7 @@ fun Ukoly(
         state = state,
         skrtnout = viewModel::skrtnout,
         odskrtnout = viewModel::odskrtnout,
-        navigate = navigator::navigate,
+        navigator = navigator,
         jeOffline = !jeOnline,
         jeInteligentni = jeInteligentni,
     )
@@ -60,12 +60,12 @@ fun UkolyContent(
     state: UkolyState,
     skrtnout: (Uuid) -> Unit,
     odskrtnout: (Uuid) -> Unit,
-    navigate: (Route) -> Unit,
+    navigator: Navigator,
     jeOffline: Boolean,
     jeInteligentni: Boolean,
 ) = Surface {
     UkolyNavigation(
-        navigate = navigate,
+        navigator = navigator,
         smiSpravovat = !jeOffline && jeInteligentni,
     ) { paddingValues ->
         LazyColumn(

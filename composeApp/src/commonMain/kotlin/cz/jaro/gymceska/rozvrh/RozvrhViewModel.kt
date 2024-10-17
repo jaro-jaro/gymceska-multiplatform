@@ -4,6 +4,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.jaro.gymceska.Nastaveni
+import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.Uspech
@@ -29,7 +30,7 @@ class RozvrhViewModel(
         val verScrollState: ScrollState,
     )
 
-    lateinit var navigovat: (Route) -> Unit
+    lateinit var navigator: Navigator
 
     val tridy = repo.tridy
     val mistnosti = repo.mistnosti
@@ -64,7 +65,7 @@ class RozvrhViewModel(
 
     fun vybratRozvrh(vjec: Vjec) {
         viewModelScope.launch {
-            navigovat(
+            navigator.navigate(
                 Route.Rozvrh(
                     vjec = vjec.toStringArgument(),
                     mujRozvrh = _mujRozvrh.value,
@@ -76,7 +77,7 @@ class RozvrhViewModel(
 
     fun zmenitStalost(stalost: Stalost) {
         viewModelScope.launch {
-            navigovat(
+            navigator.navigate(
                 Route.Rozvrh(
                     vjec = vjec.value.toStringArgument(),
                     mujRozvrh = _mujRozvrh.value,
@@ -90,7 +91,7 @@ class RozvrhViewModel(
 
     fun zmenitMujRozvrh() {
         viewModelScope.launch {
-            navigovat(
+            navigator.navigate(
                 Route.Rozvrh(
                     vjec = vjec.value.toStringArgument(),
                     mujRozvrh = !_mujRozvrh.value,

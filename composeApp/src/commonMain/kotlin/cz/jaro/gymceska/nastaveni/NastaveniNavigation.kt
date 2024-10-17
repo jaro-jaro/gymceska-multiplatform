@@ -8,11 +8,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import cz.jaro.gymceska.Navigation
+import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Route
 
 @Composable
 fun NastaveniNavigation(
-    navigate: (Route) -> Unit,
+    navigator: Navigator,
     navigateBack: () -> Unit,
     content: @Composable (PaddingValues) -> Unit,
 ) = Navigation(
@@ -25,7 +26,7 @@ fun NastaveniNavigation(
         }
     },
     currentDestination = Route.Nastaveni,
-    navigateToDestination = navigate,
+    navigator = navigator,
     content = content,
     minorNavigationItems = {
         MinorNavigationItem(

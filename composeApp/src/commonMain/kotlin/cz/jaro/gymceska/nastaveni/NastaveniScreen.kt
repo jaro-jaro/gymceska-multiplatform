@@ -84,7 +84,7 @@ fun Nastaveni(
 
     NastaveniContent(
         navigateBack = navigator::navigateUp,
-        navigate = navigator::navigate,
+        navigator = navigator,
         nastaveni = nastaveni,
         upravitNastaveni = viewModel::upravitNastaveni,
         tridy = tridy,
@@ -98,7 +98,7 @@ fun Nastaveni(
 @Composable
 fun NastaveniContent(
     navigateBack: () -> Unit,
-    navigate: (Route) -> Unit,
+    navigator: Navigator,
     nastaveni: Nastaveni?,
     upravitNastaveni: ((Nastaveni) -> Nastaveni) -> Unit,
     tridy: List<Vjec.TridaVjec>,
@@ -108,7 +108,7 @@ fun NastaveniContent(
 ) = Surface {
     NastaveniNavigation(
         navigateBack = navigateBack,
-        navigate = navigate,
+        navigator = navigator,
     ) { paddingValues ->
         if (nastaveni == null) LinearProgressIndicator(
             Modifier

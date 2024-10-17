@@ -108,7 +108,7 @@ fun Rozvrh(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.navigovat = navigator::navigate
+        viewModel.navigator = navigator
     }
 
     val tabulka by viewModel.result.collectAsStateWithLifecycle()
@@ -130,7 +130,7 @@ fun Rozvrh(
         vybratRozvrh = viewModel::vybratRozvrh,
         zmenitStalost = viewModel::zmenitStalost,
         stahnoutVse = viewModel.stahnoutVse,
-        navigate = navigator::navigate,
+        navigator = navigator,
         najdiMiVolnouTridu = viewModel::najdiMivolnouTridu,
         najdiMiVolnehoUcitele = viewModel::najdiMiVolnehoUcitele,
         tridy = tridy,
@@ -155,7 +155,7 @@ fun RozvrhContent(
     vybratRozvrh: (Vjec) -> Unit,
     zmenitStalost: (Stalost) -> Unit,
     stahnoutVse: () -> Unit,
-    navigate: (Route) -> Unit,
+    navigator: Navigator,
     najdiMiVolnouTridu: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.MistnostVjec>?) -> Unit) -> Unit,
     najdiMiVolnehoUcitele: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.VyucujiciVjec>?) -> Unit) -> Unit,
     tridy: List<Vjec.TridaVjec>,
@@ -171,7 +171,7 @@ fun RozvrhContent(
     currentlyDownloading: Vjec.TridaVjec?,
 ) = RozvrhNavigation(
     stahnoutVse = stahnoutVse,
-    navigate = navigate,
+    navigator = navigator,
     najdiMiVolnouTridu = najdiMiVolnouTridu,
     najdiMiVolnehoUcitele = najdiMiVolnehoUcitele,
     result = result,
