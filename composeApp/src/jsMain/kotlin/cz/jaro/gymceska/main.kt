@@ -1,10 +1,13 @@
 package cz.jaro.gymceska
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.CanvasBasedWindow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.StorageSettings
 import com.russhwolf.settings.observable.makeObservable
@@ -65,13 +68,33 @@ fun main() {
             ) {
                 MainContent(
                     deeplink = location,
-                    onNavigate = { _, path ->
-                        window.history.pushState(null, "", "#$path")
-                    },
                     jePotrebaAktualizovatAplikaci = false,
                     aktualizovatAplikaci = {},
                     koin = koinApp.koin,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+actual fun getNavigator(
+    navController: NavController,
+): Navigator {
+    window.onpopstate = {
+        navController.navigate(window.location.hash.removePrefix("#"))
+    }
+    return remember(navController) {
+        object : Navigator {
+            override fun navigate(route: Route) {
+                navController.navigate(route)
+                val destination = navController.currentDestination
+                val path = route.generateRouteWithArgs(destination ?: return)
+                window.history.pushState(null, "", "#$path")
+            }
+
+            override fun navigateUp() {
+                window.history.back()
             }
         }
     }

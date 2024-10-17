@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import cz.jaro.gymceska.ActionScope
 import cz.jaro.gymceska.Navigation
+import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.ukoly.time
@@ -48,7 +49,7 @@ import kotlin.time.Duration.Companion.minutes
 @Composable
 fun RozvrhNavigation(
     stahnoutVse: () -> Unit,
-    navigate: (Route) -> Unit,
+    navigator: Navigator,
     najdiMiVolnouTridu: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.MistnostVjec>?) -> Unit) -> Unit,
     najdiMiVolnehoUcitele: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.VyucujiciVjec>?) -> Unit) -> Unit,
     result: Result?,
@@ -69,7 +70,7 @@ fun RozvrhNavigation(
         Actions(stahnoutVse, result, vybratRozvrh, najdiMiVolnouTridu, najdiMiVolnehoUcitele)
     },
     currentDestination = Route.Rozvrh(""),
-    navigateToDestination = navigate,
+    navigator = navigator,
     content = content,
     minorNavigationItems = {
         MinorNavigationItem(

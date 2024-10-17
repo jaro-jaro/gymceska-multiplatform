@@ -11,17 +11,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import cz.jaro.gymceska.Navigation
+import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Route
 
 @Composable
 fun UkolyNavigation(
-    navigate: (Route) -> Unit,
+    navigator: Navigator,
     smiSpravovat: Boolean,
     content: @Composable (PaddingValues) -> Unit,
 ) = Navigation(
     title = "Domácí úkoly",
     currentDestination = Route.Ukoly,
-    navigateToDestination = navigate,
+    navigator = navigator,
     content = content,
     minorNavigationItems = {
         if (smiSpravovat) MinorNavigationItem(
@@ -39,14 +40,14 @@ fun UkolyNavigation(
 
 @Composable
 fun SpravceUkoluNavigation(
-    navigate: (Route) -> Unit,
+    navigator: Navigator,
     navigateBack: () -> Unit,
     pridatUkol: () -> Unit,
     content: @Composable (PaddingValues) -> Unit,
 ) = Navigation(
     title = "Spravovat úkoly",
     currentDestination = Route.SpravceUkolu,
-    navigateToDestination = navigate,
+    navigator = navigator,
     content = content,
     navigationIcon = {
         IconButton(

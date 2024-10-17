@@ -8,28 +8,6 @@ sealed interface Vjec {
     val nazev: String
     val zkratka: String
 
-    fun toStringArgument() = when (this) {
-        TridaVjec.HOME -> ""
-        is DenVjec -> "D-$zkratka"
-        is HodinaVjec -> "H-$zkratka"
-        is MistnostVjec -> "M-$zkratka"
-        is TridaVjec -> "T-$zkratka"
-        is VyucujiciVjec -> "V-$zkratka"
-    }
-    companion object {
-        fun fromString(string: String, tridy: List<TridaVjec>, mistnosti: List<MistnostVjec>, vyucujici: List<VyucujiciVjec>): Vjec {
-            val zkratka = string.substringAfter('-')
-            return when (string.first()) {
-                'D' -> Seznamy.dny.find { it.zkratka == zkratka }!!
-                'H' -> HodinaVjec("$zkratka. hodina", zkratka, zkratka.toInt())
-                'M' -> mistnosti.find { it.zkratka == zkratka }!!
-                'T' -> tridy.find { it.zkratka == zkratka }!!
-                'V' -> vyucujici.find { it.zkratka == zkratka }!!
-                else -> error("Invalid type")
-            }
-        }
-    }
-
     @Serializable
     data class TridaVjec(
         @SerialName("jmeno")

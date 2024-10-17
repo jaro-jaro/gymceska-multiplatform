@@ -68,6 +68,8 @@ fun Ukol.asString() = buildString {
 
 context(StringBuilder)
 operator fun String.unaryPlus()  = also { append(this) }
+context(StringBuilder)
+operator fun Char.unaryPlus()  = also { append(this) }
 
 private val Ukol.den get() = dateFromUkol(this)?.dayOfWeek?.zkratka
 

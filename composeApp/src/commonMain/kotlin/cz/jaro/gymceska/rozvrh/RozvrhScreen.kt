@@ -82,7 +82,12 @@ import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
+import cz.jaro.gymceska.rozvrh.Vjec.HodinaVjec
+import cz.jaro.gymceska.rozvrh.Vjec.MistnostVjec
+import cz.jaro.gymceska.rozvrh.Vjec.TridaVjec
+import cz.jaro.gymceska.rozvrh.Vjec.VyucujiciVjec
 import org.koin.core.Koin
+import kotlin.reflect.KClass
 
 @Composable
 fun Rozvrh(
@@ -90,17 +95,15 @@ fun Rozvrh(
     navigator: Navigator,
     koin: Koin,
 ) {
-    val horScrollState = rememberScrollState(args.horScroll ?: Int.MAX_VALUE)
-    val verScrollState = rememberScrollState(args.verScroll ?: Int.MAX_VALUE)
+    val horScrollState = rememberScrollState(args.x ?: Int.MAX_VALUE)
+    val verScrollState = rememberScrollState(args.y ?: Int.MAX_VALUE)
 
     val repo = koin.get<Repository>()
     val viewModel = viewModel<RozvrhViewModel> {
         RozvrhViewModel(
             repo = repo,
             params = RozvrhViewModel.Parameters(
-                vjec = args.vjec,
-                stalost = args.stalost?.let { Stalost.valueOf(it) },
-                mujRozvrh = args.mujRozvrh,
+                arg = args.vjec,
                 horScrollState = horScrollState,
                 verScrollState = verScrollState,
             )
@@ -108,7 +111,7 @@ fun Rozvrh(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.navigovat = navigator::navigate
+        viewModel.navigator = navigator
     }
 
     val tabulka by viewModel.result.collectAsStateWithLifecycle()
@@ -130,7 +133,7 @@ fun Rozvrh(
         vybratRozvrh = viewModel::vybratRozvrh,
         zmenitStalost = viewModel::zmenitStalost,
         stahnoutVse = viewModel.stahnoutVse,
-        navigate = navigator::navigate,
+        navigator = navigator,
         najdiMiVolnouTridu = viewModel::najdiMivolnouTridu,
         najdiMiVolnehoUcitele = viewModel::najdiMiVolnehoUcitele,
         tridy = tridy,
@@ -155,7 +158,7 @@ fun RozvrhContent(
     vybratRozvrh: (Vjec) -> Unit,
     zmenitStalost: (Stalost) -> Unit,
     stahnoutVse: () -> Unit,
-    navigate: (Route) -> Unit,
+    navigator: Navigator,
     najdiMiVolnouTridu: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.MistnostVjec>?) -> Unit) -> Unit,
     najdiMiVolnehoUcitele: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.VyucujiciVjec>?) -> Unit) -> Unit,
     tridy: List<Vjec.TridaVjec>,
@@ -171,7 +174,7 @@ fun RozvrhContent(
     currentlyDownloading: Vjec.TridaVjec?,
 ) = RozvrhNavigation(
     stahnoutVse = stahnoutVse,
-    navigate = navigate,
+    navigator = navigator,
     najdiMiVolnouTridu = najdiMiVolnouTridu,
     najdiMiVolnehoUcitele = najdiMiVolnehoUcitele,
     result = result,
@@ -200,7 +203,7 @@ fun RozvrhContent(
         }
 
         if (result == null || vjec == null || mujRozvrh == null) LinearProgressIndicator(Modifier.fillMaxWidth())
-        else when(result) {
+        else when (result) {
             is Uspech -> CompositionLocalProvider(LocalBunkaZoom provides zoom) {
                 Tabulka(
                     vjec = vjec,
@@ -327,7 +330,7 @@ private fun Vybiratko(
 private fun ExposedDropdownMenuBoxScope.MyExposedDropdownMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     val expandedState = remember { MutableTransitionState(false) }
     expandedState.targetState = expanded
@@ -348,7 +351,7 @@ private fun ExposedDropdownMenuBoxScope.MyExposedDropdownMenu(
                     anchorBounds: IntRect,
                     windowSize: IntSize,
                     layoutDirection: LayoutDirection,
-                    popupContentSize: IntSize
+                    popupContentSize: IntSize,
                 ) = anchorBounds.bottomLeft
             }
         ) {

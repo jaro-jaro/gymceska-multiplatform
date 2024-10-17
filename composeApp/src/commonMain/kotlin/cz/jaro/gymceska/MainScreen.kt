@@ -44,7 +44,6 @@ inline fun <reified T : Route> typeMap() = when (T::class) {
 @Composable
 fun MainContent(
     deeplink: String,
-    onNavigate: (Route, String) -> Unit,
     jePotrebaAktualizovatAplikaci: Boolean,
     aktualizovatAplikaci: () -> Unit,
     koin: Koin,
@@ -97,26 +96,13 @@ fun MainContent(
             val destinationFlow = navController.currentBackStackEntryFlow
 
             destinationFlow.collect { destination ->
-                val route = destination.getRoute()
-                val path = destination.generateRouteWithArgs().orEmpty()
-                onNavigate(route ?: Route.Rozvrh(""), path)
                 Firebase.analytics.logEvent("navigation") {
-                    param("route", path)
+                    param("route", destination.generateRouteWithArgs().orEmpty())
                 }
             }
         }
 
-        val navigator = remember(navController) {
-            object : Navigator {
-                override fun navigate(route: Route) {
-                    navController.navigate(route)
-                }
-
-                override fun navigateUp() {
-                    navController.navigateUp()
-                }
-            }
-        }
+        val navigator = getNavigator(navController)
 
         NavHost(
             navController = navController,
@@ -153,6 +139,11 @@ fun MainContent(
         }
     }
 }
+
+@Composable
+expect fun getNavigator(
+    navController: NavController,
+): Navigator
 
 interface Navigator {
     fun navigate(route: Route)
