@@ -65,6 +65,7 @@ import cz.jaro.gymceska.theme.areDynamicColorsSupported
 import cz.jaro.gymceska.widgets.areWidgetsSupported
 import kotlinx.datetime.LocalTime
 import org.koin.core.Koin
+import kotlin.math.roundToInt
 
 @Composable
 fun Nastaveni(
@@ -211,7 +212,7 @@ fun NastaveniContent(
                 )
             }
             var sliderValue by remember { mutableStateOf(nastaveni.zoom) }
-            Text(text = "Přiblížení rozvrhu: ${(sliderValue * 100).toInt()} %")
+            Text(text = "Přiblížení rozvrhu: ${(sliderValue * 100).roundToInt()} %")
             Slider(
                 value = sliderValue,
                 onValueChange = {
