@@ -6,11 +6,13 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -382,14 +384,14 @@ private fun ExposedDropdownMenuBoxScope.MyExposedDropdownMenu(
                     scaleY = scale
                     this.alpha = alpha
                     transformOrigin = TransformOrigin.Center
-                },
+                }.padding(start = 10.dp),
                 shape = RoundedCornerShape(4.0.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 3.dp,
                 shadowElevation = 3.dp,
             ) {
                 Column(
-                    Modifier.Companion
+                    Modifier
                         .exposedDropdownSize(false)
                         .padding(vertical = 8.dp)
                         .width(IntrinsicSize.Max),
@@ -411,8 +413,11 @@ private fun MenuVybiratka(
 ) {
     val seznamy = listOf(tridy, mistnosti, vyucujici)
     val nadpisy = seznamy.map { it.first().nazev }
-    Row {
+    Row(
+        Modifier.height(IntrinsicSize.Max)
+    ) {
         nadpisy.forEachIndexed { j, nadpis ->
+            if (j != 0) Spacer(Modifier.width(1.dp).fillMaxHeight().background(MaterialTheme.colorScheme.onSurface))
             DropdownMenuItem(
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -433,8 +438,11 @@ private fun MenuVybiratka(
     Column(Modifier.verticalScroll(rememberScrollState())) {
         repeat(seznamy.maxOf { it.size - 1 }) { i ->
             val vjeci = seznamy.map { it.getOrNull(i + 1) }
-            Row {
+            Row(
+                Modifier.height(IntrinsicSize.Max)
+            ) {
                 vjeci.forEachIndexed { j, vjec ->
+                    if (j != 0) Spacer(Modifier.width(1.dp).fillMaxHeight().background(MaterialTheme.colorScheme.onSurface))
                     DropdownMenuItem(
                         text = {
                             if (vjec != null) Row(verticalAlignment = Alignment.CenterVertically) {
@@ -445,7 +453,8 @@ private fun MenuVybiratka(
                             vybratRozvrh(vjec!!)
                             hide()
                         },
-                        Modifier.weight(listOf(5F, 7F, 12F)[j]),
+                        Modifier
+                            .weight(listOf(5F, 7F, 12F)[j]),
                         enabled = vjec != null,
                         contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                     )
