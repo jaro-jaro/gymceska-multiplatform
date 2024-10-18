@@ -1,4 +1,4 @@
-package cz.jaro.gymceska.rozvrh.widgety
+package cz.jaro.gymceska.widgets
 
 import android.annotation.SuppressLint
 import android.appwidget.AppWidgetManager
