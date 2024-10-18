@@ -105,7 +105,7 @@ class RozvrhViewModel(
             MistnostVjec::class -> mistnosti.find { it.zkratka == zkratka }
             VyucujiciVjec::class -> vyucujici.find { it.zkratka == zkratka }
             DenVjec::class -> Seznamy.dny.find { it.zkratka == zkratka }
-            HodinaVjec::class -> HodinaVjec("$zkratka. hodina", zkratka, zkratka.toInt())
+            HodinaVjec::class -> Seznamy.hodiny.find { it.zkratka == zkratka }
             else -> error("Invalid type")
         } ?: nastaveni.mojeTrida
     }

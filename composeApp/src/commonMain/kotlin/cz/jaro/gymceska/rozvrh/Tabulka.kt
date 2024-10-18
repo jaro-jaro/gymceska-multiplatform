@@ -91,16 +91,12 @@ fun Tabulka(
                     BaseCell(
                         size = Size(1F, .5F),
                         center = bunka.predmet,
-                        bottomCenter = bunka.ucitel,
+                        bottomCenter = bunka.ucitel.takeUnless { it.isBlank() },
                         onCenterClick = {
                             if (bunka.predmet.isEmpty()) return@BaseCell
-                            kliklNaNeco(if (vjec is Vjec.HodinaVjec) tridy.find {
+                            kliklNaNeco((if (vjec is Vjec.HodinaVjec) tridy else Seznamy.hodiny).find {
                                 bunka.predmet == it.zkratka
-                            } ?: return@BaseCell else Vjec.HodinaVjec(
-                                zkratka = bunka.predmet,
-                                nazev = "${bunka.predmet}. hodina",
-                                index = i + 1
-                            ))
+                            } ?: return@BaseCell)
                         }
                     )
                 }
@@ -123,9 +119,9 @@ fun Tabulka(
                             onCenterClick = {
                                 if (bunka.predmet.isEmpty()) return@BaseCell
                                 kliklNaNeco(
-                                    if (vjec is Vjec.DenVjec) tridy.find {
+                                    (if (vjec is Vjec.DenVjec) tridy else Seznamy.dny).find {
                                         bunka.predmet == it.zkratka
-                                    } ?: return@BaseCell else Seznamy.dny.find { it.zkratka == bunka.predmet }!!
+                                    } ?: return@BaseCell
                                 )
                             }
                         )
@@ -186,7 +182,7 @@ fun Tabulka(
 
 private fun Modifier.doubleScrollable(
     scrollStateX: ScrollState,
-    scrollStateY: ScrollState
+    scrollStateY: ScrollState,
 ) = composed {
     val coroutineScope = rememberCoroutineScope()
 
@@ -212,7 +208,8 @@ private fun Modifier.doubleScrollable(
                     scrollStateX.scroll {
                         val scrollScope = object : ScrollScope {
                             override fun scrollBy(pixels: Float): Float {
-                                val consumedByPreScroll = nestedScrollDispatcher.dispatchPreScroll(Offset(pixels, 0F), NestedScrollSource.SideEffect).x
+                                val consumedByPreScroll =
+                                    nestedScrollDispatcher.dispatchPreScroll(Offset(pixels, 0F), NestedScrollSource.SideEffect).x
                                 val scrollAvailableAfterPreScroll = pixels - consumedByPreScroll
                                 val consumedBySelfScroll = this@scroll.scrollBy(scrollAvailableAfterPreScroll)
                                 val deltaAvailableAfterScroll = scrollAvailableAfterPreScroll - consumedBySelfScroll
@@ -234,7 +231,8 @@ private fun Modifier.doubleScrollable(
                     scrollStateY.scroll {
                         val scrollScope = object : ScrollScope {
                             override fun scrollBy(pixels: Float): Float {
-                                val consumedByPreScroll = nestedScrollDispatcher.dispatchPreScroll(Offset(0F, pixels), NestedScrollSource.SideEffect).y
+                                val consumedByPreScroll =
+                                    nestedScrollDispatcher.dispatchPreScroll(Offset(0F, pixels), NestedScrollSource.SideEffect).y
                                 val scrollAvailableAfterPreScroll = pixels - consumedByPreScroll
                                 val consumedBySelfScroll = this@scroll.scrollBy(scrollAvailableAfterPreScroll)
                                 val deltaAvailableAfterScroll = scrollAvailableAfterPreScroll - consumedBySelfScroll
