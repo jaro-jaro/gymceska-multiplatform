@@ -17,6 +17,7 @@ import dev.gitlive.firebase.initialize
 import kotlinx.browser.window
 import org.jetbrains.skiko.wasm.onWasmReady
 import org.koin.dsl.module
+import org.w3c.dom.url.URL
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalSettingsApi::class)
 fun main() {
@@ -87,7 +88,9 @@ actual fun Navigator(
             navController.navigate(route)
             val destination = navController.currentDestination
             val path = route.generateRouteWithArgs(destination ?: return)
-            window.history.pushState(null, "", "#$path")
+            val url = URL(window.location.protocol + window.location.host + "/$path")
+            val pathWithoutSearch = url.pathname.removePrefix("/")
+            window.history.pushState(null, "", "#$pathWithoutSearch")
         }
 
         override fun navigateUp() {
