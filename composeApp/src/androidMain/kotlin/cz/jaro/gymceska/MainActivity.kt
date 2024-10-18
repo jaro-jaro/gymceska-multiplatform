@@ -9,13 +9,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.coroutineScope
-import androidx.navigation.NavController
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.network.parseGetRequest
 import com.google.firebase.crashlytics.ktx.crashlytics
@@ -112,22 +109,6 @@ class MainActivity : ComponentActivity() {
                     koin = getKoin(),
                 )
             }
-        }
-    }
-}
-
-
-@Composable
-actual fun getNavigator(
-    navController: NavController,
-) = remember(navController) {
-    object : Navigator {
-        override fun navigate(route: Route) {
-            navController.navigate(route)
-        }
-
-        override fun navigateUp() {
-            navController.navigateUp()
         }
     }
 }

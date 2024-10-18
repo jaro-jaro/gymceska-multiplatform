@@ -89,7 +89,11 @@ fun MainContent(
         LaunchedEffect(Unit) {
             if (deeplink.isBlank()) return@LaunchedEffect
             while (navController.graphOrNull == null) Unit
-            navController.navigate(deeplink)
+            try {
+                navController.navigate(deeplink)
+            } catch (e: IllegalArgumentException) {
+                e.printStackTrace()
+            }
         }
 
         LaunchedEffect(Unit) {
@@ -102,7 +106,7 @@ fun MainContent(
             }
         }
 
-        val navigator = getNavigator(navController)
+        val navigator = rememberNavigator(navController)
 
         NavHost(
             navController = navController,
@@ -138,16 +142,6 @@ fun MainContent(
             route<Route.Nastaveni> { Nastaveni(args = it, navigator = navigator, koin = koin) }
         }
     }
-}
-
-@Composable
-expect fun getNavigator(
-    navController: NavController,
-): Navigator
-
-interface Navigator {
-    fun navigate(route: Route)
-    fun navigateUp()
 }
 
 private val NavController.graphOrNull: NavGraph?

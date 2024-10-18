@@ -1,4 +1,4 @@
-package cz.jaro.gymceska.ukoly.widget
+package cz.jaro.gymceska.widgets
 
 import android.annotation.SuppressLint
 import android.appwidget.AppWidgetManager

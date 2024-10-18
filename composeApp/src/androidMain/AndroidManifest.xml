@@ -10,7 +10,7 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <receiver
-            android:name=".rozvrh.widgety.DnesWidget$Companion$Reciever"
+            android:name=".widgets.DnesWidget$Companion$Reciever"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -21,7 +21,7 @@
                 android:resource="@xml/dnes_widget_info" />
         </receiver>
         <receiver
-            android:name=".ukoly.widget.UkolyWidget$Companion$Reciever"
+            android:name=".widgets.UkolyWidget$Companion$Reciever"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
