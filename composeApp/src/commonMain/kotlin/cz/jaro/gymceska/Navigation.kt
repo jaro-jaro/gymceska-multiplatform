@@ -1,11 +1,13 @@
 package cz.jaro.gymceska
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -115,17 +117,15 @@ fun Navigation(
     val scopedActions = scopeComposable(scope, actions)
 
     if (railView)
-        Row {
-            Rail(
-                currentDestination = currentDestination,
-                navigator = navigator,
-                actions = scopedActions,
-                titleContent = titleContent ?: floatingActionButton,
-                minorNavigationItems = scopedMinorNavigationItems,
-                showIcon = !compactHeight,
-            )
-            content(PaddingValues())
-        }
+        Rail(
+            currentDestination = currentDestination,
+            navigator = navigator,
+            actions = scopedActions,
+            titleContent = titleContent ?: floatingActionButton,
+            minorNavigationItems = scopedMinorNavigationItems,
+            showIcon = !compactHeight,
+            content = content,
+        )
     else
         Scaffold(
             bottomBar = {
@@ -238,55 +238,65 @@ private fun Rail(
     actions: (@Composable () -> Unit)? = null,
     titleContent: (@Composable () -> Unit)? = null,
     minorNavigationItems: (@Composable () -> Unit)? = null,
+    content: @Composable (PaddingValues) -> Unit,
 ) {
-    NavigationRail(
-        Modifier
-            .fillMaxHeight()
-            .widthIn(max = 80.0.dp),
+    Row(
+        Modifier.fillMaxSize(),
     ) {
-        Column(
+        NavigationRail(
             Modifier
                 .fillMaxHeight()
-                .verticalScroll(rememberScrollState(), reverseScrolling = true),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .widthIn(max = 80.0.dp),
         ) {
             Column(
+                Modifier
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState(), reverseScrolling = true),
+                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                if (showIcon) Icon(painterResource(Res.drawable.ic_launcher_foreground), null, Modifier.size(64.dp))
-                titleContent?.invoke()
-                Spacer(Modifier.height(8.dp))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (showIcon) Icon(painterResource(Res.drawable.ic_launcher_foreground), null, Modifier.size(64.dp))
+                    titleContent?.invoke()
+                    Spacer(Modifier.height(8.dp))
+                }
+                actions?.let {
+                    Column { it() }
+                }
+                Column {
+                    minorNavigationItems?.invoke()
+                    NavigationRailItem(
+                        selected = currentDestination is Route.Rozvrh,
+                        onClick = {
+                            navigator.navigate(Route.Rozvrh(""))
+                        },
+                        icon = {
+                            Icon(Icons.Default.TableChart, null)
+                        },
+                        label = {
+                            Text("Rozvrh", textAlign = TextAlign.Center)
+                        }
+                    )
+                    NavigationRailItem(
+                        selected = currentDestination == Route.Ukoly,
+                        onClick = {
+                            navigator.navigate(Route.Ukoly)
+                        },
+                        icon = {
+                            Icon(Icons.AutoMirrored.Filled.FormatListBulleted, null)
+                        },
+                        label = {
+                            Text("Domácí úkoly", textAlign = TextAlign.Center)
+                        }
+                    )
+                }
             }
-            actions?.let {
-                Column { it() }
-            }
-            Column {
-                minorNavigationItems?.invoke()
-                NavigationRailItem(
-                    selected = currentDestination is Route.Rozvrh,
-                    onClick = {
-                        navigator.navigate(Route.Rozvrh(""))
-                    },
-                    icon = {
-                        Icon(Icons.Default.TableChart, null)
-                    },
-                    label = {
-                        Text("Rozvrh", textAlign = TextAlign.Center)
-                    }
-                )
-                NavigationRailItem(
-                    selected = currentDestination == Route.Ukoly,
-                    onClick = {
-                        navigator.navigate(Route.Ukoly)
-                    },
-                    icon = {
-                        Icon(Icons.AutoMirrored.Filled.FormatListBulleted, null)
-                    },
-                    label = {
-                        Text("Domácí úkoly", textAlign = TextAlign.Center)
-                    }
-                )
+            Box(
+                Modifier.weight(1F),
+            ) {
+                content(PaddingValues())
             }
         }
     }
