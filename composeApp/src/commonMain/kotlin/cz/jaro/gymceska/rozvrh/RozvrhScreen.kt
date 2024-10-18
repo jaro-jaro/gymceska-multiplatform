@@ -314,7 +314,7 @@ private fun Vybiratko(
                 focusManager.clearFocus()
             }
         ) {
-            MenuVybiratka(tridy, mistnosti, vyucujici, vybratRozvrh) {
+            MenuVybiratka(vjec, tridy, mistnosti, vyucujici, vybratRozvrh) {
                 expanded = false
                 focusManager.clearFocus()
             }
@@ -405,13 +405,16 @@ private fun ExposedDropdownMenuBoxScope.MyExposedDropdownMenu(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun MenuVybiratka(
+    vjec: Vjec?,
     tridy: List<Vjec.TridaVjec>,
     mistnosti: List<Vjec.MistnostVjec>,
     vyucujici: List<Vjec.VyucujiciVjec>,
     vybratRozvrh: (Vjec) -> Unit,
     hide: () -> Unit,
 ) {
-    val seznamy = listOf(tridy, mistnosti, vyucujici)
+    val dny by lazy { listOf(Vjec.TridaVjec("Dny")) + Seznamy.dny }
+    val hodiny by lazy { listOf(Vjec.TridaVjec("Hodiny")) + Seznamy.hodiny }
+    val seznamy = listOf(if (vjec is Vjec.DenVjec) dny else if (vjec is Vjec.HodinaVjec) hodiny else tridy, mistnosti, vyucujici)
     val nadpisy = seznamy.map { it.first().nazev }
     Row(
         Modifier.height(IntrinsicSize.Max)
