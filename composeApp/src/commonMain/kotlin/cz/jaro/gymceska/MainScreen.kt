@@ -89,7 +89,11 @@ fun MainContent(
         LaunchedEffect(Unit) {
             if (deeplink.isBlank()) return@LaunchedEffect
             while (navController.graphOrNull == null) Unit
-            navController.navigate(deeplink)
+            try {
+                navController.navigate(deeplink)
+            } catch (e: IllegalArgumentException) {
+                e.printStackTrace()
+            }
         }
 
         LaunchedEffect(Unit) {
