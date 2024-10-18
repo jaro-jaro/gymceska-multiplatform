@@ -186,21 +186,6 @@ fun NastaveniContent(
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = "Zapnout aplikaci s mým rozvrhem", Modifier.weight(1F))
-                Switch(
-                    checked = nastaveni.defaultMujRozvrh,
-                    onCheckedChange = {
-                        upravitNastaveni { nastaveni ->
-                            nastaveni.copy(defaultMujRozvrh = it)
-                        }
-                    }
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
                 Text(text = "Vždy povolit dvouřádkové buňky.", Modifier.weight(1F))
                 Switch(
                     checked = nastaveni.alwaysTwoRowCells,
@@ -382,6 +367,21 @@ fun NastaveniContent(
                         zavirat = false,
                     )
                 }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = "Zapnout aplikaci s rozvrhem pro mé skupiny", Modifier.weight(1F))
+                Switch(
+                    checked = nastaveni.defaultMujRozvrh,
+                    onCheckedChange = {
+                        upravitNastaveni { nastaveni ->
+                            nastaveni.copy(defaultMujRozvrh = it)
+                        }
+                    }
+                )
+            }
 
             var stahnoutNastaveniDialog by remember { mutableStateOf(false) }
             var stalost by remember { mutableStateOf(Stalost.dnesniEntries().first()) }
