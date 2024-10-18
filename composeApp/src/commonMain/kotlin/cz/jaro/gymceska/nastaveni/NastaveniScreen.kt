@@ -96,7 +96,6 @@ fun Nastaveni(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NastaveniContent(
     navigateBack: () -> Unit,
@@ -124,363 +123,411 @@ fun NastaveniContent(
                 .padding(paddingValues)
                 .padding(all = 16.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = "Určit tmavý režim podle systému", Modifier.weight(1F))
-                Switch(
-                    checked = nastaveni.darkModePodleSystemu,
-                    onCheckedChange = {
-                        upravitNastaveni { nastaveni ->
-                            nastaveni.copy(darkModePodleSystemu = it)
-                        }
-                    }
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = "Tmavý režim", Modifier.weight(1F))
-                Switch(
-                    checked = if (nastaveni.darkModePodleSystemu) isSystemInDarkTheme() else nastaveni.darkMode,
-                    enabled = !nastaveni.darkModePodleSystemu,
-                    onCheckedChange = {
-                        upravitNastaveni { nastaveni ->
-                            nastaveni.copy(darkMode = it)
-                        }
-                    }
-                )
-            }
-            val dynamicColorsSupported = areDynamicColorsSupported()
-            Vybiratko(
-                value = when {
-                    dynamicColorsSupported && nastaveni.dynamicColors -> "Dynamické"
-                    else -> nastaveni.tema.jmeno
-                },
-                seznam = remember {
-                    buildList {
-                        if (dynamicColorsSupported) add("Dynamické")
-                        addAll(Theme.entries.map { it.jmeno })
-                    }
-                },
-                onClick = { i, _ ->
-                    upravitNastaveni { nastaveni ->
-                        when {
-                            dynamicColorsSupported && i == 0 -> nastaveni.copy(dynamicColors = true)
-                            dynamicColorsSupported -> nastaveni.copy(tema = Theme.entries[i - 1], dynamicColors = false)
-                            else -> nastaveni.copy(tema = Theme.entries[i], dynamicColors = false)
-                        }
-                    }
-                },
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                label = "Téma aplikace",
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = "Vždy povolit dvouřádkové buňky.", Modifier.weight(1F))
-                Switch(
-                    checked = nastaveni.alwaysTwoRowCells,
-                    onCheckedChange = {
-                        upravitNastaveni { nastaveni ->
-                            nastaveni.copy(alwaysTwoRowCells = it)
-                        }
-                    }
-                )
-            }
-            var sliderValue by remember { mutableStateOf(nastaveni.zoom) }
-            Text(text = "Přiblížení rozvrhu: ${(sliderValue * 100).roundToInt()} %")
-            Slider(
-                value = sliderValue,
-                onValueChange = {
-                    sliderValue = it
-                },
-                valueRange = 0.5F..1.5F,
-                steps = 19,
-                onValueChangeFinished = {
-                    upravitNastaveni { nastaveni ->
-                        nastaveni.copy(zoom = sliderValue)
-                    }
-                }
-            )
-            if (areWidgetsSupported()) HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
-            if (areWidgetsSupported()) Vybiratko(
-                index = when (nastaveni.prepnoutRozvrhWidget) {
-                    is PrepnoutRozvrhWidget.OPulnoci -> 0
-                    is PrepnoutRozvrhWidget.VCas -> 1
-                    is PrepnoutRozvrhWidget.PoKonciVyucovani -> 2
-                },
-                seznam = remember {
-                    listOf(
-                        "Vždy o půlnoci",
-                        "Ve specifický čas",
-                        "Daný počet hodin po konci vyučování",
-                    )
-                },
-                onClick = { i, _ ->
-                    upravitNastaveni { nast ->
-                        nast.copy(
-                            prepnoutRozvrhWidget = when (i) {
-                                0 -> PrepnoutRozvrhWidget.OPulnoci
-                                1 -> PrepnoutRozvrhWidget.VCas(16, 0)
-                                2 -> PrepnoutRozvrhWidget.PoKonciVyucovani(2)
-                                else -> throw IllegalArgumentException("WTF")
-                            }
-                        )
-                    }
-                },
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                label = "Přepínat widget s rozvrhem další den",
-            )
-            if (areWidgetsSupported() && nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.VCas) {
-                var hm by remember { mutableStateOf(nastaveni.prepnoutRozvrhWidget.cas.toString()) }
-                var dialog by remember { mutableStateOf(false) }
-
-                val initialTime = try {
-                    LocalTime.parse(hm)
-                } catch (e: IllegalArgumentException) {
-                    nastaveni.prepnoutRozvrhWidget.cas
-                }
-                val state = rememberTimePickerState(
-                    initialHour = initialTime.hour,
-                    initialMinute = initialTime.minute,
-                    is24Hour = true,
-                )
-                if (dialog) TimePickerDialog(
-                    onCancel = { dialog = false },
-                    onConfirm = {
-                        dialog = false
-                        val time = LocalTime(state.hour, state.minute)
-                        hm = time.toString()
-                        upravitNastaveni { nast ->
-                            nast.copy(prepnoutRozvrhWidget = PrepnoutRozvrhWidget.VCas(time))
-                        }
-                    }
-                ) {
-                    TimePicker(state)
-                }
-
-                OutlinedTextField(
-                    value = hm,
-                    onValueChange = {},
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .onKeyEvent {
-                            if (it.key == Key.Enter) {
-                                dialog = true
-                            }
-                            return@onKeyEvent it.key == Key.Enter
-                        },
-                    label = {
-                        Text("Čas")
-                    },
-                    singleLine = true,
-                    interactionSource = remember { MutableInteractionSource() }
-                        .also { interactionSource ->
-                            LaunchedEffect(interactionSource) {
-                                interactionSource.interactions.collect {
-                                    if (it is PressInteraction.Release) {
-                                        dialog = true
-                                    }
-                                }
-                            }
-                        },
-                    readOnly = true,
-                )
-            }
-            if (areWidgetsSupported() && nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.PoKonciVyucovani)
-                Text("Pokud není rozvrh, počítá se jako konec vyučování poledne")
-
-            if (areWidgetsSupported() && nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.PoKonciVyucovani) {
-                var h by remember { mutableStateOf(nastaveni.prepnoutRozvrhWidget.poHodin.toString()) }
-                OutlinedTextField(
-                    value = h,
-                    onValueChange = {
-                        h = it
-                        it.toIntOrNull() ?: return@OutlinedTextField
-                        upravitNastaveni { nast ->
-                            nast.copy(prepnoutRozvrhWidget = PrepnoutRozvrhWidget.PoKonciVyucovani(poHodin = it.toInt()))
-                        }
-                    },
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    label = {
-                        Text("Počet hodin")
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
-                )
-            }
-            HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
-            Vybiratko(
-                value = nastaveni.mojeTrida.nazev,
-                seznam = remember { tridy.map { it.nazev }.drop(1) },
-                onClick = { i, _ ->
-                    upravitNastaveni { nastaveni ->
-                        nastaveni.copy(mojeTrida = tridy[i + 1])
-                    }
-                },
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                label = "Zvolte svou třídu",
-            )
-            if (skupiny == null) LinearProgressIndicator()
-            else
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    /*
-                                            .padding(16.dp)*/
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val moje = skupiny.filter { it in nastaveni.mojeSkupiny }
-                    Vybiratko(
-                        value = moje.joinToString(),
-                        seznam = skupiny.toList(),
-                        onClick = { _, it ->
-                            upravitNastaveni { nastaveni ->
-                                nastaveni.copy(mojeSkupiny = if (it in moje) nastaveni.mojeSkupiny - it else nastaveni.mojeSkupiny + it)
-                            }
-                        },
-                        Modifier
-                            .fillMaxWidth(),
-                        label = "Zvolte své skupiny",
-                        zaskrtavatko = {
-                            it in moje
-                        },
-                        zavirat = false,
-                    )
-                }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = "Zapnout aplikaci s rozvrhem pro mé skupiny", Modifier.weight(1F))
-                Switch(
-                    checked = nastaveni.defaultMujRozvrh,
-                    onCheckedChange = {
-                        upravitNastaveni { nastaveni ->
-                            nastaveni.copy(defaultMujRozvrh = it)
-                        }
-                    }
-                )
-            }
-
-            var stahnoutNastaveniDialog by remember { mutableStateOf(false) }
-            var stalost by remember { mutableStateOf(Stalost.dnesniEntries().first()) }
-            var nacitame by remember { mutableStateOf(false) }
-            var podrobnostiNacitani by remember { mutableStateOf("") }
-
-            if (nacitame) AlertDialog(
-                onDismissRequest = {
-                    nacitame = false
-                },
-                confirmButton = {},
-                title = {
-                    Text(text = podrobnostiNacitani)
-                },
-                text = {
-                    CircularProgressIndicator()
-                },
-            )
-            if (stahnoutNastaveniDialog) AlertDialog(
-                onDismissRequest = {
-                    stahnoutNastaveniDialog = false
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            nacitame = true
-                            stahnoutNastaveniDialog = false
-                            podrobnostiNacitani = "Generuji text"
-
-                            stahnoutVse(
-                                stalost,
-                                {
-                                    podrobnostiNacitani = it
-                                },
-                                {
-                                    if (!it) {
-                                        podrobnostiNacitani =
-                                            "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
-                                        return@stahnoutVse
-                                    }
-//                                    kopirovatDialog = true
-                                    nacitame = false
-                                }
-                            )
-                        }
-                    ) {
-                        Text(text = "Vygenerovat")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = {
-                            stahnoutNastaveniDialog = false
-                        }
-                    ) {
-                        Text(text = "Zrušit")
-                    }
-                },
-                title = {
-                    Text(text = "Stáhnout rozvrhy")
-                },
-                text = {
-                    Column {
-                        Vybiratko(
-                            seznam = Stalost.entries,
-                            value = stalost,
-                            onClick = { _, it ->
-                                stalost = it
-                            },
-                        )
-                    }
-                }
-            )
-
-            HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
-
-            TextButton(
-                onClick = {
-                    stahnoutNastaveniDialog = true
-                }
-            ) {
-                Text("Stáhnout rozvrhy")
-            }
-
-            TextButton(
-                onClick = {
-                    resetRemoteConfig()
-                }
-            ) {
-                Text("Obnovit seznamy")
-            }
-
-            Text("Verze aplikace: ${BuildKonfig.versionName} (${BuildKonfig.versionCode})")
-
-            Text("Simulate crash...", Modifier.clickable {
-                throw RuntimeException("Test exception")
-            }, fontSize = 10.sp)
+            ViewSettings(nastaveni, upravitNastaveni)
+            if (areWidgetsSupported()) WidgetSettings(nastaveni, upravitNastaveni)
+            MyClassAndGroupsSettings(nastaveni, tridy, upravitNastaveni, skupiny)
+            DownloadAndRefresh(stahnoutVse, resetRemoteConfig)
+            Version()
+            SimulateCrash()
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ThemeSettings(nastaveni: Nastaveni, upravitNastaveni: ((Nastaveni) -> Nastaveni) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = "Určit tmavý režim podle systému", Modifier.weight(1F))
+        Switch(
+            checked = nastaveni.darkModePodleSystemu,
+            onCheckedChange = {
+                upravitNastaveni { nastaveni ->
+                    nastaveni.copy(darkModePodleSystemu = it)
+                }
+            }
+        )
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = "Tmavý režim", Modifier.weight(1F))
+        Switch(
+            checked = if (nastaveni.darkModePodleSystemu) isSystemInDarkTheme() else nastaveni.darkMode,
+            enabled = !nastaveni.darkModePodleSystemu,
+            onCheckedChange = {
+                upravitNastaveni { nastaveni ->
+                    nastaveni.copy(darkMode = it)
+                }
+            }
+        )
+    }
+    val dynamicColorsSupported = areDynamicColorsSupported()
+    Vybiratko(
+        value = when {
+            dynamicColorsSupported && nastaveni.dynamicColors -> "Dynamické"
+            else -> nastaveni.tema.jmeno
+        },
+        seznam = remember {
+            buildList {
+                if (dynamicColorsSupported) add("Dynamické")
+                addAll(Theme.entries.map { it.jmeno })
+            }
+        },
+        onClick = { i, _ ->
+            upravitNastaveni { nastaveni ->
+                when {
+                    dynamicColorsSupported && i == 0 -> nastaveni.copy(dynamicColors = true)
+                    dynamicColorsSupported -> nastaveni.copy(tema = Theme.entries[i - 1], dynamicColors = false)
+                    else -> nastaveni.copy(tema = Theme.entries[i], dynamicColors = false)
+                }
+            }
+        },
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        label = "Téma aplikace",
+    )
+}
+
+@Composable
+private fun ViewSettings(nastaveni: Nastaveni, upravitNastaveni: ((Nastaveni) -> Nastaveni) -> Unit) {
+    ThemeSettings(nastaveni, upravitNastaveni)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = "Vždy povolit dvouřádkové buňky.", Modifier.weight(1F))
+        Switch(
+            checked = nastaveni.alwaysTwoRowCells,
+            onCheckedChange = {
+                upravitNastaveni { nastaveni ->
+                    nastaveni.copy(alwaysTwoRowCells = it)
+                }
+            }
+        )
+    }
+    var sliderValue by remember { mutableStateOf(nastaveni.zoom) }
+    Text(text = "Přiblížení rozvrhu: ${(sliderValue * 100).roundToInt()} %")
+    Slider(
+        value = sliderValue,
+        onValueChange = {
+            sliderValue = it
+        },
+        valueRange = 0.5F..1.5F,
+        steps = 19,
+        onValueChangeFinished = {
+            upravitNastaveni { nastaveni ->
+                nastaveni.copy(zoom = sliderValue)
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WidgetSettings(
+    nastaveni: Nastaveni,
+    upravitNastaveni: ((Nastaveni) -> Nastaveni) -> Unit,
+) {
+    HorizontalDivider(
+        Modifier.padding(vertical = 16.dp),
+        thickness = Dp.Hairline,
+        color = MaterialTheme.colorScheme.outline
+    )
+    Vybiratko(
+        index = when (nastaveni.prepnoutRozvrhWidget) {
+            is PrepnoutRozvrhWidget.OPulnoci -> 0
+            is PrepnoutRozvrhWidget.VCas -> 1
+            is PrepnoutRozvrhWidget.PoKonciVyucovani -> 2
+        },
+        seznam = remember {
+            listOf(
+                "Vždy o půlnoci",
+                "Ve specifický čas",
+                "Daný počet hodin po konci vyučování",
+            )
+        },
+        onClick = { i, _ ->
+            upravitNastaveni { nast ->
+                nast.copy(
+                    prepnoutRozvrhWidget = when (i) {
+                        0 -> PrepnoutRozvrhWidget.OPulnoci
+                        1 -> PrepnoutRozvrhWidget.VCas(16, 0)
+                        2 -> PrepnoutRozvrhWidget.PoKonciVyucovani(2)
+                        else -> throw IllegalArgumentException("WTF")
+                    }
+                )
+            }
+        },
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        label = "Přepínat widget s rozvrhem další den",
+    )
+    if (nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.VCas) {
+        var hm by remember { mutableStateOf(nastaveni.prepnoutRozvrhWidget.cas.toString()) }
+        var dialog by remember { mutableStateOf(false) }
+
+        val initialTime = try {
+            LocalTime.parse(hm)
+        } catch (e: IllegalArgumentException) {
+            nastaveni.prepnoutRozvrhWidget.cas
+        }
+        val state = rememberTimePickerState(
+            initialHour = initialTime.hour,
+            initialMinute = initialTime.minute,
+            is24Hour = true,
+        )
+        if (dialog) TimePickerDialog(
+            onCancel = { dialog = false },
+            onConfirm = {
+                dialog = false
+                val time = LocalTime(state.hour, state.minute)
+                hm = time.toString()
+                upravitNastaveni { nast ->
+                    nast.copy(prepnoutRozvrhWidget = PrepnoutRozvrhWidget.VCas(time))
+                }
+            }
+        ) {
+            TimePicker(state)
+        }
+
+        OutlinedTextField(
+            value = hm,
+            onValueChange = {},
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .onKeyEvent {
+                    if (it.key == Key.Enter) {
+                        dialog = true
+                    }
+                    return@onKeyEvent it.key == Key.Enter
+                },
+            label = {
+                Text("Čas")
+            },
+            singleLine = true,
+            interactionSource = remember { MutableInteractionSource() }
+                .also { interactionSource ->
+                    LaunchedEffect(interactionSource) {
+                        interactionSource.interactions.collect {
+                            if (it is PressInteraction.Release) {
+                                dialog = true
+                            }
+                        }
+                    }
+                },
+            readOnly = true,
+        )
+    }
+    if (nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.PoKonciVyucovani)
+        Text("Pokud není rozvrh, počítá se jako konec vyučování poledne")
+
+    if (nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.PoKonciVyucovani) {
+        var h by remember { mutableStateOf(nastaveni.prepnoutRozvrhWidget.poHodin.toString()) }
+        OutlinedTextField(
+            value = h,
+            onValueChange = {
+                h = it
+                it.toIntOrNull() ?: return@OutlinedTextField
+                upravitNastaveni { nast ->
+                    nast.copy(prepnoutRozvrhWidget = PrepnoutRozvrhWidget.PoKonciVyucovani(poHodin = it.toInt()))
+                }
+            },
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            label = {
+                Text("Počet hodin")
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number
+            ),
+        )
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun MyClassAndGroupsSettings(
+    nastaveni: Nastaveni,
+    tridy: List<Vjec.TridaVjec>,
+    upravitNastaveni: ((Nastaveni) -> Nastaveni) -> Unit,
+    skupiny: Sequence<String>?,
+) {
+    HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
+    Vybiratko(
+        value = nastaveni.mojeTrida.nazev,
+        seznam = remember { tridy.map { it.nazev }.drop(1) },
+        onClick = { i, _ ->
+            upravitNastaveni { nastaveni ->
+                nastaveni.copy(mojeTrida = tridy[i + 1])
+            }
+        },
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        label = "Zvolte svou třídu",
+    )
+    if (skupiny == null) LinearProgressIndicator()
+    else
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            /*
+                                            .padding(16.dp)*/
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val moje = skupiny.filter { it in nastaveni.mojeSkupiny }
+            Vybiratko(
+                value = moje.joinToString(),
+                seznam = skupiny.toList(),
+                onClick = { _, it ->
+                    upravitNastaveni { nastaveni ->
+                        nastaveni.copy(mojeSkupiny = if (it in moje) nastaveni.mojeSkupiny - it else nastaveni.mojeSkupiny + it)
+                    }
+                },
+                Modifier
+                    .fillMaxWidth(),
+                label = "Zvolte své skupiny",
+                zaskrtavatko = {
+                    it in moje
+                },
+                zavirat = false,
+            )
+        }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = "Zapnout aplikaci s rozvrhem pro mé skupiny", Modifier.weight(1F))
+        Switch(
+            checked = nastaveni.defaultMujRozvrh,
+            onCheckedChange = {
+                upravitNastaveni { nastaveni ->
+                    nastaveni.copy(defaultMujRozvrh = it)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun DownloadAndRefresh(stahnoutVse: (Stalost, (String) -> Unit, (Boolean) -> Unit) -> Unit, resetRemoteConfig: () -> Unit) {
+    var stahnoutNastaveniDialog by remember { mutableStateOf(false) }
+    var stalost by remember { mutableStateOf(Stalost.dnesniEntries().first()) }
+    var nacitame by remember { mutableStateOf(false) }
+    var podrobnostiNacitani by remember { mutableStateOf("") }
+
+    if (nacitame) AlertDialog(
+        onDismissRequest = {
+            nacitame = false
+        },
+        confirmButton = {},
+        title = {
+            Text(text = podrobnostiNacitani)
+        },
+        text = {
+            CircularProgressIndicator()
+        },
+    )
+    if (stahnoutNastaveniDialog) AlertDialog(
+        onDismissRequest = {
+            stahnoutNastaveniDialog = false
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    nacitame = true
+                    stahnoutNastaveniDialog = false
+                    podrobnostiNacitani = "Generuji text"
+
+                    stahnoutVse(
+                        stalost,
+                        {
+                            podrobnostiNacitani = it
+                        },
+                        {
+                            if (!it) {
+                                podrobnostiNacitani =
+                                    "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
+                                return@stahnoutVse
+                            }
+//                                    kopirovatDialog = true
+                            nacitame = false
+                        }
+                    )
+                }
+            ) {
+                Text(text = "Vygenerovat")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    stahnoutNastaveniDialog = false
+                }
+            ) {
+                Text(text = "Zrušit")
+            }
+        },
+        title = {
+            Text(text = "Stáhnout rozvrhy")
+        },
+        text = {
+            Column {
+                Vybiratko(
+                    seznam = Stalost.entries,
+                    value = stalost,
+                    onClick = { _, it ->
+                        stalost = it
+                    },
+                )
+            }
+        }
+    )
+
+    HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
+
+    TextButton(
+        onClick = {
+            stahnoutNastaveniDialog = true
+        }
+    ) {
+        Text("Stáhnout rozvrhy")
+    }
+
+    TextButton(
+        onClick = {
+            resetRemoteConfig()
+        }
+    ) {
+        Text("Obnovit seznamy")
+    }
+}
+
+@Composable
+private fun Version() {
+    Text("Verze aplikace: ${BuildKonfig.versionName} (${BuildKonfig.versionCode})")
+}
+
+@Composable
+private fun SimulateCrash() {
+    Text("Simulate crash...", Modifier.clickable {
+        throw RuntimeException("Test exception")
+    }, fontSize = 10.sp)
 }
 
 
