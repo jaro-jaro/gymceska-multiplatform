@@ -1,11 +1,18 @@
 package cz.jaro.gymceska
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.TableChart
@@ -49,7 +56,7 @@ interface ActionScope {
 }
 
 private fun ActionScope(
-    isInTabletMode: Boolean,
+    railView: Boolean,
     currentDestination: Route,
     navigator: Navigator,
 ) = object : ActionScope {
@@ -61,7 +68,7 @@ private fun ActionScope(
             title = title,
             navigator = navigator,
             icon = icon,
-            isInTabletMode = isInTabletMode,
+            railView = railView,
         )
     }
 
@@ -71,7 +78,7 @@ private fun ActionScope(
             onClick = onClick,
             title = title,
             icon = icon,
-            isInTabletMode = isInTabletMode,
+            railView = railView,
         )
     }
 }
@@ -96,25 +103,30 @@ fun Navigation(
     floatingActionButton: (@Composable () -> Unit)? = null,
 ) {
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-    val isInTabletMode = windowSizeClass.windowHeightSizeClass == WindowHeightSizeClass.COMPACT
-            || windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
 
-    val scope = ActionScope(isInTabletMode, currentDestination, navigator)
+    val mediumWidth = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM
+    val expandedWidth = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+
+    val compactHeight = windowSizeClass.windowHeightSizeClass == WindowHeightSizeClass.COMPACT
+    val expandedHeight = windowSizeClass.windowHeightSizeClass == WindowHeightSizeClass.EXPANDED
+
+    val railView = expandedWidth || (mediumWidth && !expandedHeight)
+
+    val scope = ActionScope(railView, currentDestination, navigator)
     val scopedMinorNavigationItems = scopeComposable(scope, minorNavigationItems)
     val scopedActions = scopeComposable(scope, actions)
 
-    if (isInTabletMode) {
-        Row {
-            Rail(
-                currentDestination = currentDestination,
-                navigator = navigator,
-                actions = scopedActions,
-                titleContent = titleContent ?: floatingActionButton,
-                minorNavigationItems = scopedMinorNavigationItems,
-            )
-            content(PaddingValues())
-        }
-    } else {
+    if (railView)
+        Rail(
+            currentDestination = currentDestination,
+            navigator = navigator,
+            actions = scopedActions,
+            titleContent = titleContent ?: floatingActionButton,
+            minorNavigationItems = scopedMinorNavigationItems,
+            showIcon = !compactHeight,
+            content = content,
+        )
+    else
         Scaffold(
             bottomBar = {
                 BottomBar(
@@ -134,7 +146,6 @@ fun Navigation(
             floatingActionButton = floatingActionButton ?: {},
             content = content,
         )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -163,8 +174,8 @@ private fun Action(
     title: String,
     onClick: () -> Unit,
     icon: ImageVector,
-    isInTabletMode: Boolean,
-) = if (isInTabletMode) {
+    railView: Boolean,
+) = if (railView) {
     NavigationRailItem(
         selected = false,
         onClick = {
@@ -194,8 +205,8 @@ private fun MinorNavigationItem(
     title: String,
     navigator: Navigator,
     icon: ImageVector,
-    isInTabletMode: Boolean,
-) = if (isInTabletMode) {
+    railView: Boolean,
+) = if (railView) {
     NavigationRailItem(
         selected = selected,
         onClick = {
@@ -223,49 +234,71 @@ private fun MinorNavigationItem(
 private fun Rail(
     currentDestination: Route,
     navigator: Navigator,
+    showIcon: Boolean,
     actions: (@Composable () -> Unit)? = null,
     titleContent: (@Composable () -> Unit)? = null,
     minorNavigationItems: (@Composable () -> Unit)? = null,
+    content: @Composable (PaddingValues) -> Unit,
 ) {
-    NavigationRail(
-        Modifier
-            .fillMaxHeight()
-            .widthIn(max = 80.0.dp),
-        header = {
-            Icon(painterResource(Res.drawable.ic_launcher_foreground), null, Modifier.size(64.dp))
-            titleContent?.invoke()
-        },
+    Row(
+        Modifier.fillMaxSize(),
     ) {
-        Spacer(Modifier.weight(1F))
-        actions?.let {
-            it()
-            Spacer(Modifier.weight(1F))
+        NavigationRail(
+            Modifier
+                .fillMaxHeight()
+                .widthIn(max = 80.0.dp),
+        ) {
+            Column(
+                Modifier
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState(), reverseScrolling = true),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (showIcon) Icon(painterResource(Res.drawable.ic_launcher_foreground), null, Modifier.size(64.dp))
+                    titleContent?.invoke()
+                    Spacer(Modifier.height(8.dp))
+                }
+                actions?.let {
+                    Column { it() }
+                }
+                Column {
+                    minorNavigationItems?.invoke()
+                    NavigationRailItem(
+                        selected = currentDestination is Route.Rozvrh,
+                        onClick = {
+                            navigator.navigate(Route.Rozvrh(""))
+                        },
+                        icon = {
+                            Icon(Icons.Default.TableChart, null)
+                        },
+                        label = {
+                            Text("Rozvrh", textAlign = TextAlign.Center)
+                        }
+                    )
+                    NavigationRailItem(
+                        selected = currentDestination == Route.Ukoly,
+                        onClick = {
+                            navigator.navigate(Route.Ukoly)
+                        },
+                        icon = {
+                            Icon(Icons.AutoMirrored.Filled.FormatListBulleted, null)
+                        },
+                        label = {
+                            Text("Domácí úkoly", textAlign = TextAlign.Center)
+                        }
+                    )
+                }
+            }
+            Box(
+                Modifier.weight(1F),
+            ) {
+                content(PaddingValues())
+            }
         }
-        minorNavigationItems?.invoke()
-        NavigationRailItem(
-            selected = currentDestination is Route.Rozvrh,
-            onClick = {
-                navigator.navigate(Route.Rozvrh(""))
-            },
-            icon = {
-                Icon(Icons.Default.TableChart, null)
-            },
-            label = {
-                Text("Rozvrh", textAlign = TextAlign.Center)
-            }
-        )
-        NavigationRailItem(
-            selected = currentDestination == Route.Ukoly,
-            onClick = {
-                navigator.navigate(Route.Ukoly)
-            },
-            icon = {
-                Icon(Icons.AutoMirrored.Filled.FormatListBulleted, null)
-            },
-            label = {
-                Text("Domácí úkoly", textAlign = TextAlign.Center)
-            }
-        )
     }
 }
 
