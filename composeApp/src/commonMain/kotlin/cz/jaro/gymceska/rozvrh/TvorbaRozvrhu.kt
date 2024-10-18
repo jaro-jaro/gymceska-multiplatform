@@ -7,8 +7,6 @@ import cz.jaro.gymceska.Online
 import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Uspech
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDateTime
 
 object TvorbaRozvrhu {
@@ -225,7 +223,7 @@ object TvorbaRozvrhu {
                 novaTabulka[0][seznamNazvu.indexOf(trida) + 1] = mutableListOf(Bunka.empty.copy(predmet = trida.zkratka))
                 rozvrhTridy.forEachIndexed trida@{ i, den ->
                     novaTabulka[i][0] = rozvrhTridy[i][0].toMutableList()
-                    den.drop(1).singleOrGet(vjec.index - 1).forEach hodina@{ bunka ->
+                    den.drop(1).singleOrGet(vjec.index).forEach hodina@{ bunka ->
                         if (i == 0) return@hodina
 
                         novaTabulka[i][seznamNazvu.indexOf(trida) + 1] += bunka
