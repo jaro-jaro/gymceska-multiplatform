@@ -14,8 +14,8 @@ plugins {
     id("com.codingfeline.buildkonfig") version "0.15.2" apply true
 }
 
-val appVersionCode = 102
-val appVersionName = "2.5.0-alpha.5"
+val appVersionCode = 103
+val appVersionName = "2.5.0-alpha.6"
 
 kotlin {
     js(IR) {
