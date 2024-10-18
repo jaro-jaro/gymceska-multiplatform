@@ -144,18 +144,6 @@ fun MainContent(
     }
 }
 
-@Composable
-fun rememberNavigator(navController: NavController) = remember(navController) { Navigator(navController) }
-
-expect fun Navigator(
-    navController: NavController,
-): Navigator
-
-interface Navigator {
-    fun navigate(route: Route)
-    fun navigateUp()
-}
-
 private val NavController.graphOrNull: NavGraph?
     get() = try {
         graph

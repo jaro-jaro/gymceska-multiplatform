@@ -82,12 +82,7 @@ import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
-import cz.jaro.gymceska.rozvrh.Vjec.HodinaVjec
-import cz.jaro.gymceska.rozvrh.Vjec.MistnostVjec
-import cz.jaro.gymceska.rozvrh.Vjec.TridaVjec
-import cz.jaro.gymceska.rozvrh.Vjec.VyucujiciVjec
 import org.koin.core.Koin
-import kotlin.reflect.KClass
 
 @Composable
 fun Rozvrh(

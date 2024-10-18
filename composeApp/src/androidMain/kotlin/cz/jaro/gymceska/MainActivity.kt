@@ -13,7 +13,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.coroutineScope
-import androidx.navigation.NavController
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.network.parseGetRequest
 import com.google.firebase.crashlytics.ktx.crashlytics
@@ -111,18 +110,5 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-    }
-}
-
-
-actual fun Navigator(
-    navController: NavController,
-) = object : Navigator {
-    override fun navigate(route: Route) {
-        navController.navigate(route)
-    }
-
-    override fun navigateUp() {
-        navController.navigateUp()
     }
 }

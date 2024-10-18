@@ -5,7 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.CanvasBasedWindow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.StorageSettings
 import com.russhwolf.settings.observable.makeObservable
@@ -17,7 +16,6 @@ import dev.gitlive.firebase.initialize
 import kotlinx.browser.window
 import org.jetbrains.skiko.wasm.onWasmReady
 import org.koin.dsl.module
-import org.w3c.dom.url.URL
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalSettingsApi::class)
 fun main() {
@@ -72,29 +70,6 @@ fun main() {
                     koin = koinApp.koin,
                 )
             }
-        }
-    }
-}
-
-
-actual fun Navigator(
-    navController: NavController,
-): Navigator {
-    window.onpopstate = {
-        navController.navigate(window.location.hash.removePrefix("#"))
-    }
-    return object : Navigator {
-        override fun navigate(route: Route) {
-            navController.navigate(route)
-            val destination = navController.currentDestination
-            val path = route.generateRouteWithArgs(destination ?: return)
-            val url = URL(window.location.protocol + window.location.host + "/$path")
-            val pathWithoutSearch = url.pathname.removePrefix("/")
-            window.history.pushState(null, "", "#$pathWithoutSearch")
-        }
-
-        override fun navigateUp() {
-            window.history.back()
         }
     }
 }
