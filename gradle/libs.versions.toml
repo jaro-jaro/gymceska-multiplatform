@@ -23,7 +23,7 @@ koin-compose = "1.1.2"
 androidx-lifecycle = "2.8.3"
 routing-compose = "0.4.0"
 semver = "1.4.2"
-adaptive = "1.0.0-alpha03"
+adaptive = "1.0.0"
 multiplatform-settings = "1.2.0"
 skiko-js = "0.8.15"
 
