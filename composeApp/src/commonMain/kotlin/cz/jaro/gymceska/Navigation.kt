@@ -293,11 +293,11 @@ private fun Rail(
                     )
                 }
             }
-            Box(
-                Modifier.weight(1F),
-            ) {
-                content(PaddingValues())
-            }
+        }
+        Box(
+            Modifier.weight(1F),
+        ) {
+            content(PaddingValues())
         }
     }
 }
