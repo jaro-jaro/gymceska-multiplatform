@@ -25,6 +25,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.nestedscroll.NestedScrollDispatcher
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.pointer.PointerEvent
+import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
@@ -253,8 +255,28 @@ private fun Modifier.doubleScrollable(
             },
             onDragStart = {
                 velocityTracker.resetTracking()
-            }
+            },
         )
+    }.onPointerScrollEvent { event: PointerEvent ->
+        val scrollDelta = event.changes.fold(Offset.Zero) { acc, c -> acc + c.scrollDelta }.let {
+            if (event.keyboardModifiers.isShiftPressed)
+                Offset(x = it.y, y = it.x)
+            else it
+        }
+        coroutineScope.launch {
+            scrollStateX.scrollBy(-scrollDelta.x)
+        }
+        coroutineScope.launch {
+            scrollStateY.scrollBy(-scrollDelta.y)
+        }
+    }
+}
+
+fun Modifier.onPointerScrollEvent(onScroll: (PointerEvent) -> Unit) = pointerInput(Unit) {
+    awaitPointerEventScope {
+        while (true) {
+            onScroll(awaitPointerEvent())
+        }
     }
 }
 
