@@ -24,13 +24,13 @@ const val PRVNI_MESIC_VE_SKOLNIM_ROCE = 8
 fun dateFromUkol(ukol: Ukol) = dateFromString(ukol.datum)
 
 fun dateFromString(dateString: String): LocalDate? {
-    val today = today()
-    if (dateString == "0. 0.") return today
+    if (dateString == "0. 0.") return null
 
     val datum = dateString.replace(" ", "").split(".")
     val den = datum.getOrNull(0)?.toIntOrNull() ?: return null
     val mesic = datum.getOrNull(1)?.toIntOrNull() ?: return null
 
+    val today = today()
     val tentoMesic = today.monthNumber
     val tentoRok = today.year
 
