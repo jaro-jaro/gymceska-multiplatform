@@ -9,9 +9,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.coroutineScope
@@ -117,17 +115,14 @@ class MainActivity : ComponentActivity() {
 }
 
 
-@Composable
-actual fun getNavigator(
+actual fun Navigator(
     navController: NavController,
-) = remember(navController) {
-    object : Navigator {
-        override fun navigate(route: Route) {
-            navController.navigate(route)
-        }
+) = object : Navigator {
+    override fun navigate(route: Route) {
+        navController.navigate(route)
+    }
 
-        override fun navigateUp() {
-            navController.navigateUp()
-        }
+    override fun navigateUp() {
+        navController.navigateUp()
     }
 }

@@ -1,9 +1,7 @@
 package cz.jaro.gymceska
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.CanvasBasedWindow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,25 +75,23 @@ fun main() {
     }
 }
 
-@Composable
-actual fun getNavigator(
+
+actual fun Navigator(
     navController: NavController,
 ): Navigator {
     window.onpopstate = {
         navController.navigate(window.location.hash.removePrefix("#"))
     }
-    return remember(navController) {
-        object : Navigator {
-            override fun navigate(route: Route) {
-                navController.navigate(route)
-                val destination = navController.currentDestination
-                val path = route.generateRouteWithArgs(destination ?: return)
-                window.history.pushState(null, "", "#$path")
-            }
+    return object : Navigator {
+        override fun navigate(route: Route) {
+            navController.navigate(route)
+            val destination = navController.currentDestination
+            val path = route.generateRouteWithArgs(destination ?: return)
+            window.history.pushState(null, "", "#$path")
+        }
 
-            override fun navigateUp() {
-                window.history.back()
-            }
+        override fun navigateUp() {
+            window.history.back()
         }
     }
 }

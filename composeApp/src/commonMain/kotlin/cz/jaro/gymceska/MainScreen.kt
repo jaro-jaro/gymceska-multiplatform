@@ -102,7 +102,7 @@ fun MainContent(
             }
         }
 
-        val navigator = getNavigator(navController)
+        val navigator = rememberNavigator(navController)
 
         NavHost(
             navController = navController,
@@ -141,7 +141,9 @@ fun MainContent(
 }
 
 @Composable
-expect fun getNavigator(
+fun rememberNavigator(navController: NavController) = remember(navController) { Navigator(navController) }
+
+expect fun Navigator(
     navController: NavController,
 ): Navigator
 
