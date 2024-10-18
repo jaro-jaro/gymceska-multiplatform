@@ -62,6 +62,7 @@ import cz.jaro.gymceska.rozvrh.Vybiratko
 import cz.jaro.gymceska.rozvrh.dnesniEntries
 import cz.jaro.gymceska.theme.Theme
 import cz.jaro.gymceska.theme.areDynamicColorsSupported
+import cz.jaro.gymceska.widgets.areWidgetsSupported
 import kotlinx.datetime.LocalTime
 import org.koin.core.Koin
 
@@ -224,8 +225,8 @@ fun NastaveniContent(
                     }
                 }
             )
-            HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
-            Vybiratko(
+            if (areWidgetsSupported()) HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
+            if (areWidgetsSupported()) Vybiratko(
                 index = when (nastaveni.prepnoutRozvrhWidget) {
                     is PrepnoutRozvrhWidget.OPulnoci -> 0
                     is PrepnoutRozvrhWidget.VCas -> 1
@@ -255,7 +256,7 @@ fun NastaveniContent(
                     .padding(vertical = 8.dp),
                 label = "Přepínat widget s rozvrhem další den",
             )
-            if (nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.VCas) {
+            if (areWidgetsSupported() && nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.VCas) {
                 var hm by remember { mutableStateOf(nastaveni.prepnoutRozvrhWidget.cas.toString()) }
                 var dialog by remember { mutableStateOf(false) }
 
@@ -312,10 +313,10 @@ fun NastaveniContent(
                     readOnly = true,
                 )
             }
-            if (nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.PoKonciVyucovani)
+            if (areWidgetsSupported() && nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.PoKonciVyucovani)
                 Text("Pokud není rozvrh, počítá se jako konec vyučování poledne")
 
-            if (nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.PoKonciVyucovani) {
+            if (areWidgetsSupported() && nastaveni.prepnoutRozvrhWidget is PrepnoutRozvrhWidget.PoKonciVyucovani) {
                 var h by remember { mutableStateOf(nastaveni.prepnoutRozvrhWidget.poHodin.toString()) }
                 OutlinedTextField(
                     value = h,
