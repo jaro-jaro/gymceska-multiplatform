@@ -171,39 +171,31 @@ private fun <T> BaseTable(
     horScrollState: ScrollState = rememberScrollState(),
     verScrollState: ScrollState = rememberScrollState(),
 ) = Column(
-    Modifier.doubleScrollable(horScrollState, verScrollState)
+    Modifier.doubleScrollable(horScrollState, verScrollState).padding(all = 16.dp)
 ) {
     Row(
-        modifier = Modifier
-            .verticalScroll(rememberScrollState(), enabled = false)
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+        Modifier.verticalScroll(rememberScrollState(), enabled = false),
     ) {
-
         Row(
-            modifier = Modifier
-                .horizontalScroll(rememberScrollState(), enabled = false)
+            Modifier.horizontalScroll(rememberScrollState(), enabled = false)
         ) {
             cornerCellContent(data[0][0])
         }
 
         Row(
-            modifier = Modifier
-                .horizontalScroll(horScrollState, enabled = false)
+            Modifier.horizontalScroll(horScrollState, enabled = false)
         ) {
             data.first().drop(1).forEachIndexed { i, cell ->
                 topHeaderCellContent(i, cell)
             }
         }
     }
-
     Column(
-        modifier = Modifier
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            .verticalScroll(verScrollState, enabled = false),
+        Modifier.verticalScroll(verScrollState, enabled = false),
     ) {
         Row {
             Column(
-                Modifier.horizontalScroll(rememberScrollState())
+                Modifier.horizontalScroll(rememberScrollState(), enabled = false)
             ) {
                 data.drop(1).map { it.first() }.forEachIndexed { i, cell ->
                     startHeaderCellContent(i, cell)
