@@ -14,6 +14,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
 object TvorbaRozvrhu {
 
@@ -62,7 +63,7 @@ object TvorbaRozvrhu {
                     Bunka(
                         ucebna = "",
                         predmet = dny[i],
-                        ucitel = "",
+                        ucitel = date(stalost, i),
                         tridaSkupina = ""
                     )
                 )
@@ -278,6 +279,29 @@ object TvorbaRozvrhu {
     fun blankTyden() = emptyTyden(Vjec.TridaVjec("")).map { den ->
         den.map {
             listOf(Bunka.empty)
+        }
+    }
+
+    private fun date(
+        stalost: Stalost,
+        dayOfWeekIndex: Int,
+    ): String {
+        val weekStart = weekStart(stalost)
+        val date = weekStart?.plus(DatePeriod(days = dayOfWeekIndex))
+        println(weekStart)
+        println(date)
+        return date?.run { "${dayOfMonth}.\n${monthNumber}." } ?: ""
+    }
+
+    private fun weekStart(
+        stalost: Stalost,
+    ): LocalDate? {
+        val today = today()
+        val startOfWeek = today.startOfWeek()
+        return when (stalost) {
+            Stalost.ThisWeek -> startOfWeek
+            Stalost.NextWeek -> startOfWeek.plus(DatePeriod(days = 7))
+            Stalost.Permanent -> null
         }
     }
 

@@ -118,6 +118,7 @@ fun Tabulka(
                         BaseCell(
                             size = Size(.5F, rowHeight[i + 1]),
                             center = bunka.predmet,
+                            bottomCenter = bunka.ucitel.takeUnless { it.isBlank() },
                             onCenterClick = {
                                 if (bunka.predmet.isEmpty()) return@BaseCell
                                 kliklNaNeco(
