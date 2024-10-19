@@ -252,16 +252,18 @@ private fun Modifier.doubleScrollable(
             },
         )
     }.onPointerScrollEvent { event: PointerEvent ->
-        val scrollDelta = event.changes.fold(Offset.Zero) { acc, c -> acc + c.scrollDelta }.let {
-            if (event.keyboardModifiers.isShiftPressed)
-                Offset(x = it.y, y = it.x)
-            else it
-        }
-        coroutineScope.launch {
-            scrollStateX.scrollBy(-scrollDelta.x)
-        }
-        coroutineScope.launch {
-            scrollStateY.scrollBy(-scrollDelta.y)
+        event.changes.forEach { c ->
+            val scrollDelta = c.scrollDelta.let {
+                if (event.keyboardModifiers.isShiftPressed)
+                    Offset(x = it.y, y = it.x)
+                else it
+            }
+            coroutineScope.launch {
+                scrollStateX.scrollBy(-scrollDelta.x)
+            }
+            coroutineScope.launch {
+                scrollStateY.scrollBy(-scrollDelta.y)
+            }
         }
     }
 }
