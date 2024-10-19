@@ -278,7 +278,7 @@ class DnesWidget : GlanceAppWidget() {
                     val den = today().plus(DatePeriod(days = if (dnes) 0 else 1))
                     val cisloDne = den.dayOfWeek.value // 1-5 (2-7)
 
-                    val stalost = if (cisloDne == 1 && !dnes) Stalost.PristiTyden else Stalost.TentoTyden
+                    val stalost = if (cisloDne == 1 && !dnes) Stalost.NextWeek else Stalost.ThisWeek
 
                     val hodiny = repo.ziskatRozvrh(stalost).let { result ->
                         if (result !is Uspech) return@let listOf(Bunka("", "Žádná data!", ""))
@@ -334,7 +334,7 @@ class DnesWidget : GlanceAppWidget() {
             private suspend fun zjistitKonecVyucovani(): LocalTime {
                 val nastaveni = repo.nastaveni.first()
 
-                val result = repo.ziskatRozvrh(Stalost.TentoTyden)
+                val result = repo.ziskatRozvrh(Stalost.ThisWeek)
 
                 if (result !is Uspech) return LocalTime(0, 0)
 

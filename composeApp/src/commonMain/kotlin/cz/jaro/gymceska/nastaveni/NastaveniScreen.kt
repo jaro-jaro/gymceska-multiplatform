@@ -59,7 +59,7 @@ import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.rozvrh.Stalost
 import cz.jaro.gymceska.rozvrh.Vjec
 import cz.jaro.gymceska.rozvrh.Vybiratko
-import cz.jaro.gymceska.rozvrh.dnesniEntries
+import cz.jaro.gymceska.rozvrh.defaultToday
 import cz.jaro.gymceska.theme.Theme
 import cz.jaro.gymceska.theme.areDynamicColorsSupported
 import cz.jaro.gymceska.widgets.areWidgetsSupported
@@ -427,7 +427,7 @@ private fun MyClassAndGroupsSettings(
 @OptIn(ExperimentalMaterial3Api::class)
 private fun DownloadAndRefresh(stahnoutVse: (Stalost, (String) -> Unit, (Boolean) -> Unit) -> Unit, resetRemoteConfig: () -> Unit) {
     var stahnoutNastaveniDialog by remember { mutableStateOf(false) }
-    var stalost by remember { mutableStateOf(Stalost.dnesniEntries().first()) }
+    var stalost by remember { mutableStateOf(Stalost.defaultToday()) }
     var nacitame by remember { mutableStateOf(false) }
     var podrobnostiNacitani by remember { mutableStateOf("") }
 

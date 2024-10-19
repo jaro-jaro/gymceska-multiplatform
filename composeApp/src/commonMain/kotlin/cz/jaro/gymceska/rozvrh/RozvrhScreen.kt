@@ -245,7 +245,7 @@ private fun PrepinatkoStalosti(
             shape = SegmentedButtonDefaults.itemShape(i, Stalost.entries.count()),
             Modifier.fillMaxHeight(),
         ) {
-            Text(it.nazev)
+            Text(it.nameNominative)
         }
     }
 }
