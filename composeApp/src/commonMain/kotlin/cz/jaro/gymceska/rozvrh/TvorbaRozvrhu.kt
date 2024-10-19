@@ -216,29 +216,23 @@ object TvorbaRozvrhu {
 
             if (vjec is Vjec.DenVjec) {
                 novaTabulka[seznamNazvu.indexOf(trida) + 1][0] = mutableListOf(Bunka.empty.copy(predmet = trida.zkratka))
-                rozvrhTridy[vjec.index].forEachIndexed den@{ j, hodina ->
-                    novaTabulka[0][j] = rozvrhTridy[0][j].toMutableList()
+                rozvrhTridy[vjec.index].drop(1).forEachIndexed den@{ j, hodina ->
+                    novaTabulka[0][j + 1] = rozvrhTridy[0][j + 1].toMutableList()
                     hodina.forEach hodina@{ bunka ->
-                        if (j == 0) return@hodina
-
-                        novaTabulka[seznamNazvu.indexOf(trida) + 1][j] += bunka
+                        novaTabulka[seznamNazvu.indexOf(trida) + 1][j + 1] += bunka
                     }
                 }
             }
 
             if (vjec is Vjec.HodinaVjec) {
                 novaTabulka[0][seznamNazvu.indexOf(trida) + 1] = mutableListOf(Bunka.empty.copy(predmet = trida.zkratka))
-                rozvrhTridy.forEachIndexed trida@{ i, den ->
-                    novaTabulka[i][0] = rozvrhTridy[i][0].toMutableList()
+                rozvrhTridy.drop(1).forEachIndexed trida@{ i, den ->
+                    novaTabulka[i + 1][0] = rozvrhTridy[i + 1][0].toMutableList()
                     den.drop(1).singleOrGet(vjec.index - 1).forEach hodina@{ bunka ->
-                        if (i == 0) return@hodina
-
-                        novaTabulka[i][seznamNazvu.indexOf(trida) + 1] += bunka
+                        novaTabulka[i + 1][seznamNazvu.indexOf(trida) + 1] += bunka
                     }
                 }
             }
-
-            novaTabulka[0][0] = rozvrhTridy[0][0].toMutableList()
 
             if (result.zdroj !is Offline) zatimNejstarsi
             else if (zatimNejstarsi == null || result.zdroj.ziskano < zatimNejstarsi) result.zdroj.ziskano

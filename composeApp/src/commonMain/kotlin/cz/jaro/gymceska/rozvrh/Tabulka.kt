@@ -100,9 +100,9 @@ fun Tabulka(
                 }
             )
         },
-        cellContent = { _, column, hodina ->
+        cellContent = { row, _, hodina ->
             Column {
-                val baseHeight = rowHeight[column] / hodina.size
+                val baseHeight = rowHeight[row] / hodina.size
                 hodina.forEach { bunka ->
                     val cellHeight = when {
                         !mujRozvrh && vjec is Vjec.TridaVjec && hodina.size == 1 && bunka.tridaSkupina.isNotBlank() -> baseHeight * 4F / 5F
