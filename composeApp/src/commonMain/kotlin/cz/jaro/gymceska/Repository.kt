@@ -12,6 +12,7 @@ import cz.jaro.gymceska.rozvrh.Stalost
 import cz.jaro.gymceska.rozvrh.TvorbaRozvrhu
 import cz.jaro.gymceska.rozvrh.Tyden
 import cz.jaro.gymceska.rozvrh.Vjec
+import cz.jaro.gymceska.rozvrh.nameNominative
 import cz.jaro.gymceska.ukoly.Ukol
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseApp
@@ -60,8 +61,8 @@ class Repository(
 
     object Keys {
         const val NASTAVENI = "nastaveni"
-        fun rozvrh(trida: Vjec.TridaVjec, stalost: Stalost) = "rozvrh-_${trida.nazev}_${stalost.nazev}"
-        fun rozvrhPosledni(trida: Vjec.TridaVjec, stalost: Stalost) = "rozvrh-_${trida.nazev}_${stalost.nazev}_posledni"
+        fun rozvrh(trida: Vjec.TridaVjec, stalost: Stalost) = "rozvrh-_${trida.nazev}_${stalost.nameNominative}"
+        fun rozvrhPosledni(trida: Vjec.TridaVjec, stalost: Stalost) = "rozvrh-_${trida.nazev}_${stalost.nameNominative}_posledni"
         const val SKRTLE_UKOLY = "skrtle_ukoly"
         const val UKOLY = "ukoly"
     }
@@ -186,7 +187,7 @@ class Repository(
             _currentlyDownloading.value = trida
             Stalost.entries.forEach { stalost ->
 
-                val doc = Ksoup.parseGetRequest(trida.odkaz?.replace("###", stalost.odkaz) ?: return)
+                val doc = Ksoup.parseGetRequest(trida.odkaz?.replace("###", stalost.code) ?: return)
 
                 val rozvrh = TvorbaRozvrhu.vytvoritTabulku(
                     vjec = trida,
@@ -201,7 +202,7 @@ class Repository(
     }
 
     suspend fun ziskatSkupiny(trida: Vjec.TridaVjec): Sequence<String> {
-        val result = ziskatRozvrh(trida, Stalost.Staly)
+        val result = ziskatRozvrh(trida, Stalost.Permanent)
 
         if (result !is Uspech) return emptySequence()
 
@@ -216,7 +217,7 @@ class Repository(
     }
 
     suspend fun ziskaUcitele(trida: Vjec.TridaVjec): Sequence<String> {
-        val result = ziskatRozvrh(trida, Stalost.Staly)
+        val result = ziskatRozvrh(trida, Stalost.Permanent)
 
         if (result !is Uspech) return emptySequence()
 
@@ -231,7 +232,7 @@ class Repository(
     }
 
     private fun pouzitOfflineRozvrh(trida: Vjec.TridaVjec, stalost: Stalost): Boolean {
-        val limit = if (stalost == Stalost.Staly) 14.days else 1.hours
+        val limit = if (stalost == Stalost.Permanent) 14.days else 1.hours
         val posledni = settings.getLongOrNull(Keys.rozvrhPosledni(trida, stalost))?.let { Instant.fromEpochSeconds(it) } ?: return false
         val starost = Clock.System.now() - posledni
         return starost < limit
@@ -248,7 +249,7 @@ class Repository(
 
         if (isOnline() && !pouzitOfflineRozvrh(trida, stalost)) try {
             _currentlyDownloading.value = trida
-            val doc = Ksoup.parseGetRequest(trida.odkaz.replace("###", stalost.odkaz))
+            val doc = Ksoup.parseGetRequest(trida.odkaz.replace("###", stalost.code))
 
             val rozvrh = TvorbaRozvrhu.vytvoritTabulku(
                 vjec = trida,

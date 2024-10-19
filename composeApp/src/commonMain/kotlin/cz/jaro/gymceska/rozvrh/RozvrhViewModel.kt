@@ -110,7 +110,7 @@ class RozvrhViewModel(
         } ?: nastaveni.mojeTrida
     }
 
-    val stalost = params.decoded?.stalost ?: Stalost.dnesniEntries().first()
+    val stalost = params.decoded?.stalost ?: Stalost.defaultToday()
 
     private val _mujRozvrh = repo.nastaveni.mapState(
         viewModelScope, SharingStarted.WhileSubscribed(5.seconds)

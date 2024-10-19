@@ -40,6 +40,7 @@ import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.ukoly.time
 import cz.jaro.gymceska.ukoly.today
 import kotlinx.datetime.Clock.System
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
@@ -118,9 +119,9 @@ private fun ActionScope.Actions(
     var volniUcitele by remember { mutableStateOf(emptyList<Vjec.VyucujiciVjec>()) }
     var ucebna by remember { mutableStateOf(true) }
     var stalost by remember {
-        mutableStateOf(Stalost.denniEntries(
-            today().dayOfWeek.isoDayNumber.let { if (time() > LocalTime(15, 45)) it + 1 else it }
-        ).first())
+        mutableStateOf(Stalost.defaultByDay(
+            today().dayOfWeek.let { if (time() > LocalTime(15, 45)) it + 1 else it }
+        ))
     }
     var denIndex by remember {
         mutableIntStateOf(
@@ -174,7 +175,7 @@ private fun ActionScope.Actions(
         text = {
             LazyColumn {
                 if (ucebna) item {
-                    Text("Na škole jsou ${stalost.kdy} ${Seznamy.dny4Pad[denIndex]} ${hodinaIndexy.joinToString(" a ") { "$it." }} hodinu volné tyto ${filtry.text()}učebny:")
+                    Text("Na škole jsou ${stalost.nameWhen} ${Seznamy.dny4Pad[denIndex]} ${hodinaIndexy.joinToString(" a ") { "$it." }} hodinu volné tyto ${filtry.text()}učebny:")
                 }
                 if (ucebna) items(volneTridy.toList()) {
                     Text("${it.nazev}, to je${it.napoveda}", Modifier.clickable {
@@ -183,7 +184,7 @@ private fun ActionScope.Actions(
                     })
                 }
                 if (!ucebna) item {
-                    Text("Na škole jsou ${stalost.kdy} ${Seznamy.dny4Pad[denIndex]} ${hodinaIndexy.joinToString(" a ") { "$it." }} hodinu volní tito ${filtry.text()}učitelé:")
+                    Text("Na škole jsou ${stalost.nameWhen} ${Seznamy.dny4Pad[denIndex]} ${hodinaIndexy.joinToString(" a ") { "$it." }} hodinu volní tito ${filtry.text()}učitelé:")
                 }
                 if (!ucebna) items(volniUcitele.toList()) {
                     Text(it.nazev, Modifier.clickable {
@@ -268,10 +269,10 @@ private fun ActionScope.Actions(
                     zaskrtavatko = { false },
                 )
                 Vybiratko(
-                    seznam = Stalost.dnesniEntries().map { it.kdy },
-                    value = stalost.kdy,
+                    seznam = Stalost.entries.map { it.nameWhen },
+                    value = stalost.nameWhen,
                     onClick = { i, _ ->
-                        stalost = Stalost.dnesniEntries()[i]
+                        stalost = Stalost.entries[i]
                     },
                     zaskrtavatko = { false },
                 )
@@ -351,4 +352,9 @@ private fun ActionScope.Actions(
         icon = Icons.Default.Search,
         title = "Najdi mi",
     )
+}
+
+private operator fun DayOfWeek.plus(i: Int): DayOfWeek {
+    require(i in -6..6) { "i must be in -6..6, got $i" }
+    return DayOfWeek(isoDayNumber = (isoDayNumber + i + 7 - 1) % 7 + 1)
 }

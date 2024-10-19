@@ -27,8 +27,8 @@ fun Vybiratko(
     onClick: (Int, Stalost) -> Unit,
     modifier: Modifier = Modifier,
 ) = Vybiratko(
-    value = value.nazev,
-    seznam = seznam.map { it.nazev },
+    value = value.nameNominative,
+    seznam = seznam.map { it.nameNominative },
     onClick = { i, _ -> onClick(i, seznam[i]) },
     modifier = modifier,
     zaskrtavatko = { false },
