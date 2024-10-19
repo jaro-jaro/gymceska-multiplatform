@@ -7,22 +7,26 @@ import cz.jaro.gymceska.Online
 import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Uspech
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import cz.jaro.gymceska.ukoly.today
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.minus
 
 object TvorbaRozvrhu {
 
     private val dny = listOf("Po", "Út", "St", "Čt", "Pá", "So", "Ne", "Rden", "Pi")
     fun vytvoritTabulku(
-        vjec: Vjec,
+        stalost: Stalost,
         doc: Document,
     ): Tyden = listOf(
         listOf(
             listOf(
                 Bunka(
                     ucebna = "",
-                    predmet = vjec.zkratka,
+                    predmet = weekParity(stalost),
                     ucitel = "",
                     tridaSkupina = ""
                 )
@@ -185,7 +189,7 @@ object TvorbaRozvrhu {
                 }
             }
         }
-        novaTabulka[0][0][0] = novaTabulka[0][0][0].copy(predmet = vjec.zkratka)
+        novaTabulka[0][0][0] = novaTabulka[0][0][0].copy(predmet = weekParity(stalost))
         return if (nejstarsi == null) Uspech(novaTabulka, Online)
         else Uspech(novaTabulka, OfflineRuzneCasti(nejstarsi))
     }
@@ -247,7 +251,7 @@ object TvorbaRozvrhu {
                 }
             }
         }
-        novaTabulka[0][0][0] = novaTabulka[0][0][0].copy(predmet = vjec.zkratka)
+        novaTabulka[0][0][0] = novaTabulka[0][0][0].copy(predmet = weekParity(stalost))
         return if (nejstarsi == null) Uspech(novaTabulka, Online)
         else Uspech(novaTabulka, OfflineRuzneCasti(nejstarsi))
     }
@@ -275,6 +279,30 @@ object TvorbaRozvrhu {
         den.map {
             listOf(Bunka.empty)
         }
+    }
+
+    private fun weekParity(
+        stalost: Stalost,
+    ): String {
+        val today = today()
+        val weekNumber = today.getSchoolWeekNumber()
+        return when (stalost) {
+            Stalost.ThisWeek -> (weekNumber % 2 == 0).toParityChar()
+            Stalost.NextWeek -> (weekNumber % 2 == 1).toParityChar()
+            Stalost.Permanent -> null
+        }?.toString() ?: ""
+    }
+
+    private fun Boolean.toParityChar() = if (this) 'S' else 'L'
+
+    private fun LocalDate.getSchoolWeekNumber(): Int {
+        // First week is the week containing 4th September
+        val september4th = LocalDate(year, 9, 4)
+        val dayOfWeek = september4th.dayOfWeek.isoDayNumber
+        val firstWeekStartOffset = dayOfWeek - 1
+        val firstWeekStart = september4th.minus(DatePeriod(days = firstWeekStartOffset))
+        val daysFromFirstWeekStart = firstWeekStart.daysUntil(this)
+        return (daysFromFirstWeekStart / 7) + 1
     }
 }
 
