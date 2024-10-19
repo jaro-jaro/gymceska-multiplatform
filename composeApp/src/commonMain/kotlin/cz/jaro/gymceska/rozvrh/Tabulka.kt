@@ -1,6 +1,7 @@
 package cz.jaro.gymceska.rozvrh
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -33,24 +35,33 @@ import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.OfflineRuzneCasti
 import cz.jaro.gymceska.Online
 import cz.jaro.gymceska.ZdrojRozvrhu
+import cz.jaro.gymceska.ukoly.time
+import cz.jaro.gymceska.ukoly.today
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.isoDayNumber
 
 context(ColumnScope)
 @Composable
 fun Tabulka(
     vjec: Vjec,
+    stalost: Stalost,
     tabulka: Tyden,
     kliklNaNeco: (vjec: Vjec) -> Unit,
     rozvrhOfflineWarning: ZdrojRozvrhu?,
     tridy: List<Vjec.TridaVjec>,
     mistnosti: List<Vjec.MistnostVjec>,
     vyucujici: List<Vjec.VyucujiciVjec>,
+    hodiny: List<ClosedRange<LocalTime>>,
     mujRozvrh: Boolean,
     horScrollState: ScrollState,
     verScrollState: ScrollState,
     alwaysTwoRowCells: Boolean,
 ) {
     if (tabulka.isEmpty()) return
+
+    val currentDay = if (stalost == Stalost.ThisWeek) today().dayOfWeek.isoDayNumber.takeIf { it in 1..5 }?.minus(1) else null
+    val currentLesson = if (stalost == Stalost.ThisWeek) hodiny.indexOfFirst { it.contains(time()) }.takeUnless { it == -1 } else null
 
     val canAllowCellsSmallerThan1 = mujRozvrh || vjec !is Vjec.TridaVjec || alwaysTwoRowCells
     val maxByRow = tabulka.drop(1).map {
@@ -100,8 +111,15 @@ fun Tabulka(
                 }
             )
         },
-        cellContent = { row, _, hodina ->
-            Column {
+        cellContent = { row, column, hodina ->
+            val highlight = when (vjec) {
+                is Vjec.TridaVjec, is Vjec.MistnostVjec, is Vjec.VyucujiciVjec -> currentDay == row && currentLesson == column
+                is Vjec.DenVjec -> vjec.index - 1 == currentDay && currentLesson == column
+                is Vjec.HodinaVjec -> vjec.index - 1 == currentLesson && currentDay == row
+            }
+            Column(
+                if (highlight) Modifier.border(4.dp, MaterialTheme.colorScheme.tertiary) else Modifier,
+            ) {
                 val baseHeight = rowHeight[row] / hodina.size
                 hodina.forEach { bunka ->
                     val cellHeight = when {

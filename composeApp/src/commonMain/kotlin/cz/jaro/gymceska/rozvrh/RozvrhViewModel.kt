@@ -20,8 +20,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalTime
 import kotlin.reflect.KClass
 import kotlin.time.Duration.Companion.seconds
 
@@ -92,6 +94,22 @@ class RozvrhViewModel(
     private val vyucujici2 = repo.vyucujici2
     private val odemkleMistnosti = repo.odemkleMistnosti
     private val velkeMistnosti = repo.velkeMistnosti
+
+    val hodiny = flow {
+        emit(repo.ziskatRozvrh(
+            trida = repo.nastaveni.value.mojeTrida,
+            stalost = Stalost.ThisWeek,
+        ).tabulka?.first()?.drop(1)?.map {
+            it.single().ucitel.split(" - ").map {
+                it.split(":").map { it.toInt() }.let {
+                    LocalTime(
+                        it[0],
+                        it[1]
+                    )
+                }
+            }.let { it[0]..it[1] }
+        } ?: emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), emptyList())
 
     val vjec = combineStates(
         viewModelScope,
