@@ -288,8 +288,6 @@ object TvorbaRozvrhu {
     ): String {
         val weekStart = weekStart(stalost)
         val date = weekStart?.plus(DatePeriod(days = dayOfWeekIndex))
-        println(weekStart)
-        println(date)
         return date?.run { "${dayOfMonth}.\n${monthNumber}." } ?: ""
     }
 
