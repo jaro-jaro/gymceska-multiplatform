@@ -92,8 +92,8 @@ fun Rozvrh(
     navigator: Navigator,
     koin: Koin,
 ) {
-    val horScrollState = rememberScrollState(args.x ?: Int.MAX_VALUE)
-    val verScrollState = rememberScrollState(args.y ?: Int.MAX_VALUE)
+    val horScrollState = rememberScrollState(args.x ?: 0)
+    val verScrollState = rememberScrollState(args.y ?: 0)
 
     val repo = koin.get<Repository>()
     val viewModel = viewModel<RozvrhViewModel> {

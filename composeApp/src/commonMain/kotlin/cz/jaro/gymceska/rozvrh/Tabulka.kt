@@ -170,7 +170,7 @@ private fun <T> BaseTable(
 
         Row(
             modifier = Modifier
-                .horizontalScroll(horScrollState, enabled = false, reverseScrolling = true)
+                .horizontalScroll(horScrollState, enabled = false)
         ) {
             data.first().drop(1).forEachIndexed { i, cell ->
                 topHeaderCellContent(i, cell)
@@ -181,7 +181,7 @@ private fun <T> BaseTable(
     Column(
         modifier = Modifier
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            .verticalScroll(verScrollState, enabled = false, reverseScrolling = true),
+            .verticalScroll(verScrollState, enabled = false),
     ) {
         Row {
             Column(
@@ -193,7 +193,7 @@ private fun <T> BaseTable(
             }
 
             Column(
-                Modifier.horizontalScroll(horScrollState, enabled = false, reverseScrolling = true)
+                Modifier.horizontalScroll(horScrollState, enabled = false)
             ) {
                 data.drop(1).forEachIndexed { i, row ->
                     Row {
@@ -226,8 +226,8 @@ private fun Modifier.doubleScrollable(
             onDrag = { pointerInputChange, offset ->
                 coroutineScope.launch {
                     velocityTracker.addPointerInputChange(pointerInputChange)
-                    scrollStateX.scrollBy(offset.x)
-                    scrollStateY.scrollBy(offset.y)
+                    scrollStateX.scrollBy(-offset.x)
+                    scrollStateY.scrollBy(-offset.y)
                 }
             },
             onDragEnd = {
@@ -252,7 +252,7 @@ private fun Modifier.doubleScrollable(
                         }
 
                         with(flingBehaviorX) {
-                            scrollScope.performFling(velocity.x)
+                            scrollScope.performFling(-velocity.x)
                         }
                     }
                 }
@@ -275,7 +275,7 @@ private fun Modifier.doubleScrollable(
                         }
 
                         with(flingBehaviorY) {
-                            scrollScope.performFling(velocity.y)
+                            scrollScope.performFling(-velocity.y)
                         }
                     }
                 }
@@ -292,10 +292,10 @@ private fun Modifier.doubleScrollable(
                 else it
             }
             coroutineScope.launch {
-                scrollStateX.scrollBy(-scrollDelta.x)
+                scrollStateX.scrollBy(scrollDelta.x)
             }
             coroutineScope.launch {
-                scrollStateY.scrollBy(-scrollDelta.y)
+                scrollStateY.scrollBy(scrollDelta.y)
             }
         }
     }
