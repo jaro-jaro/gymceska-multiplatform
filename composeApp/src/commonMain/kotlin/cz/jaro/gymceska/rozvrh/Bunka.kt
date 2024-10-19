@@ -172,7 +172,7 @@ fun BaseCell(
     Column(
         modifier = modifier
             .size(cellWidth, cellHeight - 0.5F.dp)
-            .border(.5.dp, Color.Red)
+            .border(.5.dp, MaterialTheme.colorScheme.secondary)
             .padding(1.dp),
     ) {
         val isTop = topStart != null || topEnd != null
