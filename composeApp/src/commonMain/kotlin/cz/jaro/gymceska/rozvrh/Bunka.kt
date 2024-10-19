@@ -16,7 +16,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import cz.jaro.gymceska.ResponsiveText
@@ -92,7 +99,6 @@ fun Bunka(
     val size = if (wholeRowCell) Size(10F, height) else Size(1F, height)
 
     Surface(
-        Modifier,
         color = when (bunka.typ) {
             TypBunky.Suplovani -> MaterialTheme.colorScheme.errorContainer
             TypBunky.Volno, TypBunky.Trid -> MaterialTheme.colorScheme.tertiaryContainer
@@ -160,14 +166,14 @@ fun BaseCell(
     center: String? = null,
     centerStyle: TextStyle = LocalTextStyle.current,
     onCenterClick: (() -> Unit)? = null,
-) {
+) = Box {
     val cellWidth = size.width * zakladniVelikostBunky * LocalBunkaZoom.current
     val cellHeight = size.height * zakladniVelikostBunky * LocalBunkaZoom.current
 
     Column(
         modifier = modifier
-            .border(1.dp, MaterialTheme.colorScheme.secondary)
-            .size(cellWidth, cellHeight)
+            .size(cellWidth, cellHeight - 0.5F.dp)
+            .border(.5.dp, Color.Red)
             .padding(1.dp),
     ) {
         val isTop = topStart != null || topEnd != null
@@ -180,38 +186,38 @@ fun BaseCell(
         ) {
             val columns = listOf(topStart, topEnd).count { it != null }
             if (topStart != null) Box(
-                Modifier.size(cellWidth / columns, cellHeight / rows),
+                Modifier.size(cellWidth / columns, cellHeight / rows).padding(1.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 ResponsiveText(
                     text = topStart,
                     style = topStartStyle,
-                    modifier = Modifier.clickable(enabled = onTopStartClick != null) {
+                    modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onTopStartClick != null) {
                         onTopStartClick?.invoke()
                     },
                 )
             }
             if (topEnd != null) Box(
-                Modifier.size(cellWidth / columns, cellHeight / rows),
+                Modifier.size(cellWidth / columns, cellHeight / rows).padding(1.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 ResponsiveText(
                     text = topEnd,
                     style = topEndStyle,
-                    modifier = Modifier.clickable(enabled = onTopEndClick != null) {
+                    modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onTopEndClick != null) {
                         onTopEndClick?.invoke()
                     },
                 )
             }
         }
         if (center != null) Box(
-            Modifier.size(cellWidth, cellHeight / rows),
+            Modifier.size(cellWidth, cellHeight / rows).padding(1.dp),
             contentAlignment = Alignment.Center,
         ) {
             ResponsiveText(
                 text = center,
                 style = centerStyle,
-                modifier = Modifier.clickable(enabled = onCenterClick != null) {
+                modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onCenterClick != null) {
                     onCenterClick?.invoke()
                 },
             )
@@ -221,37 +227,37 @@ fun BaseCell(
         ) {
             val columns = listOf(bottomStart, bottomCenter, bottomEnd).count { it != null }
             if (bottomStart != null) Box(
-                Modifier.size(cellWidth / columns, cellHeight / rows),
+                Modifier.size(cellWidth / columns, cellHeight / rows).padding(1.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 ResponsiveText(
                     text = bottomStart,
                     style = bottomStartStyle,
-                    modifier = Modifier.clickable(enabled = onBottomStartClick != null) {
+                    modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onBottomStartClick != null) {
                         onBottomStartClick?.invoke()
                     },
                 )
             }
             if (bottomCenter != null) Box(
-                Modifier.size(cellWidth / columns, cellHeight / rows),
+                Modifier.size(cellWidth / columns, cellHeight / rows).padding(1.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 ResponsiveText(
                     text = bottomCenter,
                     style = bottomCenterStyle,
-                    modifier = Modifier.clickable(enabled = onBottomCenterClick != null) {
+                    modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onBottomCenterClick != null) {
                         onBottomCenterClick?.invoke()
                     }
                 )
             }
             if (bottomEnd != null) Box(
-                Modifier.size(cellWidth / columns, cellHeight / rows),
+                Modifier.size(cellWidth / columns, cellHeight / rows).padding(1.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 ResponsiveText(
                     text = bottomEnd,
                     style = bottomEndStyle,
-                    modifier = Modifier.clickable(enabled = onBottomEndClick != null) {
+                    modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onBottomEndClick != null) {
                         onBottomEndClick?.invoke()
                     },
                 )
@@ -259,3 +265,16 @@ fun BaseCell(
         }
     }
 }
+
+private val Float.px @Composable get() = with(LocalDensity.current) { toDp() }
+
+fun Shape(createOutline: (size: Size, layoutDirection: LayoutDirection, density: Density) -> Outline) =
+    object : Shape {
+        override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density) =
+            createOutline(size, layoutDirection, density)
+    }
+
+fun buildShape(buildPath: Path.(size: Size, layoutDirection: LayoutDirection, density: Density) -> Unit) =
+    Shape { size, layoutDirection, density ->
+        Outline.Generic(Path().apply { buildPath(size, layoutDirection, density) })
+    }

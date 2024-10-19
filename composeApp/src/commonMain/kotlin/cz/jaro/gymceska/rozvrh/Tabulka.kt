@@ -1,7 +1,6 @@
 package cz.jaro.gymceska.rozvrh
 
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -76,7 +74,6 @@ fun Tabulka(
             Row(
                 modifier = Modifier
                     .horizontalScroll(rememberScrollState(), enabled = false)
-                    .border(1.dp, MaterialTheme.colorScheme.secondary)
             ) {
                 BaseCell(
                     size = Size(.5F, .5F),
@@ -87,7 +84,6 @@ fun Tabulka(
             Row(
                 modifier = Modifier
                     .horizontalScroll(horScrollState, enabled = false, reverseScrolling = true)
-                    .border(1.dp, MaterialTheme.colorScheme.secondary)
             ) {
                 tabulka.first().drop(1).map { it.first() }.forEachIndexed { i, bunka ->
                     BaseCell(
@@ -137,10 +133,7 @@ fun Tabulka(
                     tabulka.drop(1).forEachIndexed { i, radek ->
                         Row {
                             radek.drop(1).forEachIndexed { j, hodina ->
-                                Column(
-                                    modifier = Modifier
-                                        .border(1.dp, MaterialTheme.colorScheme.secondary)
-                                ) {
+                                Column {
                                     val baseHeight = rowHeight[i + 1] / hodina.size
                                     hodina.forEach { bunka ->
                                         val cellHeight = when {
