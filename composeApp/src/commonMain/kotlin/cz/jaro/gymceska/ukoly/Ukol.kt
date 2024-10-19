@@ -1,8 +1,10 @@
 package cz.jaro.gymceska.ukoly
 
+import kotlinx.datetime.Clock
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -85,4 +87,4 @@ private val DayOfWeek.zkratka
 
 fun today() = now().date
 fun time() = now().time
-fun now() = LocalDateTime(2024, 10, 18, 9, 30)//Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+fun now() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
