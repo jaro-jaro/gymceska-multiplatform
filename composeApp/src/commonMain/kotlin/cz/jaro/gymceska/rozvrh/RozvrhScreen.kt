@@ -84,6 +84,7 @@ import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
+import kotlinx.datetime.LocalTime
 import org.koin.core.Koin
 
 @Composable
@@ -117,6 +118,7 @@ fun Rozvrh(
     val tridy by viewModel.tridy.collectAsStateWithLifecycle()
     val mistnosti by viewModel.mistnosti.collectAsStateWithLifecycle()
     val vyucujici by viewModel.vyucujici.collectAsStateWithLifecycle()
+    val hodiny by viewModel.hodiny.collectAsStateWithLifecycle()
     val realMujRozvrh by viewModel.mujRozvrh.collectAsStateWithLifecycle()
     val zobrazitMujRozvrh by viewModel.zobrazitMujRozvrh.collectAsStateWithLifecycle()
     val zoom by viewModel.zoom.collectAsStateWithLifecycle()
@@ -136,6 +138,7 @@ fun Rozvrh(
         tridy = tridy,
         mistnosti = mistnosti,
         vyucujici = vyucujici,
+        hodiny = hodiny,
         mujRozvrh = realMujRozvrh,
         zmenitMujRozvrh = viewModel::zmenitMujRozvrh,
         zobrazitMujRozvrh = zobrazitMujRozvrh,
@@ -161,6 +164,7 @@ fun RozvrhContent(
     tridy: List<Vjec.TridaVjec>,
     mistnosti: List<Vjec.MistnostVjec>,
     vyucujici: List<Vjec.VyucujiciVjec>,
+    hodiny: List<ClosedRange<LocalTime>>,
     mujRozvrh: Boolean?,
     zmenitMujRozvrh: () -> Unit,
     zobrazitMujRozvrh: Boolean,
@@ -213,9 +217,11 @@ fun RozvrhContent(
                     mistnosti = mistnosti,
                     vyucujici = vyucujici,
                     mujRozvrh = mujRozvrh,
+                    hodiny = hodiny,
                     horScrollState = horScrollState,
                     verScrollState = verScrollState,
                     alwaysTwoRowCells = alwaysTwoRowCells,
+                    stalost = stalost,
                 )
             }
 
