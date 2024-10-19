@@ -298,11 +298,14 @@ object TvorbaRozvrhu {
     private fun LocalDate.getSchoolWeekNumber(): Int {
         // First week is the week containing 4th September
         val september4th = LocalDate(year, 9, 4)
-        val dayOfWeek = september4th.dayOfWeek.isoDayNumber
-        val firstWeekStartOffset = dayOfWeek - 1
-        val firstWeekStart = september4th.minus(DatePeriod(days = firstWeekStartOffset))
+        val firstWeekStart = september4th.startOfWeek()
         val daysFromFirstWeekStart = firstWeekStart.daysUntil(this)
         return (daysFromFirstWeekStart / 7) + 1
+    }
+
+    private fun LocalDate.startOfWeek(): LocalDate {
+        val startOfWeekOffset = dayOfWeek.isoDayNumber - 1
+        return minus(DatePeriod(days = startOfWeekOffset))
     }
 }
 
