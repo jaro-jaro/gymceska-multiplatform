@@ -22,7 +22,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
@@ -192,7 +191,7 @@ fun BaseCell(
                 ResponsiveText(
                     text = topStart,
                     style = topStartStyle,
-                    modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onTopStartClick != null) {
+                    modifier = Modifier.clickable(enabled = onTopStartClick != null) {
                         onTopStartClick?.invoke()
                     },
                 )
@@ -204,7 +203,7 @@ fun BaseCell(
                 ResponsiveText(
                     text = topEnd,
                     style = topEndStyle,
-                    modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onTopEndClick != null) {
+                    modifier = Modifier.clickable(enabled = onTopEndClick != null) {
                         onTopEndClick?.invoke()
                     },
                 )
@@ -217,7 +216,7 @@ fun BaseCell(
             ResponsiveText(
                 text = center,
                 style = centerStyle,
-                modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onCenterClick != null) {
+                modifier = Modifier.clickable(enabled = onCenterClick != null) {
                     onCenterClick?.invoke()
                 },
             )
@@ -233,7 +232,7 @@ fun BaseCell(
                 ResponsiveText(
                     text = bottomStart,
                     style = bottomStartStyle,
-                    modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onBottomStartClick != null) {
+                    modifier = Modifier.clickable(enabled = onBottomStartClick != null) {
                         onBottomStartClick?.invoke()
                     },
                 )
@@ -245,7 +244,7 @@ fun BaseCell(
                 ResponsiveText(
                     text = bottomCenter,
                     style = bottomCenterStyle,
-                    modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onBottomCenterClick != null) {
+                    modifier = Modifier.clickable(enabled = onBottomCenterClick != null) {
                         onBottomCenterClick?.invoke()
                     }
                 )
@@ -257,7 +256,7 @@ fun BaseCell(
                 ResponsiveText(
                     text = bottomEnd,
                     style = bottomEndStyle,
-                    modifier = Modifier.border(Dp.Hairline, Color.Yellow).clickable(enabled = onBottomEndClick != null) {
+                    modifier = Modifier.clickable(enabled = onBottomEndClick != null) {
                         onBottomEndClick?.invoke()
                     },
                 )
