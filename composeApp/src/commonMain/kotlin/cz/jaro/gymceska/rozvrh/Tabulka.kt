@@ -1,7 +1,6 @@
 package cz.jaro.gymceska.rozvrh
 
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -55,8 +53,8 @@ fun Tabulka(
     if (tabulka.isEmpty()) return
 
     val canAllowCellsSmallerThan1 = mujRozvrh || vjec !is Vjec.TridaVjec || alwaysTwoRowCells
-    val maxByRow = tabulka.map {
-        it.maxOf { hodina -> hodina.size }
+    val maxByRow = tabulka.drop(1).map {
+        it.drop(1).maxOf { hodina -> hodina.size }
     }
     val rowHeight = maxByRow.map { max ->
         if (max == 1) 1F
@@ -64,108 +62,68 @@ fun Tabulka(
         else (max / 2F).coerceAtLeast(2F)
     }
 
-    Column(
-        Modifier.doubleScrollable(horScrollState, verScrollState)
-    ) {
-        Row(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState(), enabled = false)
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp),
-        ) {
-
-            Row(
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState(), enabled = false)
-                    .border(1.dp, MaterialTheme.colorScheme.secondary)
-            ) {
-                BaseCell(
-                    size = Size(.5F, .5F),
-                    center = tabulka[0][0][0].predmet,
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .horizontalScroll(horScrollState, enabled = false, reverseScrolling = true)
-                    .border(1.dp, MaterialTheme.colorScheme.secondary)
-            ) {
-                tabulka.first().drop(1).map { it.first() }.forEachIndexed { i, bunka ->
-                    BaseCell(
-                        size = Size(1F, .5F),
-                        center = bunka.predmet,
-                        bottomCenter = bunka.ucitel.takeUnless { it.isBlank() },
-                        onCenterClick = {
-                            if (bunka.predmet.isEmpty()) return@BaseCell
-                            kliklNaNeco((if (vjec is Vjec.HodinaVjec) tridy else Seznamy.hodiny).find {
-                                bunka.predmet == it.zkratka
-                            } ?: return@BaseCell)
-                        }
+    BaseTable(
+        data = tabulka,
+        cornerCellContent = { hodina ->
+            BaseCell(
+                size = Size(.5F, .5F),
+                center = hodina.single().predmet,
+            )
+        },
+        topHeaderCellContent = { _, hodina ->
+            val bunka = hodina.single()
+            BaseCell(
+                size = Size(1F, .5F),
+                center = bunka.predmet,
+                bottomCenter = bunka.ucitel.takeUnless { it.isBlank() },
+                onCenterClick = {
+                    if (bunka.predmet.isEmpty()) return@BaseCell
+                    kliklNaNeco((if (vjec is Vjec.HodinaVjec) tridy else Seznamy.hodiny).find {
+                        bunka.predmet == it.zkratka
+                    } ?: return@BaseCell)
+                }
+            )
+        },
+        startHeaderCellContent = { row, hodina ->
+            val bunka = hodina.single()
+            BaseCell(
+                size = Size(.5F, rowHeight[row]),
+                center = bunka.predmet,
+                bottomCenter = bunka.ucitel.takeUnless { it.isBlank() },
+                onCenterClick = {
+                    if (bunka.predmet.isEmpty()) return@BaseCell
+                    kliklNaNeco(
+                        (if (vjec is Vjec.DenVjec) tridy else Seznamy.dny).find {
+                            bunka.predmet == it.zkratka
+                        } ?: return@BaseCell
+                    )
+                }
+            )
+        },
+        cellContent = { row, _, hodina ->
+            Column {
+                val baseHeight = rowHeight[row] / hodina.size
+                hodina.forEach { bunka ->
+                    val cellHeight = when {
+                        !mujRozvrh && vjec is Vjec.TridaVjec && hodina.size == 1 && bunka.tridaSkupina.isNotBlank() -> baseHeight * 4F / 5F
+                        else -> baseHeight
+                    }
+                    Bunka(
+                        height = cellHeight,
+                        bunka = bunka,
+                        tridy = tridy,
+                        mistnosti = mistnosti,
+                        vyucujici = vyucujici,
+                        kliklNaNeco = kliklNaNeco,
+                        forceOneColumnCells = vjec is Vjec.HodinaVjec,
+                    )
+                    if (cellHeight < baseHeight) BaseCell(
+                        size = Size(width = 1F, height = baseHeight - cellHeight)
                     )
                 }
             }
-        }
-
-        Column(
-            modifier = Modifier
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                .verticalScroll(verScrollState, enabled = false, reverseScrolling = true),
-        ) {
-            Row {
-                Column(
-                    Modifier.horizontalScroll(rememberScrollState())
-                ) {
-                    tabulka.drop(1).map { it.first().first() }.forEachIndexed { i, bunka ->
-                        BaseCell(
-                            size = Size(.5F, rowHeight[i + 1]),
-                            center = bunka.predmet,
-                            onCenterClick = {
-                                if (bunka.predmet.isEmpty()) return@BaseCell
-                                kliklNaNeco(
-                                    (if (vjec is Vjec.DenVjec) tridy else Seznamy.dny).find {
-                                        bunka.predmet == it.zkratka
-                                    } ?: return@BaseCell
-                                )
-                            }
-                        )
-                    }
-                }
-
-                Column(
-                    Modifier.horizontalScroll(horScrollState, enabled = false, reverseScrolling = true)
-                ) {
-                    tabulka.drop(1).forEachIndexed { i, radek ->
-                        Row {
-                            radek.drop(1).forEachIndexed { j, hodina ->
-                                Column(
-                                    modifier = Modifier
-                                        .border(1.dp, MaterialTheme.colorScheme.secondary)
-                                ) {
-                                    val baseHeight = rowHeight[i + 1] / hodina.size
-                                    hodina.forEach { bunka ->
-                                        val cellHeight = when {
-                                            !mujRozvrh && vjec is Vjec.TridaVjec && hodina.size == 1 && bunka.tridaSkupina.isNotBlank() -> baseHeight * 4F / 5F
-                                            else -> baseHeight
-                                        }
-                                        Bunka(
-                                            height = cellHeight,
-                                            bunka = bunka,
-                                            tridy = tridy,
-                                            mistnosti = mistnosti,
-                                            vyucujici = vyucujici,
-                                            kliklNaNeco = kliklNaNeco,
-                                            forceOneColumnCells = vjec is Vjec.HodinaVjec,
-                                        )
-                                        if (cellHeight < baseHeight) BaseCell(
-                                            size = Size(width = 1F, height = baseHeight - cellHeight)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
+        },
+        bottomContent = {
             rozvrhOfflineWarning?.let {
                 Text(
                     when (it) {
@@ -178,7 +136,76 @@ fun Tabulka(
                         .padding(top = 8.dp)
                 )
             }
+        },
+        horScrollState = horScrollState,
+        verScrollState = verScrollState
+    )
+}
+
+@Composable
+private fun <T> BaseTable(
+    data: List<List<T>>,
+    cornerCellContent: @Composable (value: T) -> Unit = {},
+    topHeaderCellContent: @Composable (column: Int, value: T) -> Unit = { _, _ -> },
+    startHeaderCellContent: @Composable (row: Int, value: T) -> Unit = { _, _ -> },
+    cellContent: @Composable (row: Int, column: Int, value: T) -> Unit = { _, _, _ -> },
+    bottomContent: @Composable () -> Unit = {},
+    horScrollState: ScrollState = rememberScrollState(),
+    verScrollState: ScrollState = rememberScrollState(),
+) = Column(
+    Modifier.doubleScrollable(horScrollState, verScrollState)
+) {
+    Row(
+        modifier = Modifier
+            .verticalScroll(rememberScrollState(), enabled = false)
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+    ) {
+
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState(), enabled = false)
+        ) {
+            cornerCellContent(data[0][0])
         }
+
+        Row(
+            modifier = Modifier
+                .horizontalScroll(horScrollState, enabled = false)
+        ) {
+            data.first().drop(1).forEachIndexed { i, cell ->
+                topHeaderCellContent(i, cell)
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .verticalScroll(verScrollState, enabled = false),
+    ) {
+        Row {
+            Column(
+                Modifier.horizontalScroll(rememberScrollState())
+            ) {
+                data.drop(1).map { it.first() }.forEachIndexed { i, cell ->
+                    startHeaderCellContent(i, cell)
+                }
+            }
+
+            Column(
+                Modifier.horizontalScroll(horScrollState, enabled = false)
+            ) {
+                data.drop(1).forEachIndexed { i, row ->
+                    Row {
+                        row.drop(1).forEachIndexed { j, cell ->
+                            cellContent(i, j, cell)
+                        }
+                    }
+                }
+            }
+        }
+
+        bottomContent()
     }
 }
 
@@ -199,8 +226,8 @@ private fun Modifier.doubleScrollable(
             onDrag = { pointerInputChange, offset ->
                 coroutineScope.launch {
                     velocityTracker.addPointerInputChange(pointerInputChange)
-                    scrollStateX.scrollBy(offset.x)
-                    scrollStateY.scrollBy(offset.y)
+                    scrollStateX.scrollBy(-offset.x)
+                    scrollStateY.scrollBy(-offset.y)
                 }
             },
             onDragEnd = {
@@ -225,7 +252,7 @@ private fun Modifier.doubleScrollable(
                         }
 
                         with(flingBehaviorX) {
-                            scrollScope.performFling(velocity.x)
+                            scrollScope.performFling(-velocity.x)
                         }
                     }
                 }
@@ -248,7 +275,7 @@ private fun Modifier.doubleScrollable(
                         }
 
                         with(flingBehaviorY) {
-                            scrollScope.performFling(velocity.y)
+                            scrollScope.performFling(-velocity.y)
                         }
                     }
                 }
@@ -258,16 +285,18 @@ private fun Modifier.doubleScrollable(
             },
         )
     }.onPointerScrollEvent { event: PointerEvent ->
-        val scrollDelta = event.changes.fold(Offset.Zero) { acc, c -> acc + c.scrollDelta }.let {
-            if (event.keyboardModifiers.isShiftPressed)
-                Offset(x = it.y, y = it.x)
-            else it
-        }
-        coroutineScope.launch {
-            scrollStateX.scrollBy(-scrollDelta.x)
-        }
-        coroutineScope.launch {
-            scrollStateY.scrollBy(-scrollDelta.y)
+        event.changes.forEach { c ->
+            val scrollDelta = c.scrollDelta.let {
+                if (event.keyboardModifiers.isShiftPressed)
+                    Offset(x = it.y, y = it.x)
+                else it
+            }
+            coroutineScope.launch {
+                scrollStateX.scrollBy(scrollDelta.x)
+            }
+            coroutineScope.launch {
+                scrollStateY.scrollBy(scrollDelta.y)
+            }
         }
     }
 }

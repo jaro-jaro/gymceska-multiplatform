@@ -14,6 +14,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
 object TvorbaRozvrhu {
 
@@ -62,7 +63,7 @@ object TvorbaRozvrhu {
                     Bunka(
                         ucebna = "",
                         predmet = dny[i],
-                        ucitel = "",
+                        ucitel = date(stalost, i),
                         tridaSkupina = ""
                     )
                 )
@@ -215,29 +216,23 @@ object TvorbaRozvrhu {
 
             if (vjec is Vjec.DenVjec) {
                 novaTabulka[seznamNazvu.indexOf(trida) + 1][0] = mutableListOf(Bunka.empty.copy(predmet = trida.zkratka))
-                rozvrhTridy[vjec.index].forEachIndexed den@{ j, hodina ->
-                    novaTabulka[0][j] = rozvrhTridy[0][j].toMutableList()
+                rozvrhTridy[vjec.index].drop(1).forEachIndexed den@{ j, hodina ->
+                    novaTabulka[0][j + 1] = rozvrhTridy[0][j + 1].toMutableList()
                     hodina.forEach hodina@{ bunka ->
-                        if (j == 0) return@hodina
-
-                        novaTabulka[seznamNazvu.indexOf(trida) + 1][j] += bunka
+                        novaTabulka[seznamNazvu.indexOf(trida) + 1][j + 1] += bunka
                     }
                 }
             }
 
             if (vjec is Vjec.HodinaVjec) {
                 novaTabulka[0][seznamNazvu.indexOf(trida) + 1] = mutableListOf(Bunka.empty.copy(predmet = trida.zkratka))
-                rozvrhTridy.forEachIndexed trida@{ i, den ->
-                    novaTabulka[i][0] = rozvrhTridy[i][0].toMutableList()
+                rozvrhTridy.drop(1).forEachIndexed trida@{ i, den ->
+                    novaTabulka[i + 1][0] = rozvrhTridy[i + 1][0].toMutableList()
                     den.drop(1).singleOrGet(vjec.index - 1).forEach hodina@{ bunka ->
-                        if (i == 0) return@hodina
-
-                        novaTabulka[i][seznamNazvu.indexOf(trida) + 1] += bunka
+                        novaTabulka[i + 1][seznamNazvu.indexOf(trida) + 1] += bunka
                     }
                 }
             }
-
-            novaTabulka[0][0] = rozvrhTridy[0][0].toMutableList()
 
             if (result.zdroj !is Offline) zatimNejstarsi
             else if (zatimNejstarsi == null || result.zdroj.ziskano < zatimNejstarsi) result.zdroj.ziskano
@@ -281,6 +276,27 @@ object TvorbaRozvrhu {
         }
     }
 
+    private fun date(
+        stalost: Stalost,
+        dayOfWeekIndex: Int,
+    ): String {
+        val weekStart = weekStart(stalost)
+        val date = weekStart?.plus(DatePeriod(days = dayOfWeekIndex))
+        return date?.run { "${dayOfMonth}.\n${monthNumber}." } ?: ""
+    }
+
+    private fun weekStart(
+        stalost: Stalost,
+    ): LocalDate? {
+        val today = today()
+        val startOfWeek = today.startOfWeek()
+        return when (stalost) {
+            Stalost.ThisWeek -> startOfWeek
+            Stalost.NextWeek -> startOfWeek.plus(DatePeriod(days = 7))
+            Stalost.Permanent -> null
+        }
+    }
+
     private fun weekParity(
         stalost: Stalost,
     ): String {
@@ -298,11 +314,14 @@ object TvorbaRozvrhu {
     private fun LocalDate.getSchoolWeekNumber(): Int {
         // First week is the week containing 4th September
         val september4th = LocalDate(year, 9, 4)
-        val dayOfWeek = september4th.dayOfWeek.isoDayNumber
-        val firstWeekStartOffset = dayOfWeek - 1
-        val firstWeekStart = september4th.minus(DatePeriod(days = firstWeekStartOffset))
+        val firstWeekStart = september4th.startOfWeek()
         val daysFromFirstWeekStart = firstWeekStart.daysUntil(this)
         return (daysFromFirstWeekStart / 7) + 1
+    }
+
+    private fun LocalDate.startOfWeek(): LocalDate {
+        val startOfWeekOffset = dayOfWeek.isoDayNumber - 1
+        return minus(DatePeriod(days = startOfWeekOffset))
     }
 }
 

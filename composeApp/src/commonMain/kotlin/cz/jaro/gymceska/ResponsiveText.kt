@@ -32,16 +32,17 @@ fun ResponsiveText(
     fontFamily: FontFamily? = null,
     letterSpacing: TextUnit = TextUnit.Unspecified,
     textDecoration: TextDecoration? = null,
-    textAlign: TextAlign? = null,
+    textAlign: TextAlign = TextAlign.Center,
     lineHeight: TextUnit = TextUnit.Unspecified,
-    overflow: TextOverflow = TextOverflow.Ellipsis,
+    overflow: TextOverflow = TextOverflow.Visible,
     softWrap: Boolean = true,
-    maxLines: Int = 1,
+    maxLines: Int = Int.MAX_VALUE,
     minLines: Int = 1,
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
     style: TextStyle = LocalTextStyle.current,
 ) {
     var textSize by remember { mutableStateOf(if (fontSize == TextUnit.Unspecified) style.fontSize else fontSize) }
+    var textHeight by remember { mutableStateOf(if (lineHeight == TextUnit.Unspecified) style.lineHeight else lineHeight) }
 
     Text(
         text = text,
@@ -54,7 +55,7 @@ fun ResponsiveText(
         letterSpacing = letterSpacing,
         textDecoration = textDecoration,
         textAlign = textAlign,
-        lineHeight = lineHeight,
+        lineHeight = textHeight,
         overflow = overflow,
         softWrap = softWrap,
         maxLines = maxLines,
@@ -62,11 +63,12 @@ fun ResponsiveText(
         style = style,
         onTextLayout = { textLayoutResult ->
             onTextLayout?.invoke(textLayoutResult)
-            val maxCurrentLineIndex: Int = textLayoutResult.lineCount - 1
 
-            if (textLayoutResult.isLineEllipsized(maxCurrentLineIndex)) {
+            if (textLayoutResult.hasVisualOverflow) {
                 if (textSize != TextUnit.Unspecified)
                     textSize = textSize.times(TEXT_SCALE_REDUCTION_INTERVAL)
+                if (textHeight != TextUnit.Unspecified)
+                    textHeight = textHeight.times(TEXT_SCALE_REDUCTION_INTERVAL)
             }
         },
     )
