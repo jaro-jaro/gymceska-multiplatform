@@ -190,7 +190,7 @@ class Repository(
                 val doc = Ksoup.parseGetRequest(trida.odkaz?.replace("###", stalost.code) ?: return)
 
                 val rozvrh = TvorbaRozvrhu.vytvoritTabulku(
-                    vjec = trida,
+                    stalost = stalost,
                     doc = doc,
                 )
 
@@ -252,7 +252,7 @@ class Repository(
             val doc = Ksoup.parseGetRequest(trida.odkaz.replace("###", stalost.code))
 
             val rozvrh = TvorbaRozvrhu.vytvoritTabulku(
-                vjec = trida,
+                stalost = stalost,
                 doc = doc,
             )
 
