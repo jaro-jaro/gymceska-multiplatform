@@ -14,8 +14,8 @@ plugins {
     alias(libs.plugins.buildkonfig)
 }
 
-val appVersionCode = 104
-val appVersionName = "2.5.0-pre.1"
+val appVersionCode = 105
+val appVersionName = "2.5.0-pre.2"
 
 kotlin {
     js(IR) {
