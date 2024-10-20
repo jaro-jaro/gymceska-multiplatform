@@ -8,10 +8,11 @@ import com.russhwolf.settings.contains
 import com.russhwolf.settings.coroutines.getStringOrNullFlow
 import com.russhwolf.settings.coroutines.getStringOrNullStateFlow
 import com.russhwolf.settings.set
-import cz.jaro.gymceska.rozvrh.Stalost
+import cz.jaro.gymceska.rozvrh.Cell
+import cz.jaro.gymceska.rozvrh.Timetable
+import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.rozvrh.TvorbaRozvrhu
-import cz.jaro.gymceska.rozvrh.Tyden
-import cz.jaro.gymceska.rozvrh.Vjec
+import cz.jaro.gymceska.rozvrh.Week
 import cz.jaro.gymceska.rozvrh.nameNominative
 import cz.jaro.gymceska.ukoly.Ukol
 import dev.gitlive.firebase.Firebase
@@ -20,6 +21,7 @@ import dev.gitlive.firebase.database.database
 import dev.gitlive.firebase.remoteconfig.get
 import dev.gitlive.firebase.remoteconfig.remoteConfig
 import io.github.z4kn4fein.semver.toVersion
+import io.ktor.client.request.header
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -61,8 +63,8 @@ class Repository(
 
     object Keys {
         const val NASTAVENI = "nastaveni"
-        fun rozvrh(trida: Vjec.TridaVjec, stalost: Stalost) = "rozvrh-_${trida.nazev}_${stalost.nameNominative}"
-        fun rozvrhPosledni(trida: Vjec.TridaVjec, stalost: Stalost) = "rozvrh-_${trida.nazev}_${stalost.nameNominative}_posledni"
+        fun rozvrh(trida: Timetable.Class, stalost: TimetableType) = "rozvrh2-_${trida.nazev}_${stalost.nameNominative}"
+        fun rozvrhPosledni(trida: Timetable.Class, stalost: TimetableType) = "rozvrh2-_${trida.nazev}_${stalost.nameNominative}_posledni"
         const val SKRTLE_UKOLY = "skrtle_ukoly"
         const val UKOLY = "ukoly"
     }
@@ -129,14 +131,14 @@ class Repository(
     }
 
     val tridy = configActive.map {
-        listOf(Vjec.TridaVjec("Třídy")) + remoteConfig.get<String>("tridy").fromJson<List<Vjec.TridaVjec>>()
-    }.stateIn(scope, SharingStarted.Eagerly, listOf(Vjec.TridaVjec("Třídy")))
+        listOf(Timetable.Class("Třídy")) + remoteConfig.get<String>("tridy").fromJson<List<Timetable.Class>>()
+    }.stateIn(scope, SharingStarted.Eagerly, listOf(Timetable.Class("Třídy")))
     val mistnosti = configActive.map {
-        listOf(Vjec.MistnostVjec("Místnosti")) + remoteConfig.get<String>("mistnosti").fromJson<List<Vjec.MistnostVjec>>()
-    }.stateIn(scope, SharingStarted.Eagerly, listOf(Vjec.MistnostVjec("Místnosti")))
+        listOf(Timetable.Room("Místnosti")) + remoteConfig.get<String>("mistnosti").fromJson<List<Timetable.Room>>()
+    }.stateIn(scope, SharingStarted.Eagerly, listOf(Timetable.Room("Místnosti")))
     val vyucujici = configActive.map {
-        listOf(Vjec.VyucujiciVjec("Vyučující", "")) + remoteConfig.get<String>("vyucujici").fromJson<List<Vjec.VyucujiciVjec>>()
-    }.stateIn(scope, SharingStarted.Eagerly, listOf(Vjec.VyucujiciVjec("Vyučující", "")))
+        listOf(Timetable.Teacher("Vyučující", "")) + remoteConfig.get<String>("vyucujici").fromJson<List<Timetable.Teacher>>()
+    }.stateIn(scope, SharingStarted.Eagerly, listOf(Timetable.Teacher("Vyučující", "")))
     val vyucujici2 = configActive.map {
         remoteConfig.get<String>("vyucujici2").fromJson<List<String>>()
     }.stateIn(scope, SharingStarted.Eagerly, listOf())
@@ -171,7 +173,7 @@ class Repository(
         }
     }
 
-    private fun defaultNastaveni(tridy: List<Vjec.TridaVjec>) = Nastaveni(mojeTrida = tridy.getOrElse(1) { tridy.first() })
+    private fun defaultNastaveni(tridy: List<Timetable.Class>) = Nastaveni(mojeTrida = tridy.getOrElse(1) { tridy.first() })
 
     val nastaveni = settings.getStringOrNullStateFlow(scope, Keys.NASTAVENI).combineStates(scope, tridy) { it, tridy ->
         it?.fromJson<Nastaveni>() ?: defaultNastaveni(tridy)
@@ -185,13 +187,16 @@ class Repository(
         if (!isOnline()) return
         tridy.value.drop(1).forEach { trida ->
             _currentlyDownloading.value = trida
-            Stalost.entries.forEach { stalost ->
+            TimetableType.entries.forEach { stalost ->
 
-                val doc = Ksoup.parseGetRequest(trida.odkaz?.replace("###", stalost.code) ?: return)
+                val doc = Ksoup.parseGetRequest(trida.odkaz?.replace("###", stalost.code) ?: return, {
+                    header("Accept-Language", "cs")
+                })
 
-                val rozvrh = TvorbaRozvrhu.vytvoritTabulku(
-                    stalost = stalost,
+                val rozvrh = TvorbaRozvrhu.createTimetableForClass(
+                    type = stalost,
                     doc = doc,
+                    klass = trida.zkratka,
                 )
 
                 settings[Keys.rozvrh(trida, stalost)] = Json.encodeToString(rozvrh)
@@ -201,8 +206,8 @@ class Repository(
         _currentlyDownloading.value = null
     }
 
-    suspend fun ziskatSkupiny(trida: Vjec.TridaVjec): Sequence<String> {
-        val result = ziskatRozvrh(trida, Stalost.Permanent)
+    suspend fun ziskatSkupiny(trida: Timetable.Class): Sequence<String> {
+        val result = ziskatRozvrh(trida, TimetableType.Permanent)
 
         if (result !is Uspech) return emptySequence()
 
@@ -210,14 +215,15 @@ class Repository(
             .asSequence()
             .flatten()
             .flatten()
-            .map { it.tridaSkupina }
+            .filterIsInstance<Cell.Normal>()
+            .map { it.group }
             .filter { it.isNotEmpty() }
             .distinct()
             .sorted()
     }
 
-    suspend fun ziskaUcitele(trida: Vjec.TridaVjec): Sequence<String> {
-        val result = ziskatRozvrh(trida, Stalost.Permanent)
+    suspend fun ziskaUcitele(trida: Timetable.Class): Sequence<String> {
+        val result = ziskatRozvrh(trida, TimetableType.Permanent)
 
         if (result !is Uspech) return emptySequence()
 
@@ -225,35 +231,38 @@ class Repository(
             .asSequence()
             .flatten()
             .flatten()
-            .map { it.ucitel }
+            .map { it.teacherLike }
             .filter { it.isNotEmpty() }
             .distinct()
             .sorted()
     }
 
-    private fun pouzitOfflineRozvrh(trida: Vjec.TridaVjec, stalost: Stalost): Boolean {
-        val limit = if (stalost == Stalost.Permanent) 14.days else 1.hours
+    private fun pouzitOfflineRozvrh(trida: Timetable.Class, stalost: TimetableType): Boolean {
+        val limit = if (stalost == TimetableType.Permanent) 14.days else 1.hours
         val posledni = settings.getLongOrNull(Keys.rozvrhPosledni(trida, stalost))?.let { Instant.fromEpochSeconds(it) } ?: return false
         val starost = Clock.System.now() - posledni
         return starost < limit
     }
 
-    private val _currentlyDownloading = MutableStateFlow<Vjec.TridaVjec?>(null)
+    private val _currentlyDownloading = MutableStateFlow<Timetable.Class?>(null)
     val currentlyDownloading = _currentlyDownloading.asStateFlow()
 
     suspend fun ziskatRozvrh(
-        trida: Vjec.TridaVjec,
-        stalost: Stalost,
+        trida: Timetable.Class,
+        stalost: TimetableType,
     ): Result {
         if (trida.odkaz == null) return TridaNeexistuje
 
         if (isOnline() && !pouzitOfflineRozvrh(trida, stalost)) try {
             _currentlyDownloading.value = trida
-            val doc = Ksoup.parseGetRequest(trida.odkaz.replace("###", stalost.code))
+            val doc = Ksoup.parseGetRequest(trida.odkaz.replace("###", stalost.code), {
+                header("Accept-Language", "cs")
+            })
 
-            val rozvrh = TvorbaRozvrhu.vytvoritTabulku(
-                stalost = stalost,
+            val rozvrh = TvorbaRozvrhu.createTimetableForClass(
+                type = stalost,
                 doc = doc,
+                klass = trida.zkratka,
             )
 
             settings[Keys.rozvrh(trida, stalost)] = Json.encodeToString(rozvrh)
@@ -271,7 +280,7 @@ class Repository(
                 return ZadnaData
             }
 
-        val rozvrh = settings.getStringOrNull(Keys.rozvrh(trida, stalost))?.fromJson<Tyden>()
+        val rozvrh = settings.getStringOrNull(Keys.rozvrh(trida, stalost))?.fromJson<Week>()
             ?: run {
                 return ZadnaData
             }
@@ -280,7 +289,7 @@ class Repository(
     }
 
     suspend fun ziskatRozvrh(
-        stalost: Stalost,
+        stalost: TimetableType,
     ): Result = ziskatRozvrh(nastaveni.first().mojeTrida, stalost)
 
     private fun isOnline(): Boolean = userOnlineManager.isOnline()

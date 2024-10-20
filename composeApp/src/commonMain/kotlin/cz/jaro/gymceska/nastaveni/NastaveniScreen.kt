@@ -68,8 +68,8 @@ import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.openWebsiteLauncher
 import cz.jaro.gymceska.platform
-import cz.jaro.gymceska.rozvrh.Stalost
-import cz.jaro.gymceska.rozvrh.Vjec
+import cz.jaro.gymceska.rozvrh.Timetable
+import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.rozvrh.Vybiratko
 import cz.jaro.gymceska.rozvrh.defaultToday
 import cz.jaro.gymceska.theme.Theme
@@ -114,9 +114,9 @@ fun NastaveniContent(
     navigator: Navigator,
     nastaveni: Nastaveni?,
     upravitNastaveni: ((Nastaveni) -> Nastaveni) -> Unit,
-    tridy: List<Vjec.TridaVjec>,
+    tridy: List<Timetable.Class>,
     skupiny: Sequence<String>?,
-    stahnoutVse: (Stalost, (String) -> Unit, (Boolean) -> Unit) -> Unit,
+    stahnoutVse: (TimetableType, (String) -> Unit, (Boolean) -> Unit) -> Unit,
     resetRemoteConfig: () -> Unit,
 ) = Surface {
     NastaveniNavigation(
@@ -372,7 +372,7 @@ private fun WidgetSettings(
 @OptIn(ExperimentalMaterial3Api::class)
 private fun MyClassAndGroupsSettings(
     nastaveni: Nastaveni,
-    tridy: List<Vjec.TridaVjec>,
+    tridy: List<Timetable.Class>,
     upravitNastaveni: ((Nastaveni) -> Nastaveni) -> Unit,
     skupiny: Sequence<String>?,
 ) {
@@ -437,9 +437,9 @@ private fun MyClassAndGroupsSettings(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun DownloadAndRefresh(stahnoutVse: (Stalost, (String) -> Unit, (Boolean) -> Unit) -> Unit, resetRemoteConfig: () -> Unit) {
+private fun DownloadAndRefresh(stahnoutVse: (TimetableType, (String) -> Unit, (Boolean) -> Unit) -> Unit, resetRemoteConfig: () -> Unit) {
     var stahnoutNastaveniDialog by remember { mutableStateOf(false) }
-    var stalost by remember { mutableStateOf(Stalost.defaultToday()) }
+    var stalost by remember { mutableStateOf(TimetableType.defaultToday()) }
     var nacitame by remember { mutableStateOf(false) }
     var podrobnostiNacitani by remember { mutableStateOf("") }
 
@@ -501,7 +501,7 @@ private fun DownloadAndRefresh(stahnoutVse: (Stalost, (String) -> Unit, (Boolean
         text = {
             Column {
                 Vybiratko(
-                    seznam = Stalost.entries,
+                    seznam = TimetableType.entries,
                     value = stalost,
                     onClick = { _, it ->
                         stalost = it
@@ -539,7 +539,7 @@ private fun VersionAndLinks() {
         withStyle(
             style = SpanStyle(color = MaterialTheme.colorScheme.onSurface)
         ) {
-            append("Zdroj rozvrhů:")
+            append("Zdroj rozvrhů: ")
         }
         withStyle(
             style = SpanStyle(color = MaterialTheme.colorScheme.primary)
@@ -556,7 +556,7 @@ private fun VersionAndLinks() {
         withStyle(
             style = SpanStyle(color = MaterialTheme.colorScheme.onSurface)
         ) {
-            append("Webová verze aplikace:")
+            append("Webová verze aplikace: ")
         }
         withStyle(
             style = SpanStyle(color = MaterialTheme.colorScheme.primary)

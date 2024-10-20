@@ -55,7 +55,7 @@ object Seznamy {
 
 val Seznamy.dny
     get() = dny1Pad.mapIndexed { index, it ->
-        Vjec.DenVjec(
+        Timetable.DenVjec(
             nazev = it,
             zkratka = it.take(2),
             index = index + 1,
@@ -63,7 +63,7 @@ val Seznamy.dny
     }
 val Seznamy.hodiny
     get() = (0..9).map { index ->
-        Vjec.HodinaVjec(
+        Timetable.HodinaVjec(
             nazev = "$index. hodina",
             zkratka = "$index",
             index = index + 1,

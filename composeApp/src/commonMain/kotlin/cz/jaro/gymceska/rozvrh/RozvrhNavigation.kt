@@ -51,11 +51,11 @@ import kotlin.time.Duration.Companion.minutes
 fun RozvrhNavigation(
     stahnoutVse: () -> Unit,
     navigator: Navigator,
-    najdiMiVolnouTridu: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.MistnostVjec>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.VyucujiciVjec>?) -> Unit) -> Unit,
+    najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
+    najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
     result: Result?,
-    vybratRozvrh: (Vjec) -> Unit,
-    currentlyDownloading: Vjec.TridaVjec?,
+    vybratRozvrh: (Timetable) -> Unit,
+    currentlyDownloading: Timetable.Class?,
     content: @Composable (PaddingValues) -> Unit,
 ) = Navigation(
     titleContent = {
@@ -87,9 +87,9 @@ fun RozvrhNavigation(
 private fun ActionScope.Actions(
     stahnoutVse: () -> Unit,
     result: Result?,
-    vybratRozvrh: (Vjec) -> Unit,
-    najdiMiVolnouTridu: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.MistnostVjec>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.VyucujiciVjec>?) -> Unit) -> Unit,
+    vybratRozvrh: (Timetable) -> Unit,
+    najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
+    najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
 ) {
     var nacitame by remember { mutableStateOf(false) }
     var podrobnostiNacitani by remember { mutableStateOf("Načítání...") }
@@ -115,11 +115,11 @@ private fun ActionScope.Actions(
 
     var najdiMiNastaveniDialog by remember { mutableStateOf(false) }
     var najdiMiDialog by remember { mutableStateOf(false) }
-    var volneTridy by remember { mutableStateOf(emptyList<Vjec.MistnostVjec>()) }
-    var volniUcitele by remember { mutableStateOf(emptyList<Vjec.VyucujiciVjec>()) }
+    var volneTridy by remember { mutableStateOf(emptyList<Timetable.Room>()) }
+    var volniUcitele by remember { mutableStateOf(emptyList<Timetable.Teacher>()) }
     var ucebna by remember { mutableStateOf(true) }
     var stalost by remember {
-        mutableStateOf(Stalost.defaultByDay(
+        mutableStateOf(TimetableType.defaultByDay(
             today().dayOfWeek.let { if (time() > LocalTime(15, 45)) it + 1 else it }
         ))
     }
@@ -139,7 +139,7 @@ private fun ActionScope.Actions(
                     ?.drop(1)
                     ?.indexOfFirst {
                         try {
-                            val cas = it.first().ucitel.split(" - ").first()
+                            val cas = it.first().teacherLike.split(" - ").first()
                             val hm = cas.split(":")
                             (System.now() - 10.minutes).toLocalDateTime(TimeZone.currentSystemDefault()).time < LocalTime(hm[0].toInt(), hm[1].toInt())
                         } catch (e: Exception) {
@@ -269,10 +269,10 @@ private fun ActionScope.Actions(
                     zaskrtavatko = { false },
                 )
                 Vybiratko(
-                    seznam = Stalost.entries.map { it.nameWhen },
+                    seznam = TimetableType.entries.map { it.nameWhen },
                     value = stalost.nameWhen,
                     onClick = { i, _ ->
-                        stalost = Stalost.entries[i]
+                        stalost = TimetableType.entries[i]
                     },
                     zaskrtavatko = { false },
                 )

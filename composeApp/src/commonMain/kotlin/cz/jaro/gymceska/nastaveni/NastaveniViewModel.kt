@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Uspech
-import cz.jaro.gymceska.rozvrh.Stalost
+import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.ukoly.today
 import io.github.vinceglb.filekit.core.FileKit
 import kotlinx.coroutines.flow.map
@@ -31,7 +31,7 @@ class NastaveniViewModel(
         }
     }
 
-    fun stahnoutVse(stalost: Stalost, update: (String) -> Unit, finish: (Boolean) -> Unit) {
+    fun stahnoutVse(stalost: TimetableType, update: (String) -> Unit, finish: (Boolean) -> Unit) {
         viewModelScope.launch {
             val tridy = repo.tridy.value
             val vse = tridy.mapNotNull {

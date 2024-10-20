@@ -4,40 +4,40 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed interface Vjec {
+sealed interface Timetable {
     val nazev: String
     val zkratka: String
 
     @Serializable
-    data class TridaVjec(
+    data class Class(
         @SerialName("jmeno")
         override val nazev: String,
         val odkaz: String? = null,
-    ) : Vjec {
+    ) : Timetable {
         companion object {
-            val HOME = TridaVjec("")
+            val HOME = Class("")
         }
         override val zkratka: String get() = nazev
     }
 
     @Serializable
-    data class MistnostVjec(
+    data class Room(
         @SerialName("jmeno")
         override val nazev: String,
         val napoveda: String? = null,
-    ) : Vjec {
+    ) : Timetable {
         override val zkratka: String get() = nazev
     }
 
     @Serializable
-    data class VyucujiciVjec(
+    data class Teacher(
         val jmeno: String,
         override val zkratka: String,
-    ) : Vjec {
+    ) : Timetable {
         override val nazev: String get() = if (zkratka.isNotBlank()) "$zkratka – $jmeno" else jmeno
     }
 
-    sealed interface Indexed : Vjec {
+    sealed interface Indexed : Timetable {
         val index: Int
     }
 

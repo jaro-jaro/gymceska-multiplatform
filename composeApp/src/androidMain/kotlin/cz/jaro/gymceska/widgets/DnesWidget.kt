@@ -44,9 +44,8 @@ import cz.jaro.gymceska.PrepnoutRozvrhWidget
 import cz.jaro.gymceska.R
 import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Uspech
-import cz.jaro.gymceska.rozvrh.Bunka
-import cz.jaro.gymceska.rozvrh.Stalost
-import cz.jaro.gymceska.rozvrh.TypBunky
+import cz.jaro.gymceska.rozvrh.Cell
+import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.rozvrh.filtrovatDen
 import cz.jaro.gymceska.rozvrh.isEmpty
 import cz.jaro.gymceska.ukoly.time
@@ -77,7 +76,7 @@ class DnesWidget : GlanceAppWidget() {
         context: Context
     ) = GlanceTheme {
         val prefs = currentState<Preferences>()
-        val bunky = Json.decodeFromString<List<Bunka>>(prefs[stringPreferencesKey("hodiny")] ?: "[]")
+        val bunky = Json.decodeFromString<List<Cell>>(prefs[stringPreferencesKey("hodiny")] ?: "[]")
         val den = prefs[stringPreferencesKey("den")] ?: "??. ??."
 
         val bg = ColorProvider(R.color.background_color)
@@ -95,7 +94,7 @@ class DnesWidget : GlanceAppWidget() {
 
             bunky
                 .ifEmpty {
-                    listOf(Bunka("", "Žádné hodiny!", ""))
+                    listOf(Cell("", "Žádné hodiny!", ""))
                 }
                 .let {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) it else it.take(10)
@@ -278,10 +277,10 @@ class DnesWidget : GlanceAppWidget() {
                     val den = today().plus(DatePeriod(days = if (dnes) 0 else 1))
                     val cisloDne = den.dayOfWeek.value // 1-5 (2-7)
 
-                    val stalost = if (cisloDne == 1 && !dnes) Stalost.NextWeek else Stalost.ThisWeek
+                    val stalost = if (cisloDne == 1 && !dnes) TimetableType.NextWeek else TimetableType.ThisWeek
 
                     val hodiny = repo.ziskatRozvrh(stalost).let { result ->
-                        if (result !is Uspech) return@let listOf(Bunka("", "Žádná data!", ""))
+                        if (result !is Uspech) return@let listOf(Cell("", "Žádná data!", ""))
 
                         val tabulka = result.rozvrh
 
@@ -290,17 +289,17 @@ class DnesWidget : GlanceAppWidget() {
                             ?.asSequence()
                             ?.drop(1)
                             ?.mapIndexed { i, hodina -> i to hodina }
-                            ?.filter { (_, hodina) -> hodina.first().predmet.isNotBlank() }
-                            ?.map { (i, hodina) -> hodina.map { bunka -> bunka.copy(predmet = "$i. ${bunka.predmet}") } }
+                            ?.filter { (_, hodina) -> hodina.first().subjectLike.isNotBlank() }
+                            ?.map { (i, hodina) -> hodina.map { bunka -> bunka.copy(predmet = "$i. ${bunka.subjectLike}") } }
                             ?.toList()
                             ?.filtrovatDen(true, nastaveni.mojeSkupiny)
                             ?.mapNotNull { hodina -> hodina.firstOrNull { !it.isEmpty() } }
                             ?.ifEmpty {
                                 listOf(
-                                    Bunka("", "Žádné hodiny!", ""),
+                                    Cell("", "Žádné hodiny!", ""),
                                 )
                             }
-                            ?: listOf(Bunka("", "Víkend", ""))
+                            ?: listOf(Cell("", "Víkend", ""))
                     }
 
                     appWidgetIds.forEach {
@@ -334,7 +333,7 @@ class DnesWidget : GlanceAppWidget() {
             private suspend fun zjistitKonecVyucovani(): LocalTime {
                 val nastaveni = repo.nastaveni.first()
 
-                val result = repo.ziskatRozvrh(Stalost.ThisWeek)
+                val result = repo.ziskatRozvrh(TimetableType.ThisWeek)
 
                 if (result !is Uspech) return LocalTime(0, 0)
 
@@ -347,16 +346,16 @@ class DnesWidget : GlanceAppWidget() {
                 val hodina = den
                     .mapIndexed { i, hodina -> i to hodina }
                     .drop(1)
-                    .filter { (_, hodina) -> hodina.first().predmet.isNotBlank() }
+                    .filter { (_, hodina) -> hodina.first().subjectLike.isNotBlank() }
                     .lastOrNull { (_, hodina) ->
                         hodina.any { bunka ->
-                            bunka.tridaSkupina.isEmpty() || bunka.tridaSkupina in nastaveni.mojeSkupiny
+                            bunka.classLike.isEmpty() || bunka.classLike in nastaveni.mojeSkupiny
                         }
                     }
                     ?.first
                     ?: return LocalTime(12, 0)
 
-                return tabulka.first()[hodina].first().ucitel.split(" - ")[1].split(":").let { LocalTime(it[0].toInt(), it[1].toInt()) }
+                return tabulka.first()[hodina].first().teacherLike.split(" - ")[1].split(":").let { LocalTime(it[0].toInt(), it[1].toInt()) }
             }
         }
     }

@@ -22,9 +22,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 @ExperimentalMaterial3Api
 @Composable
 fun Vybiratko(
-    value: Stalost,
-    seznam: List<Stalost>,
-    onClick: (Int, Stalost) -> Unit,
+    value: TimetableType,
+    seznam: List<TimetableType>,
+    onClick: (Int, TimetableType) -> Unit,
     modifier: Modifier = Modifier,
 ) = Vybiratko(
     value = value.nameNominative,

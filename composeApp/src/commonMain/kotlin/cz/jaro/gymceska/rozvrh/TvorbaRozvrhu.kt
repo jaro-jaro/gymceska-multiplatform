@@ -15,21 +15,20 @@ import kotlinx.datetime.daysUntil
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.serialization.json.Json
 
 object TvorbaRozvrhu {
 
     private val dny = listOf("Po", "Út", "St", "Čt", "Pá", "So", "Ne", "Rden", "Pi")
-    fun vytvoritTabulku(
-        stalost: Stalost,
+    fun createTimetableForClass(
+        type: TimetableType,
         doc: Document,
-    ): Tyden = listOf(
+        klass: String,
+    ): Week = listOf(
         listOf(
             listOf(
-                Bunka(
-                    ucebna = "",
-                    predmet = weekParity(stalost),
-                    ucitel = "",
-                    tridaSkupina = ""
+                Cell.Header(
+                    title = weekParity(type),
                 )
             )
         ) + doc
@@ -44,11 +43,9 @@ object TvorbaRozvrhu {
                 val hour = hodina.getElementsByClass("hour").first()!!
 
                 listOf(
-                    Bunka(
-                        ucebna = "",
-                        predmet = num.text(),
-                        ucitel = hour.text(),
-                        tridaSkupina = ""
+                    Cell.Header(
+                        title = num.text(),
+                        subtitle = hour.text(),
                     )
                 )
             }
@@ -60,11 +57,9 @@ object TvorbaRozvrhu {
         .mapIndexed { i, timeTableRow ->
             listOf(
                 listOf(
-                    Bunka(
-                        ucebna = "",
-                        predmet = dny[i],
-                        ucitel = date(stalost, i),
-                        tridaSkupina = ""
+                    Cell.Header(
+                        title = dny[i],
+                        subtitle = date(type, i),
                     )
                 )
             ) + timeTableRow
@@ -75,104 +70,113 @@ object TvorbaRozvrhu {
                     timetableCell.getElementsByClass("day-item").first()
                         ?.getElementsByClass("day-item-hover")
                         ?.flatMap { dayItemHover ->
-                            val bunka = dayItemHover.getElementsByClass("day-flex").first()?.let { dayFlex ->
-                                Bunka(
-                                    ucebna = dayFlex
-                                        .getElementsByClass("top").first()!!
-                                        .getElementsByClass("right").first()
-                                        ?.text()
-                                        ?: "",
-                                    predmet = dayFlex
-                                        .getElementsByClass("middle").first()!!
-                                        .text(),
-                                    ucitel = dayFlex
-                                        .getElementsByClass("bottom").first()!!
-                                        .text(),
-                                    tridaSkupina = dayFlex
-                                        .getElementsByClass("top").first()!!
-                                        .getElementsByClass("left").first()
-                                        ?.text()
-                                        ?: "",
-                                    typ = when {
-                                        dayItemHover.hasClass("pink") -> TypBunky.Suplovani
-                                        dayItemHover.hasClass("green") -> TypBunky.Trid
-                                        else -> TypBunky.Normalni
-                                    }
-                                )
-                            } ?: Bunka.empty
+                            val data = dayItemHover.attr("data-detail").let<String, CellData>(Json::decodeFromString)
+                            val baseCell = when (data) {
+                                is CellData.Normal -> dayItemHover.getElementsByClass("day-flex").first()?.let { dayFlex ->
+                                    Cell.Normal(
+                                        room = dayFlex
+                                            .getElementsByClass("top").first()!!
+                                            .getElementsByClass("right").first()
+                                            ?.text()
+                                            ?: "",
+                                        subject = dayFlex
+                                            .getElementsByClass("middle").first()!!
+                                            .text(),
+                                        teacher = dayFlex
+                                            .getElementsByClass("bottom").first()!!
+                                            .text(),
+                                        group = dayFlex
+                                            .getElementsByClass("top").first()!!
+                                            .getElementsByClass("left").first()
+                                            ?.text()
+                                            ?: "",
+                                        klass = klass,
+                                        changeInfo = data.changeinfo?.takeUnless { it.isBlank() },
+                                        subjectName = data.subjecttext.substringBefore(" | ", ""),
+                                        teacherName = data.teacher ?: "",
+                                        theme = data.theme ?: "",
+                                    )
+                                } ?: Cell.Empty
 
-                            if (dayItemHover.hasClass("hasAbsent")) listOf(
-                                bunka,
-                                Bunka(
-                                    ucebna = "",
-                                    predmet = "Absc",
-                                    ucitel = "",
-                                    tridaSkupina = "",
-                                    typ = TypBunky.Trid
+                                is CellData.Absent -> Cell.Absent(
+                                    reason = data.absentinfo ?: "",
+                                    reasonText = data.infoAbsentName ?: "",
+                                    klass = klass,
                                 )
-                            )
-                            else listOf(bunka)
+
+                                is CellData.Removed -> Cell.Removed(
+                                    reasonText = data.removedinfo?.substringBefore(" (") ?: "",
+                                    subject = data.removedinfo?.substringInParentheses()?.substringBefore(", ", "") ?: "",
+                                    teacherName = data.removedinfo?.substringInParentheses()?.substringAfter(", ", "") ?: "",
+                                    klass = klass,
+                                )
+                            }
+
+                            if (data is CellData.Normal && data.hasAbsent == true) {
+                                val bef = data.absentInfoText?.substringBefore(" | ", "") ?: ""
+                                listOf(
+                                    baseCell,
+                                    Cell.Absent(
+                                        reason = bef.substringBefore(" (", "Absc"),
+                                        reasonText = data.absentInfoText?.substringAfter(" | ", "") ?: "",
+                                        group = bef.substringInParentheses(),
+                                        klass = klass,
+                                    )
+                                )
+                            } else listOf(baseCell)
                         }
+                        ?.distinct()
                         ?.ifEmpty {
-                            listOf(Bunka.empty)
+                            listOf(Cell.Empty)
                         }
                         ?: timetableCell.getElementsByClass("day-item-volno").first()
                             ?.getElementsByClass("day-off")?.first()
                             ?.let {
                                 listOf(
-                                    Bunka(
-                                        ucebna = "",
-                                        predmet = it.text(),
-                                        ucitel = "",
-                                        tridaSkupina = "",
-                                        typ = TypBunky.Volno
+                                    Cell.DayOff(
+                                        reasonText = it.text(),
+                                        klass = klass,
                                     )
                                 )
                             }
-                        ?: listOf(Bunka.empty)
+                        ?: listOf(Cell.Empty)
                 }
         }
 
-    suspend fun vytvoritRozvrhPodleJinych(
-        vjec: Vjec,
-        stalost: Stalost,
+    suspend fun createTimetableForTeacherOrRoom(
+        target: Timetable,
+        type: TimetableType,
         repo: Repository,
     ): Result {
-        require(vjec is Vjec.MistnostVjec || vjec is Vjec.VyucujiciVjec)
+        require(target is Timetable.Room || target is Timetable.Teacher)
 
         val seznamNazvu = repo.tridy.value.drop(1)
 
-        val novaTabulka = emptyTyden(vjec)
+        val novaTabulka = emptyTyden(target)
 
         val nejstarsi = seznamNazvu.fold(null as LocalDateTime?) { zatimNejstarsi, trida ->
 
-            val result = repo.ziskatRozvrh(trida, stalost)
+            val result = repo.ziskatRozvrh(trida, type)
 
             if (result !is Uspech) return result
 
             result.rozvrh.forEachIndexed trida@{ i, den ->
                 den.forEachIndexed den@{ j, hodina ->
+                    if (i == 0 || j == 0) {
+                        novaTabulka[i][j] = mutableListOf(hodina.single())
+                        return@den
+                    }
                     hodina.forEach hodina@{ bunka ->
-                        if (i == 0 || j == 0) {
-                            if (novaTabulka[i][j].isEmpty()) novaTabulka[i][j] += bunka
+                        if (bunka.teacherLike.isEmpty() || bunka.subjectLike.isEmpty()) {
                             return@hodina
                         }
-                        if (bunka.ucitel.isEmpty() || bunka.predmet.isEmpty()) {
-                            return@hodina
-                        }
-                        val zajimavaVec = when (vjec) {
-                            is Vjec.VyucujiciVjec -> bunka.ucitel.split(",").first()
-                            is Vjec.MistnostVjec -> bunka.ucebna
+                        val zajimavaVec = when (target) {
+                            is Timetable.Teacher -> bunka.teacherLike.split(",").first()
+                            is Timetable.Room -> bunka.roomLike
                             else -> throw IllegalArgumentException()
                         }
-                        if (zajimavaVec == vjec.zkratka) {
-                            novaTabulka[i][j] += bunka.copy(tridaSkupina = "${trida.zkratka} ${bunka.tridaSkupina}".trim()).let {
-                                when (vjec) {
-                                    is Vjec.VyucujiciVjec -> it.copy(ucitel = "")
-                                    is Vjec.MistnostVjec -> it.copy(ucebna = "")
-                                    else -> throw IllegalArgumentException()
-                                }
-                            }
+                        if (zajimavaVec == target.zkratka) {
+                            novaTabulka[i][j] += bunka
                         }
                     }
                 }
@@ -183,40 +187,40 @@ object TvorbaRozvrhu {
             else zatimNejstarsi
         }
         novaTabulka.forEachIndexed { i, den ->
-            if (den.getOrNull(1)?.singleOrNull()?.typ == TypBunky.Volno) return@forEachIndexed
+            if (den.getOrNull(1)?.singleOrNull() is Cell.DayOff) return@forEachIndexed
             den.forEachIndexed { j, hodina ->
                 hodina.ifEmpty {
-                    novaTabulka[i][j] += Bunka.empty
+                    novaTabulka[i][j] += Cell.Empty
                 }
             }
         }
-        novaTabulka[0][0][0] = novaTabulka[0][0][0].copy(predmet = weekParity(stalost))
+        novaTabulka[0][0][0] = Cell.Header(title = weekParity(type))
         return if (nejstarsi == null) Uspech(novaTabulka, Online)
         else Uspech(novaTabulka, OfflineRuzneCasti(nejstarsi))
     }
 
-    suspend fun vytvoritSpecialniRozvrh(
-        vjec: Vjec,
-        stalost: Stalost,
+    suspend fun createTimetableForDayOrLesson(
+        target: Timetable,
+        type: TimetableType,
         repo: Repository,
     ): Result {
-        require(vjec is Vjec.DenVjec || vjec is Vjec.HodinaVjec)
+        require(target is Timetable.DenVjec || target is Timetable.HodinaVjec)
 
         val seznamNazvu = repo.tridy.value.drop(1)
 
-        val novaTabulka = emptyTyden(vjec, seznamNazvu.count())
+        val novaTabulka = emptyTyden(target, seznamNazvu.count())
 
         val nejstarsi = seznamNazvu.fold(null as LocalDateTime?) { zatimNejstarsi, trida ->
 
-            val result = repo.ziskatRozvrh(trida, stalost)
+            val result = repo.ziskatRozvrh(trida, type)
 
             if (result !is Uspech) return result
 
             val rozvrhTridy = result.rozvrh
 
-            if (vjec is Vjec.DenVjec) {
-                novaTabulka[seznamNazvu.indexOf(trida) + 1][0] = mutableListOf(Bunka.empty.copy(predmet = trida.zkratka))
-                rozvrhTridy[vjec.index].drop(1).forEachIndexed den@{ j, hodina ->
+            if (target is Timetable.DenVjec) {
+                novaTabulka[seznamNazvu.indexOf(trida) + 1][0] = mutableListOf(Cell.Header(title = trida.zkratka))
+                rozvrhTridy[target.index].drop(1).forEachIndexed den@{ j, hodina ->
                     novaTabulka[0][j + 1] = rozvrhTridy[0][j + 1].toMutableList()
                     hodina.forEach hodina@{ bunka ->
                         novaTabulka[seznamNazvu.indexOf(trida) + 1][j + 1] += bunka
@@ -224,11 +228,11 @@ object TvorbaRozvrhu {
                 }
             }
 
-            if (vjec is Vjec.HodinaVjec) {
-                novaTabulka[0][seznamNazvu.indexOf(trida) + 1] = mutableListOf(Bunka.empty.copy(predmet = trida.zkratka))
+            if (target is Timetable.HodinaVjec) {
+                novaTabulka[0][seznamNazvu.indexOf(trida) + 1] = mutableListOf(Cell.Header(title = trida.zkratka))
                 rozvrhTridy.drop(1).forEachIndexed trida@{ i, den ->
                     novaTabulka[i + 1][0] = rozvrhTridy[i + 1][0].toMutableList()
-                    den.drop(1).singleOrGet(vjec.index - 1).forEach hodina@{ bunka ->
+                    den.drop(1).singleOrGet(target.index - 1).forEach hodina@{ bunka ->
                         novaTabulka[i + 1][seznamNazvu.indexOf(trida) + 1] += bunka
                     }
                 }
@@ -239,45 +243,45 @@ object TvorbaRozvrhu {
             else zatimNejstarsi
         }
         novaTabulka.forEachIndexed { i, den ->
-            if (den.getOrNull(1)?.singleOrNull()?.typ == TypBunky.Volno) return@forEachIndexed
+            if (den.getOrNull(1)?.singleOrNull() is Cell.DayOff) return@forEachIndexed
             den.forEachIndexed { j, hodina ->
                 hodina.ifEmpty {
-                    novaTabulka[i][j] += Bunka.empty
+                    novaTabulka[i][j] += Cell.Empty
                 }
             }
         }
-        novaTabulka[0][0][0] = novaTabulka[0][0][0].copy(predmet = weekParity(stalost))
+        novaTabulka[0][0][0] = Cell.Header(title = weekParity(type))
         return if (nejstarsi == null) Uspech(novaTabulka, Online)
         else Uspech(novaTabulka, OfflineRuzneCasti(nejstarsi))
     }
 
     private fun emptyTyden(
-        vjec: Vjec,
-        pocetTrid: Int = 0
-    ): MutableList<MutableList<MutableList<Bunka>>> {
-        val vyska = when (vjec) {
-            is Vjec.DenVjec -> pocetTrid
-            is Vjec.HodinaVjec -> 5
+        target: Timetable,
+        classCount: Int = 0,
+    ): MutableList<MutableList<MutableList<Cell>>> {
+        val vyska = when (target) {
+            is Timetable.DenVjec -> classCount
+            is Timetable.HodinaVjec -> 5
             else -> 5
         }
-        val sirka = when (vjec) {
-            is Vjec.DenVjec -> 10
-            is Vjec.HodinaVjec -> pocetTrid
+        val sirka = when (target) {
+            is Timetable.DenVjec -> 10
+            is Timetable.HodinaVjec -> classCount
             else -> 10
         }
 
-        val novaTabulka = MutableList(vyska + 1) { MutableList(sirka + 1) { mutableListOf<Bunka>() } }
-        return novaTabulka
+        val newTable = MutableList(vyska + 1) { MutableList(sirka + 1) { mutableListOf<Cell>() } }
+        return newTable
     }
 
-    fun blankTyden() = emptyTyden(Vjec.TridaVjec("")).map { den ->
+    fun blankTyden() = emptyTyden(Timetable.Class("")).map { den ->
         den.map {
-            listOf(Bunka.empty)
+            listOf(Cell.Empty)
         }
     }
 
     private fun date(
-        stalost: Stalost,
+        stalost: TimetableType,
         dayOfWeekIndex: Int,
     ): String {
         val weekStart = weekStart(stalost)
@@ -286,26 +290,26 @@ object TvorbaRozvrhu {
     }
 
     private fun weekStart(
-        stalost: Stalost,
+        stalost: TimetableType,
     ): LocalDate? {
         val today = today()
         val startOfWeek = today.startOfWeek()
         return when (stalost) {
-            Stalost.ThisWeek -> startOfWeek
-            Stalost.NextWeek -> startOfWeek.plus(DatePeriod(days = 7))
-            Stalost.Permanent -> null
+            TimetableType.ThisWeek -> startOfWeek
+            TimetableType.NextWeek -> startOfWeek.plus(DatePeriod(days = 7))
+            TimetableType.Permanent -> null
         }
     }
 
     private fun weekParity(
-        stalost: Stalost,
+        stalost: TimetableType,
     ): String {
         val today = today()
         val weekNumber = today.getSchoolWeekNumber()
         return when (stalost) {
-            Stalost.ThisWeek -> (weekNumber % 2 == 0).toParityChar()
-            Stalost.NextWeek -> (weekNumber % 2 == 1).toParityChar()
-            Stalost.Permanent -> null
+            TimetableType.ThisWeek -> (weekNumber % 2 == 0).toParityChar()
+            TimetableType.NextWeek -> (weekNumber % 2 == 1).toParityChar()
+            TimetableType.Permanent -> null
         }?.toString() ?: ""
     }
 
@@ -329,43 +333,53 @@ object TvorbaRozvrhu {
 
 private fun <E> List<E>.singleOrGet(index: Int) = singleOrNull() ?: get(index)
 
-val Result.tabulka get() = when (this) {
-    is Uspech -> rozvrh
-    else -> null
-}
+val Result.tabulka
+    get() = when (this) {
+        is Uspech -> rozvrh
+        else -> null
+    }
 
-fun Result.upravitTabulku(edit: (Tyden) -> Tyden) = when (this) {
+fun Result.upravitTabulku(edit: (Week) -> Week) = when (this) {
     is Uspech -> copy(rozvrh = edit(rozvrh))
     else -> this
 }
 
-fun Tyden.filtrovatTabulku(
+fun Week.filtrovatTabulku(
     mujRozvrh: Boolean = false,
     mojeSkupiny: Set<String> = emptySet(),
 ) = map { den ->
     den.filtrovatDen(mujRozvrh, mojeSkupiny)
 }
 
-fun Den.filtrovatDen(
+fun Day.filtrovatDen(
     mujRozvrh: Boolean = false,
     mojeSkupiny: Set<String> = emptySet(),
 ) = map { hodina ->
     hodina.filtrovatHodinu(mujRozvrh, mojeSkupiny)
 }
 
-fun Hodina.filtrovatHodinu(
+fun Lesson.filtrovatHodinu(
     mujRozvrh: Boolean = false,
     mojeSkupiny: Set<String> = emptySet(),
-): Hodina {
+): Lesson {
     return if (!mujRozvrh) this
     else filter {
-        it.tridaSkupina.isBlank() || it.tridaSkupina in mojeSkupiny
+        it.classLike.isBlank() || it.classLike.trim() in mojeSkupiny
     }.map { mojeBunka ->
         val spojene = filter { bunka ->
-            mojeBunka.ucitel == bunka.ucitel && mojeBunka.ucebna == bunka.ucebna && mojeBunka.predmet == bunka.predmet
+            mojeBunka.teacherLike == bunka.teacherLike && mojeBunka.roomLike == bunka.roomLike && mojeBunka.subjectLike == bunka.subjectLike
         }
-        mojeBunka.copy(
-            tridaSkupina = spojene.map { it.tridaSkupina }.distinct().joinToString(", ")
-        )
-    }.ifEmpty { listOf(Bunka.empty) }
+        when (mojeBunka) {
+            is Cell.Absent -> mojeBunka.copy(
+                group = spojene.map { it.classLike }.distinct().joinToString(", ")
+            )
+            is Cell.Normal -> mojeBunka.copy(
+                group = spojene.map { it.classLike }.distinct().joinToString(", ")
+            )
+            else -> mojeBunka
+        }
+    }.ifEmpty { listOf(Cell.Empty) }
 }
+
+fun String.substringInParentheses() = substringIn("(", ")")
+fun String.substringIn(start: String, end: String) = substringAfter(start, "").substringBefore(end, "")
