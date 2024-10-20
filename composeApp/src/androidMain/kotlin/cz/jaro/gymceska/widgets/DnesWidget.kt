@@ -47,7 +47,6 @@ import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.rozvrh.Cell
 import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.rozvrh.filtrovatDen
-import cz.jaro.gymceska.rozvrh.isEmpty
 import cz.jaro.gymceska.ukoly.time
 import cz.jaro.gymceska.ukoly.today
 import kotlinx.coroutines.CoroutineScope
@@ -94,7 +93,7 @@ class DnesWidget : GlanceAppWidget() {
 
             bunky
                 .ifEmpty {
-                    listOf(Cell("", "Žádné hodiny!", ""))
+                    listOf(Cell.Header("Žádné hodiny!"))
                 }
                 .let {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) it else it.take(10)
@@ -135,10 +134,10 @@ class DnesWidget : GlanceAppWidget() {
                                             .fillMaxWidth()
                                             .defaultWeight()
                                             .background(
-                                                when (typ) {
-                                                    TypBunky.Normalni -> bg
-                                                    TypBunky.Suplovani -> bg2
-                                                    TypBunky.Volno, TypBunky.Trid -> bg3
+                                                when (it) {
+                                                    is Cell.Normal, is Cell.Control -> bg
+                                                    is Cell.Removed -> bg2
+                                                    is Cell.Absent, is Cell.DayOff -> bg3
                                                 }
                                             ),
                                         contentAlignment = Alignment.Center
@@ -150,15 +149,15 @@ class DnesWidget : GlanceAppWidget() {
                                                 .fillMaxSize()
                                         ) {
                                             Text(
-                                                text = ucebna,
+                                                text = roomLike,
                                                 modifier = GlanceModifier
                                                     .clickable(actionStartActivity<MainActivity>())
                                                     .padding(all = 8.dp),
                                                 style = TextStyle(
-                                                    color = when (typ) {
-                                                        TypBunky.Normalni -> onbg
-                                                        TypBunky.Suplovani -> onbg2
-                                                        TypBunky.Volno, TypBunky.Trid -> onbg3
+                                                    color = when (it) {
+                                                        is Cell.Normal, is Cell.Control -> onbg
+                                                        is Cell.Removed -> onbg2
+                                                        is Cell.Absent, is Cell.DayOff -> onbg3
                                                     }
                                                 ),
                                             )
@@ -170,15 +169,15 @@ class DnesWidget : GlanceAppWidget() {
                                                 .fillMaxSize()
                                         ) {
                                             Text(
-                                                text = tridaSkupina,
+                                                text = classLike,
                                                 modifier = GlanceModifier
                                                     .clickable(actionStartActivity<MainActivity>())
                                                     .padding(all = 8.dp),
                                                 style = TextStyle(
-                                                    color = when (typ) {
-                                                        TypBunky.Normalni -> onbg
-                                                        TypBunky.Suplovani -> onbg2
-                                                        TypBunky.Volno, TypBunky.Trid -> onbg3
+                                                    color = when (it) {
+                                                        is Cell.Normal, is Cell.Control -> onbg
+                                                        is Cell.Removed -> onbg2
+                                                        is Cell.Absent, is Cell.DayOff -> onbg3
                                                     }
                                                 ),
                                             )
@@ -194,31 +193,31 @@ class DnesWidget : GlanceAppWidget() {
                                             Text(text = "")
                                             Spacer(GlanceModifier.defaultWeight())
                                             Text(
-                                                text = predmet,
+                                                text = subjectLike,
                                                 modifier = GlanceModifier
                                                     .clickable(actionStartActivity<MainActivity>())
                                                     .fillMaxWidth()
                                                     .padding(horizontal = 4.dp),
                                                 style = TextStyle(
-                                                    color = when (typ) {
-                                                        TypBunky.Normalni -> onbg
-                                                        TypBunky.Suplovani -> onbg2
-                                                        TypBunky.Volno, TypBunky.Trid -> onbg3
+                                                    color = when (it) {
+                                                        is Cell.Normal, is Cell.Control -> onbg
+                                                        is Cell.Removed -> onbg2
+                                                        is Cell.Absent, is Cell.DayOff -> onbg3
                                                     },
                                                     textAlign = TextAlign.Center
                                                 ),
                                             )
                                             Spacer(GlanceModifier.defaultWeight())
                                             Text(
-                                                text = ucitel,
+                                                text = teacherLike,
                                                 modifier = GlanceModifier
                                                     .clickable(actionStartActivity<MainActivity>())
                                                     .padding(bottom = 8.dp),
                                                 style = TextStyle(
-                                                    color = when (typ) {
-                                                        TypBunky.Normalni -> onbg
-                                                        TypBunky.Suplovani -> onbg2
-                                                        TypBunky.Volno, TypBunky.Trid -> onbg3
+                                                    color = when (it) {
+                                                        is Cell.Normal, is Cell.Control -> onbg
+                                                        is Cell.Removed -> onbg2
+                                                        is Cell.Absent, is Cell.DayOff -> onbg3
                                                     }
                                                 ),
                                             )
@@ -280,7 +279,7 @@ class DnesWidget : GlanceAppWidget() {
                     val stalost = if (cisloDne == 1 && !dnes) TimetableType.NextWeek else TimetableType.ThisWeek
 
                     val hodiny = repo.ziskatRozvrh(stalost).let { result ->
-                        if (result !is Uspech) return@let listOf(Cell("", "Žádná data!", ""))
+                        if (result !is Uspech) return@let listOf(Cell.Header("Žádná data!"))
 
                         val tabulka = result.rozvrh
 
@@ -290,16 +289,23 @@ class DnesWidget : GlanceAppWidget() {
                             ?.drop(1)
                             ?.mapIndexed { i, hodina -> i to hodina }
                             ?.filter { (_, hodina) -> hodina.first().subjectLike.isNotBlank() }
-                            ?.map { (i, hodina) -> hodina.map { bunka -> bunka.copy(predmet = "$i. ${bunka.subjectLike}") } }
+                            ?.map { (i, hodina) -> hodina.map { bunka -> when (bunka) {
+                                is Cell.Absent -> bunka.copy(reason = "$i. ${bunka.reason}")
+                                is Cell.DayOff -> bunka.copy(reasonText = "$i. ${bunka.reasonText}")
+                                is Cell.Removed -> bunka.copy(subject = "$i. ${bunka.subject}")
+                                is Cell.Normal -> bunka.copy(subject = "$i. ${bunka.subject}")
+                                is Cell.Header -> bunka.copy(title = "$i. ${bunka.title}")
+                                Cell.Empty -> Cell.Header(title = "$i.")
+                            } } }
                             ?.toList()
                             ?.filtrovatDen(true, nastaveni.mojeSkupiny)
-                            ?.mapNotNull { hodina -> hodina.firstOrNull { !it.isEmpty() } }
+                            ?.mapNotNull { hodina -> hodina.firstOrNull() }
                             ?.ifEmpty {
                                 listOf(
-                                    Cell("", "Žádné hodiny!", ""),
+                                    Cell.Header("Žádné hodiny!"),
                                 )
                             }
-                            ?: listOf(Cell("", "Víkend", ""))
+                            ?: listOf(Cell.Header("Víkend"))
                     }
 
                     appWidgetIds.forEach {
