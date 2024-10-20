@@ -1,12 +1,9 @@
-package cz.jaro.gymceska.ui.theme
+package cz.jaro.gymceska.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import cz.jaro.gymceska.theme.SetStatusBarColor
-import cz.jaro.gymceska.theme.Theme
-import cz.jaro.gymceska.theme.areDynamicColorsSupported
-import cz.jaro.gymceska.theme.dynamicDarkColorScheme
-import cz.jaro.gymceska.theme.dynamicLightColorScheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 
 @Composable
 fun GymceskaTheme(
@@ -30,8 +27,18 @@ fun GymceskaTheme(
 
     SetStatusBarColor(colorScheme.background, !useDarkTheme)
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content,
-    )
+    CompositionLocalProvider(
+        LocalIsDynamicThemeUsed provides useDynamicColor,
+        LocalIsDarkThemeUsed provides useDarkTheme,
+        LocalTheme provides theme.takeUnless { useDynamicColor }
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            content = content,
+        )
+    }
 }
+
+val LocalTheme = staticCompositionLocalOf<Theme?> { error("CompositionLocal LocalTheme not present") }
+val LocalIsDynamicThemeUsed = staticCompositionLocalOf<Boolean> { error("CompositionLocal LocalTheme not present") }
+val LocalIsDarkThemeUsed = staticCompositionLocalOf<Boolean> { error("CompositionLocal LocalIsDarkThemeUsed not present") }

@@ -8,8 +8,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.StorageSettings
 import com.russhwolf.settings.observable.makeObservable
-import cz.jaro.gymceska.rozvrh.Vjec
-import cz.jaro.gymceska.ui.theme.GymceskaTheme
+import cz.jaro.gymceska.rozvrh.Timetable
+import cz.jaro.gymceska.theme.GymceskaTheme
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseOptions
 import dev.gitlive.firebase.initialize
@@ -56,7 +56,7 @@ fun main() {
         CanvasBasedWindow(
             title = "Gymceska",
         ) {
-            val nastaveni by repo.nastaveni.collectAsStateWithLifecycle(Nastaveni(mojeTrida = Vjec.TridaVjec("")))
+            val nastaveni by repo.nastaveni.collectAsStateWithLifecycle(Nastaveni(mojeTrida = Timetable.Class("")))
 
             GymceskaTheme(
                 useDarkTheme = if (nastaveni.darkModePodleSystemu) isSystemInDarkTheme() else nastaveni.darkMode,

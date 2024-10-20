@@ -10,11 +10,11 @@ import cz.jaro.gymceska.Route.Rozvrh
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.combineStates
 import cz.jaro.gymceska.mapState
-import cz.jaro.gymceska.rozvrh.Vjec.DenVjec
-import cz.jaro.gymceska.rozvrh.Vjec.HodinaVjec
-import cz.jaro.gymceska.rozvrh.Vjec.MistnostVjec
-import cz.jaro.gymceska.rozvrh.Vjec.TridaVjec
-import cz.jaro.gymceska.rozvrh.Vjec.VyucujiciVjec
+import cz.jaro.gymceska.rozvrh.Timetable.Class
+import cz.jaro.gymceska.rozvrh.Timetable.DenVjec
+import cz.jaro.gymceska.rozvrh.Timetable.HodinaVjec
+import cz.jaro.gymceska.rozvrh.Timetable.Room
+import cz.jaro.gymceska.rozvrh.Timetable.Teacher
 import cz.jaro.gymceska.ukoly.unaryPlus
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -49,12 +49,12 @@ class RozvrhViewModel(
                 type = when (typ) {
                     'D' -> DenVjec::class
                     'H' -> HodinaVjec::class
-                    'M' -> MistnostVjec::class
-                    'T' -> TridaVjec::class
-                    'V' -> VyucujiciVjec::class
+                    'M' -> Room::class
+                    'T' -> Class::class
+                    'V' -> Teacher::class
                     else -> error("Invalid type")
                 },
-                stalost = Stalost.entries.find { it.name.first() in modifikatory },
+                stalost = TimetableType.entries.find { it.name.first() in modifikatory },
                 mujRozvrh = mapOf('M' to true, 'C' to false).entries.find { it.key in modifikatory }?.value,
             )
         }
@@ -62,26 +62,26 @@ class RozvrhViewModel(
 
     internal data class DecodedArgumnt(
         val zkratka: String,
-        val type: KClass<out Vjec>,
-        val stalost: Stalost?,
+        val type: KClass<out Timetable>,
+        val stalost: TimetableType?,
         val mujRozvrh: Boolean?,
     )
 
     private fun encodeArgument(
-        vjec: Vjec,
-        stalost: Stalost?,
+        vjec: Timetable,
+        stalost: TimetableType?,
         mujRozvrh: Boolean?,
     ) = buildString {
         val zkratka = vjec.zkratka
         +when (vjec) {
-            TridaVjec.HOME -> ""
+            Class.HOME -> ""
             is DenVjec -> "D-$zkratka"
             is HodinaVjec -> "H-$zkratka"
-            is MistnostVjec -> "M-$zkratka"
-            is TridaVjec -> "T-$zkratka"
-            is VyucujiciVjec -> "V-$zkratka"
+            is Room -> "M-$zkratka"
+            is Class -> "T-$zkratka"
+            is Teacher -> "V-$zkratka"
         }
-        if (vjec != TridaVjec.HOME && (stalost != null || mujRozvrh != null)) +"-"
+        if (vjec != Class.HOME && (stalost != null || mujRozvrh != null)) +"-"
         if (stalost != null) +stalost.name.first()
         if (mujRozvrh != null) +if (mujRozvrh) 'M' else 'C'
     }
@@ -98,18 +98,15 @@ class RozvrhViewModel(
     val hodiny = flow {
         emit(repo.ziskatRozvrh(
             trida = repo.nastaveni.value.mojeTrida,
-            stalost = Stalost.ThisWeek,
-        ).tabulka?.first()?.drop(1)?.map {
-            it.single().ucitel.split(" - ").map {
-                it.split(":").map { it.toInt() }.let {
-                    LocalTime(
-                        it[0],
-                        it[1]
-                    )
-                }
-            }.let { it[0]..it[1] }
+            stalost = TimetableType.ThisWeek,
+        ).tabulka?.topHeaders()?.map {
+            it.subtitle.split(" - ").map(::toLocalTime).toRange()
         } ?: emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), emptyList())
+
+    private fun toLocalTime(it: String) = it.split(":").map(String::toInt).toLocalTime()
+    private fun List<LocalTime>.toRange() = this[0]..this[1]
+    private fun List<Int>.toLocalTime() = LocalTime(this[0], this[1])
 
     val vjec = combineStates(
         viewModelScope,
@@ -119,16 +116,16 @@ class RozvrhViewModel(
         if (params.decoded == null) return@combineStates nastaveni.mojeTrida
         val zkratka = params.decoded.zkratka
         when (params.decoded.type) {
-            TridaVjec::class -> tridy.find { it.zkratka == zkratka }
-            MistnostVjec::class -> mistnosti.find { it.zkratka == zkratka }
-            VyucujiciVjec::class -> vyucujici.find { it.zkratka == zkratka }
+            Class::class -> tridy.find { it.zkratka == zkratka }
+            Room::class -> mistnosti.find { it.zkratka == zkratka }
+            Teacher::class -> vyucujici.find { it.zkratka == zkratka }
             DenVjec::class -> Seznamy.dny.find { it.zkratka == zkratka }
             HodinaVjec::class -> Seznamy.hodiny.find { it.zkratka == zkratka }
             else -> error("Invalid type")
         } ?: nastaveni.mojeTrida
     }
 
-    val stalost = params.decoded?.stalost ?: Stalost.defaultToday()
+    val stalost = params.decoded?.stalost ?: TimetableType.defaultToday()
 
     private val _mujRozvrh = repo.nastaveni.mapState(
         viewModelScope, SharingStarted.WhileSubscribed(5.seconds)
@@ -145,8 +142,8 @@ class RozvrhViewModel(
     }
 
     private fun Rozvrh(
-        vjec: Vjec,
-        stalost: Stalost? = null,
+        vjec: Timetable,
+        stalost: TimetableType? = null,
         mujRozvrh: Boolean? = null,
         x: Int? = null,
         y: Int? = null,
@@ -160,7 +157,7 @@ class RozvrhViewModel(
         y = y,
     )
 
-    fun vybratRozvrh(vjec: Vjec) {
+    fun vybratRozvrh(vjec: Timetable) {
         viewModelScope.launch {
             navigator.navigate(
                 Rozvrh(
@@ -172,7 +169,7 @@ class RozvrhViewModel(
         }
     }
 
-    fun zmenitStalost(stalost: Stalost) {
+    fun zmenitStalost(stalost: TimetableType) {
         viewModelScope.launch {
             navigator.navigate(
                 Rozvrh(
@@ -216,34 +213,55 @@ class RozvrhViewModel(
 
     val result = combine(vjec, mujRozvrh, repo.nastaveni, zobrazitMujRozvrh) { vjec, mujRozvrh, nastaveni, zobrazitMujRozvrh ->
         when (vjec) {
-            is Vjec.TridaVjec -> repo.ziskatRozvrh(
+            is Class -> repo.ziskatRozvrh(
                 trida = vjec,
                 stalost = stalost,
             ).upravitTabulku {
-                it.filtrovatTabulku(
+                it.editCells { cell ->
+                    if (cell is Cell.Data) cell.copy(klass = "") else cell
+                }.filtrovatTabulku(
                     mujRozvrh = mujRozvrh && zobrazitMujRozvrh,
                     mojeSkupiny = nastaveni.mojeSkupiny,
                 )
             }
 
-            is Vjec.VyucujiciVjec,
-            is Vjec.MistnostVjec,
-                -> TvorbaRozvrhu.vytvoritRozvrhPodleJinych(
-                vjec = vjec,
-                stalost = stalost,
+            is Teacher,
+            is Room,
+                -> TvorbaRozvrhu.createTimetableForTeacherOrRoom(
+                target = vjec,
+                type = stalost,
                 repo = repo
-            )
+            ).upravitTabulku { week ->
+                week.editCells { cell ->
+                    if (cell is Cell.Normal) when (vjec) {
+                        is Teacher -> cell.copy(teacher = "")
+                        is Room -> cell.copy(room = "")
+                        else -> cell
+                    }
+                    else cell
+                }
+            }
 
             is DenVjec,
             is HodinaVjec,
-                -> TvorbaRozvrhu.vytvoritSpecialniRozvrh(
-                vjec = vjec,
-                stalost = stalost,
+                -> TvorbaRozvrhu.createTimetableForDayOrLesson(
+                target = vjec,
+                type = stalost,
                 repo = repo
             )
         }
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), null)
+
+    private fun Week.editCells(
+        editCell: (Cell) -> Cell,
+    ) = map { day ->
+        day.map { lesson ->
+            lesson.map { cell ->
+                editCell(cell)
+            }
+        }
+    }
 
     val stahnoutVse: () -> Unit = {
         viewModelScope.launch {
@@ -252,12 +270,12 @@ class RozvrhViewModel(
     }
 
     fun najdiMivolnouTridu(
-        stalost: Stalost,
+        stalost: TimetableType,
         den: Int,
         hodiny: List<Int>,
         filtry: List<FiltrNajdiMi>,
         progress: (String) -> Unit,
-        onComplete: (List<Vjec.MistnostVjec>?) -> Unit,
+        onComplete: (List<Room>?) -> Unit,
     ) {
         viewModelScope.launch {
             val plneTridy = tridy.value.drop(1).flatMap { trida ->
@@ -270,7 +288,7 @@ class RozvrhViewModel(
                     result.rozvrh
                 }.drop(1)[den].drop(1).slice(hodiny).flatMap { hodina ->
                     hodina.map { bunka ->
-                        bunka.ucebna
+                        bunka.roomLike
                     }
                 }
             }
@@ -290,12 +308,12 @@ class RozvrhViewModel(
     }
 
     fun najdiMiVolnehoUcitele(
-        stalost: Stalost,
+        stalost: TimetableType,
         den: Int,
         hodiny: List<Int>,
         filtry: List<FiltrNajdiMi>,
         progress: (String) -> Unit,
-        onComplete: (List<Vjec.VyucujiciVjec>?) -> Unit,
+        onComplete: (List<Teacher>?) -> Unit,
     ) {
         viewModelScope.launch {
             val zaneprazdneniUcitele = tridy.value.drop(1).flatMap { trida ->
@@ -308,7 +326,7 @@ class RozvrhViewModel(
                     result.rozvrh
                 }.drop(1)[den].drop(1).slice(hodiny).flatMap { hodina ->
                     hodina.map { bunka ->
-                        bunka.ucitel
+                        bunka.teacherLike
                     }
                 }
             }

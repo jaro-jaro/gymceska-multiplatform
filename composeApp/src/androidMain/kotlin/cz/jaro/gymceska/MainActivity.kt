@@ -17,8 +17,8 @@ import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.network.parseGetRequest
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.ktx.Firebase
-import cz.jaro.gymceska.rozvrh.Vjec
-import cz.jaro.gymceska.ui.theme.GymceskaTheme
+import cz.jaro.gymceska.rozvrh.Timetable
+import cz.jaro.gymceska.theme.GymceskaTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val repo = koinInject<Repository>()
 
-            val nastaveni by repo.nastaveni.collectAsStateWithLifecycle(Nastaveni(mojeTrida = Vjec.TridaVjec("")))
+            val nastaveni by repo.nastaveni.collectAsStateWithLifecycle(Nastaveni(mojeTrida = Timetable.Class("")))
             val verzeNaRozbiti by repo.verzeNaRozbiti.collectAsStateWithLifecycle()
             val jePotrebaAktualizovatAplikaci by repo.jePotrebaAktualizovatAplikaci.collectAsStateWithLifecycle(false)
 

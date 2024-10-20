@@ -153,17 +153,17 @@ fun Rozvrh(
 @Composable
 fun RozvrhContent(
     result: Result?,
-    vjec: Vjec?,
-    stalost: Stalost,
-    vybratRozvrh: (Vjec) -> Unit,
-    zmenitStalost: (Stalost) -> Unit,
+    vjec: Timetable?,
+    stalost: TimetableType,
+    vybratRozvrh: (Timetable) -> Unit,
+    zmenitStalost: (TimetableType) -> Unit,
     stahnoutVse: () -> Unit,
     navigator: Navigator,
-    najdiMiVolnouTridu: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.MistnostVjec>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (Stalost, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Vjec.VyucujiciVjec>?) -> Unit) -> Unit,
-    tridy: List<Vjec.TridaVjec>,
-    mistnosti: List<Vjec.MistnostVjec>,
-    vyucujici: List<Vjec.VyucujiciVjec>,
+    najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
+    najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    tridy: List<Timetable.Class>,
+    mistnosti: List<Timetable.Room>,
+    vyucujici: List<Timetable.Teacher>,
     hodiny: List<ClosedRange<LocalTime>>,
     mujRozvrh: Boolean?,
     zmenitMujRozvrh: () -> Unit,
@@ -172,7 +172,7 @@ fun RozvrhContent(
     verScrollState: ScrollState,
     zoom: Float,
     alwaysTwoRowCells: Boolean,
-    currentlyDownloading: Vjec.TridaVjec?,
+    currentlyDownloading: Timetable.Class?,
 ) = RozvrhNavigation(
     stahnoutVse = stahnoutVse,
     navigator = navigator,
@@ -205,7 +205,7 @@ fun RozvrhContent(
 
         if (result == null || vjec == null || mujRozvrh == null) LinearProgressIndicator(Modifier.fillMaxWidth())
         else when (result) {
-            is Uspech -> CompositionLocalProvider(LocalBunkaZoom provides zoom) {
+            is Uspech -> CompositionLocalProvider(LocalCellZoom provides zoom) {
                 Tabulka(
                     vjec = vjec,
                     tabulka = result.rozvrh,
@@ -235,8 +235,8 @@ fun RozvrhContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PrepinatkoStalosti(
-    stalost: Stalost,
-    zmenitStalost: (Stalost) -> Unit,
+    stalost: TimetableType,
+    zmenitStalost: (TimetableType) -> Unit,
     modifier: Modifier = Modifier,
 ) = SingleChoiceSegmentedButtonRow(
     modifier = modifier
@@ -244,11 +244,11 @@ private fun PrepinatkoStalosti(
         .padding(top = 4.dp)
         .height(IntrinsicSize.Max),
 ) {
-    Stalost.entries.forEachIndexed { i, it ->
+    TimetableType.entries.forEachIndexed { i, it ->
         SegmentedButton(
             selected = stalost == it,
             onClick = { zmenitStalost(it) },
-            shape = SegmentedButtonDefaults.itemShape(i, Stalost.entries.count()),
+            shape = SegmentedButtonDefaults.itemShape(i, TimetableType.entries.count()),
             Modifier.fillMaxHeight(),
         ) {
             Text(it.nameNominative)
@@ -259,14 +259,14 @@ private fun PrepinatkoStalosti(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun Vybiratko(
-    vjec: Vjec?,
+    vjec: Timetable?,
     zobrazitMujRozvrh: Boolean,
     zmenitMujRozvrh: () -> Unit,
     mujRozvrh: Boolean?,
-    vybratRozvrh: (Vjec) -> Unit,
-    tridy: List<Vjec.TridaVjec>,
-    mistnosti: List<Vjec.MistnostVjec>,
-    vyucujici: List<Vjec.VyucujiciVjec>,
+    vybratRozvrh: (Timetable) -> Unit,
+    tridy: List<Timetable.Class>,
+    mistnosti: List<Timetable.Room>,
+    vyucujici: List<Timetable.Teacher>,
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -301,7 +301,7 @@ private fun Vybiratko(
                     ) { Icon(if (mujRozvrh) Icons.Default.PeopleAlt else Icons.Default.Person, null) }
                     else IconButton(
                         onClick = {
-                            vybratRozvrh(Vjec.TridaVjec.HOME)
+                            vybratRozvrh(Timetable.Class.HOME)
                             expanded = false
                             focusManager.clearFocus()
                         }
@@ -411,16 +411,16 @@ private fun ExposedDropdownMenuBoxScope.MyExposedDropdownMenu(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun MenuVybiratka(
-    vjec: Vjec?,
-    tridy: List<Vjec.TridaVjec>,
-    mistnosti: List<Vjec.MistnostVjec>,
-    vyucujici: List<Vjec.VyucujiciVjec>,
-    vybratRozvrh: (Vjec) -> Unit,
+    vjec: Timetable?,
+    tridy: List<Timetable.Class>,
+    mistnosti: List<Timetable.Room>,
+    vyucujici: List<Timetable.Teacher>,
+    vybratRozvrh: (Timetable) -> Unit,
     hide: () -> Unit,
 ) {
-    val dny by lazy { listOf(Vjec.TridaVjec("Dny")) + Seznamy.dny }
-    val hodiny by lazy { listOf(Vjec.TridaVjec("Hodiny")) + Seznamy.hodiny }
-    val seznamy = listOf(if (vjec is Vjec.DenVjec) dny else if (vjec is Vjec.HodinaVjec) hodiny else tridy, mistnosti, vyucujici)
+    val dny by lazy { listOf(Timetable.Class("Dny")) + Seznamy.dny }
+    val hodiny by lazy { listOf(Timetable.Class("Hodiny")) + Seznamy.hodiny }
+    val seznamy = listOf(if (vjec is Timetable.DenVjec) dny else if (vjec is Timetable.HodinaVjec) hodiny else tridy, mistnosti, vyucujici)
     val nadpisy = seznamy.map { it.first().nazev }
     Row(
         Modifier.height(IntrinsicSize.Max)
@@ -474,7 +474,7 @@ private fun MenuVybiratka(
 }
 
 @Composable
-private fun NapovedaKMistostem(mistnosti: List<Vjec.MistnostVjec>) = IconButton(
+private fun NapovedaKMistostem(mistnosti: List<Timetable.Room>) = IconButton(
     onClick = {
         dialogState.show(
             confirmButton = { TextButton(::hide) { Text("OK") } },

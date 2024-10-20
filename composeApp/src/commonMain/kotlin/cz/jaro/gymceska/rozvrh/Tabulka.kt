@@ -14,11 +14,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
@@ -35,6 +40,11 @@ import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.OfflineRuzneCasti
 import cz.jaro.gymceska.Online
 import cz.jaro.gymceska.ZdrojRozvrhu
+import cz.jaro.gymceska.theme.GymceskaTheme
+import cz.jaro.gymceska.theme.LocalIsDarkThemeUsed
+import cz.jaro.gymceska.theme.LocalIsDynamicThemeUsed
+import cz.jaro.gymceska.theme.LocalTheme
+import cz.jaro.gymceska.theme.Theme
 import cz.jaro.gymceska.ukoly.time
 import cz.jaro.gymceska.ukoly.today
 import kotlinx.coroutines.launch
@@ -42,16 +52,17 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.isoDayNumber
 
 context(ColumnScope)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Tabulka(
-    vjec: Vjec,
-    stalost: Stalost,
-    tabulka: Tyden,
-    kliklNaNeco: (vjec: Vjec) -> Unit,
+    vjec: Timetable,
+    stalost: TimetableType,
+    tabulka: Week,
+    kliklNaNeco: (vjec: Timetable) -> Unit,
     rozvrhOfflineWarning: ZdrojRozvrhu?,
-    tridy: List<Vjec.TridaVjec>,
-    mistnosti: List<Vjec.MistnostVjec>,
-    vyucujici: List<Vjec.VyucujiciVjec>,
+    tridy: List<Timetable.Class>,
+    mistnosti: List<Timetable.Room>,
+    vyucujici: List<Timetable.Teacher>,
     hodiny: List<ClosedRange<LocalTime>>,
     mujRozvrh: Boolean,
     horScrollState: ScrollState,
@@ -60,10 +71,10 @@ fun Tabulka(
 ) {
     if (tabulka.isEmpty()) return
 
-    val currentDay = if (stalost == Stalost.ThisWeek) today().dayOfWeek.isoDayNumber.takeIf { it in 1..5 }?.minus(1) else null
-    val currentLesson = if (stalost == Stalost.ThisWeek) hodiny.indexOfFirst { it.contains(time()) }.takeUnless { it == -1 } else null
+    val currentDay = if (stalost == TimetableType.ThisWeek) today().dayOfWeek.isoDayNumber.takeIf { it in 1..5 }?.minus(1) else null
+    val currentLesson = if (stalost == TimetableType.ThisWeek) hodiny.indexOfFirst { it.contains(time()) }.takeUnless { it == -1 } else null
 
-    val canAllowCellsSmallerThan1 = mujRozvrh || vjec !is Vjec.TridaVjec || alwaysTwoRowCells
+    val canAllowCellsSmallerThan1 = mujRozvrh || vjec !is Timetable.Class || alwaysTwoRowCells
     val maxByRow = tabulka.drop(1).map {
         it.drop(1).maxOf { hodina -> hodina.size }
     }
@@ -78,19 +89,19 @@ fun Tabulka(
         cornerCellContent = { hodina ->
             BaseCell(
                 size = Size(.5F, .5F),
-                center = hodina.single().predmet,
+                center = hodina.single().subjectLike,
             )
         },
         topHeaderCellContent = { _, hodina ->
             val bunka = hodina.single()
             BaseCell(
                 size = Size(1F, .5F),
-                center = bunka.predmet,
-                bottomCenter = bunka.ucitel.takeUnless { it.isBlank() },
+                center = bunka.subjectLike,
+                bottomCenter = bunka.teacherLike.takeUnless { it.isBlank() },
                 onCenterClick = {
-                    if (bunka.predmet.isEmpty()) return@BaseCell
-                    kliklNaNeco((if (vjec is Vjec.HodinaVjec) tridy else Seznamy.hodiny).find {
-                        bunka.predmet == it.zkratka
+                    if (bunka.subjectLike.isEmpty()) return@BaseCell
+                    kliklNaNeco((if (vjec is Timetable.HodinaVjec) tridy else Seznamy.hodiny).find {
+                        bunka.subjectLike == it.zkratka
                     } ?: return@BaseCell)
                 }
             )
@@ -99,13 +110,13 @@ fun Tabulka(
             val bunka = hodina.single()
             BaseCell(
                 size = Size(.5F, rowHeight[row]),
-                center = bunka.predmet,
-                bottomCenter = bunka.ucitel.takeUnless { it.isBlank() },
+                center = bunka.subjectLike,
+                bottomCenter = bunka.teacherLike.takeUnless { it.isBlank() },
                 onCenterClick = {
-                    if (bunka.predmet.isEmpty()) return@BaseCell
+                    if (bunka.subjectLike.isEmpty()) return@BaseCell
                     kliklNaNeco(
-                        (if (vjec is Vjec.DenVjec) tridy else Seznamy.dny).find {
-                            bunka.predmet == it.zkratka
+                        (if (vjec is Timetable.DenVjec) tridy else Seznamy.dny).find {
+                            bunka.subjectLike == it.zkratka
                         } ?: return@BaseCell
                     )
                 }
@@ -113,9 +124,9 @@ fun Tabulka(
         },
         cellContent = { row, column, hodina ->
             val highlight = when (vjec) {
-                is Vjec.TridaVjec, is Vjec.MistnostVjec, is Vjec.VyucujiciVjec -> currentDay == row && currentLesson == column
-                is Vjec.DenVjec -> vjec.index - 1 == currentDay && currentLesson == column
-                is Vjec.HodinaVjec -> vjec.index - 1 == currentLesson && currentDay == row
+                is Timetable.Class, is Timetable.Room, is Timetable.Teacher -> currentDay == row && currentLesson == column
+                is Timetable.DenVjec -> vjec.index - 1 == currentDay && currentLesson == column
+                is Timetable.HodinaVjec -> vjec.index - 1 == currentLesson && currentDay == row
             }
             Column(
                 if (highlight) Modifier.border(4.dp, MaterialTheme.colorScheme.tertiary) else Modifier,
@@ -123,18 +134,38 @@ fun Tabulka(
                 val baseHeight = rowHeight[row] / hodina.size
                 hodina.forEach { bunka ->
                     val cellHeight = when {
-                        !mujRozvrh && vjec is Vjec.TridaVjec && hodina.size == 1 && bunka.tridaSkupina.isNotBlank() -> baseHeight * 4F / 5F
+                        !mujRozvrh && vjec is Timetable.Class && hodina.size == 1 && bunka.classLike.isNotBlank() -> baseHeight * 4F / 5F
                         else -> baseHeight
                     }
-                    Bunka(
+
+                    var menuOpened by remember { mutableStateOf(false) }
+                    Cell(
                         height = cellHeight,
-                        bunka = bunka,
-                        tridy = tridy,
-                        mistnosti = mistnosti,
-                        vyucujici = vyucujici,
-                        kliklNaNeco = kliklNaNeco,
-                        forceOneColumnCells = vjec is Vjec.HodinaVjec,
+                        cell = bunka,
+                        classes = tridy,
+                        rooms = mistnosti,
+                        teachers = vyucujici,
+                        openTimetable = kliklNaNeco,
+                        forceOneColumnCells = vjec is Timetable.HodinaVjec,
+                        onSubjectClick = {
+                            menuOpened = true
+                        }.takeUnless { bunka.popupData == null },
                     )
+                    DropdownMenu(expanded = menuOpened, onDismissRequest = { menuOpened = false }) {
+                        GymceskaTheme(
+                            useDarkTheme = LocalIsDarkThemeUsed.current,
+                            useDynamicColor = LocalIsDynamicThemeUsed.current,
+                            theme = LocalTheme.current ?: Theme.Blue,
+                        ) {
+                            Column(
+                                Modifier.padding(8.dp),
+                            ) {
+                                bunka.popupData!!.forEach {
+                                    Text("${it.key} ${it.value}")
+                                }
+                            }
+                        }
+                    }
                     if (cellHeight < baseHeight) BaseCell(
                         size = Size(width = 1F, height = baseHeight - cellHeight)
                     )
