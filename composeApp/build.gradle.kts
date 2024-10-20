@@ -11,11 +11,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.gms.google.services)
     alias(libs.plugins.firebase.crashlytics)
-    id("com.codingfeline.buildkonfig") version "0.15.2" apply true
+    alias(libs.plugins.buildkonfig)
 }
 
-val appVersionCode = 104
-val appVersionName = "2.5.0-pre.1"
+val appVersionCode = 105
+val appVersionName = "2.5.0-pre.2"
 
 kotlin {
     js(IR) {
@@ -49,9 +49,11 @@ kotlin {
             implementation(libs.androidx.core.ktx)
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
-            implementation(libs.bundles.androidx.jetpack.glance)
+            implementation(libs.androidx.glance)
+            implementation(libs.androidx.glance.appwidget)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.firebase.crashlytics)
+            implementation(libs.androidx.browser)
         }
         jsMain {
             dependsOn(commonMain.get())
@@ -76,7 +78,8 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.firebase.database)
             implementation(libs.firebase.config)
-            implementation(libs.bundles.ksoup)
+            implementation(libs.ksoup)
+            implementation(libs.ksoup.network)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.androidx.adaptive)
