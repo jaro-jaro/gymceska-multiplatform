@@ -2,6 +2,7 @@ package cz.jaro.gymceska.nastaveni
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -42,7 +43,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.withAnnotation
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,9 +62,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import cz.jaro.gymceska.BuildKonfig
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Navigator
+import cz.jaro.gymceska.Platform
 import cz.jaro.gymceska.PrepnoutRozvrhWidget
 import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.openWebsiteLauncher
+import cz.jaro.gymceska.platform
 import cz.jaro.gymceska.rozvrh.Stalost
 import cz.jaro.gymceska.rozvrh.Vjec
 import cz.jaro.gymceska.rozvrh.Vybiratko
@@ -127,7 +139,7 @@ fun NastaveniContent(
             if (areWidgetsSupported()) WidgetSettings(nastaveni, upravitNastaveni)
             MyClassAndGroupsSettings(nastaveni, tridy, upravitNastaveni, skupiny)
             DownloadAndRefresh(stahnoutVse, resetRemoteConfig)
-            Version()
+            VersionAndLinks()
             SimulateCrash()
         }
     }
@@ -518,9 +530,90 @@ private fun DownloadAndRefresh(stahnoutVse: (Stalost, (String) -> Unit, (Boolean
     }
 }
 
+@OptIn(ExperimentalTextApi::class)
 @Composable
-private fun Version() {
+private fun VersionAndLinks() {
     Text("Verze aplikace: ${BuildKonfig.versionName} (${BuildKonfig.versionCode})")
+
+    TextWithLink(buildAnnotatedString {
+        withStyle(
+            style = SpanStyle(color = MaterialTheme.colorScheme.onSurface)
+        ) {
+            append("Zdroj rozvrhů:")
+        }
+        withStyle(
+            style = SpanStyle(color = MaterialTheme.colorScheme.primary)
+        ) {
+            withAnnotation(
+                tag = "link",
+                annotation = "https://gymceska.bakalari.cz/timetable/public?TouchMode=1"
+            ) {
+                append("Bakaláři")
+            }
+        }
+    })
+    if (platform == Platform.Android) TextWithLink(buildAnnotatedString {
+        withStyle(
+            style = SpanStyle(color = MaterialTheme.colorScheme.onSurface)
+        ) {
+            append("Webová verze aplikace:")
+        }
+        withStyle(
+            style = SpanStyle(color = MaterialTheme.colorScheme.primary)
+        ) {
+            withAnnotation(
+                tag = "link",
+                annotation = "https://gymceska.web.app"
+            ) {
+                append("https://gymceska.web.app")
+            }
+        }
+    })
+    if (platform == Platform.Web) TextWithLink(buildAnnotatedString {
+        withStyle(
+            style = SpanStyle(color = MaterialTheme.colorScheme.primary)
+        ) {
+            withAnnotation(
+                tag = "link",
+                annotation = "intent://gymceska.web.app#Intent;scheme=https;package=cz.jaro.gymceska;end"
+            ) {
+                append("Otevřít mobilní aplikaci")
+            }
+        }
+    })
+    if (platform == Platform.Web) TextWithLink(buildAnnotatedString {
+        withStyle(
+            style = SpanStyle(color = MaterialTheme.colorScheme.primary)
+        ) {
+            withAnnotation(
+                tag = "link",
+                annotation = "https://github.com/jaro-jaro/gymceska-multiplatform/releases/latest"
+            ) {
+                append("Stáhnout mobilní aplikaci")
+            }
+        }
+    })
+}
+
+@Composable
+private fun TextWithLink(text: AnnotatedString) {
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val openUrl = openWebsiteLauncher
+
+    Text(
+        text = text,
+        modifier = Modifier.pointerInput(Unit) {
+            detectTapGestures { pos ->
+                layoutResult?.let { layoutResult ->
+                    val offset = layoutResult.getOffsetForPosition(pos)
+                    text.getStringAnnotations(tag = "link", start = offset, end = offset).firstOrNull()?.item?.let(openUrl)
+                }
+            }
+        },
+        onTextLayout = {
+            layoutResult = it
+        }
+    )
 }
 
 @Composable
