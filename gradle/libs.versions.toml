@@ -1,6 +1,5 @@
 [versions]
 compose-plugin = "1.7.0"
-
 androidx-activity-compose = "1.9.3"
 androidx-core = "1.13.1"
 desugar_jdk_libs = "2.1.2"
@@ -8,59 +7,50 @@ filekit-core = "0.8.7"
 firebase = "2.1.0"
 firebase-crashlytics-gradle = "3.0.2"
 androidx-glance = "1.1.1"
-androidx-compose = "1.7.4"
 ksoup = "0.1.9"
 kotlin = "2.0.20"
 kotlinx-coroutines = "1.9.0"
 kotlinx-datetime = "0.6.1"
 kotlinx-serialization-json = "1.7.3"
-material3 = "1.3.0"
 androidx-navigation = "2.8.0-alpha10"
 android-gradle-plugin = "8.7.1"
 gms-google-services = "4.4.2"
 koin = "3.5.3"
 koin-compose = "1.1.2"
 androidx-lifecycle = "2.8.3"
-routing-compose = "0.4.0"
 semver = "1.4.2"
 adaptive = "1.0.0"
 multiplatform-settings = "1.2.0"
-skiko-js = "0.8.15"
+browser = "1.8.0"
+buildkonfig = "0.15.2"
 
 [libraries]
 # Androidx
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 # Kotlin
-desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
 # Kotlinx Coroutines
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
-# Kotlinx Serialization
+# Kotlinx Datetime
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+# Kotlinx Serialization
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
 # Androidx Navigation
-#   Compose
 androidx-navigation-compose = { group = "org.jetbrains.androidx.navigation", name = "navigation-compose", version.ref = "androidx-navigation" }
-# Androidx Jetpack Compose
-androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "androidx-compose" }
-androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "androidx-compose" }
-androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview", version.ref = "androidx-compose" }
-androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "androidx-compose" }
-#   Lifecycle
+# Androidx Lifecycle
 androidx-lifecycle-viewmodel = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-viewmodel-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
-#   Activity
+# Androidx Activity
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity-compose" }
-#   Material
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
-androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "androidx-compose" }
-#   Adaptive
+# Androidx Adaptive
 androidx-adaptive = { group = "org.jetbrains.compose.material3.adaptive", name = "adaptive", version.ref = "adaptive" }
-# Androidx Jetpack Glance
+# Androidx Glance
 androidx-glance = { group = "androidx.glance", name = "glance", version.ref = "androidx-glance" }
 androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "androidx-glance" }
+# Androidx Browser
+androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
 # Firebase
 firebase-analytics = { group = "dev.gitlive", name = "firebase-analytics", version.ref = "firebase" }
 firebase-crashlytics = { group = "dev.gitlive", name = "firebase-crashlytics", version.ref = "firebase" }
@@ -73,7 +63,6 @@ ksoup-network = { group = "com.fleeksoft.ksoup", name = "ksoup-network-ktor2", v
 koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin" }
 koin-compose = { group = "io.insert-koin", name = "koin-compose", version.ref = "koin-compose" }
 # Semantic versioning
-routing-compose = { module = "app.softwork:routing-compose", version.ref = "routing-compose" }
 semver = { module = "io.github.z4kn4fein:semver", version.ref = "semver" }
 # Filekit
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit-core" }
@@ -81,28 +70,15 @@ filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "file
 multiplatform-settings = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatform-settings" }
 multiplatform-settings-coroutines = { module = "com.russhwolf:multiplatform-settings-coroutines", version.ref = "multiplatform-settings" }
 multiplatform-settings-make-observable = { module = "com.russhwolf:multiplatform-settings-make-observable", version.ref = "multiplatform-settings" }
-skiko-js = { module = "org.jetbrains.skiko:skiko", version.ref = "skiko-js" }
-
-[bundles]
-androidx-navigation = [
-    "androidx-navigation-compose",
-]
-androidx-jetpack-glance = [
-    "androidx-glance",
-    "androidx-glance-appwidget",
-]
-ksoup = [
-    "ksoup",
-    "ksoup-network",
-]
+# Desugar
+desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
 
 [plugins]
-androidLibrary = { id = "com.android.library", version.ref = "android-gradle-plugin" }
 jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose-plugin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 gms-google-services = { id = "com.google.gms.google-services", version.ref = "gms-google-services" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebase-crashlytics-gradle" }
+buildkonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildkonfig" }
