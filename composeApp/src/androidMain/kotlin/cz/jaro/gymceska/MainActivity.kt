@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
                 startActivity(Intent().apply {
                     action = Intent.ACTION_VIEW
                     data =
-                        Uri.parse("https://github.com/jaro-jaro/gymceska-multiplatform/releases/download/v$nejnovejsiVerze/Gymceska-v$nejnovejsiVerze.apk")
+                        Uri.parse("https://github.com/jaro-jaro/gymceska-multiplatform/releases/download/v$nejnovejsiVerze/Gymceska-$nejnovejsiVerze.apk")
                 })
             }
             Unit

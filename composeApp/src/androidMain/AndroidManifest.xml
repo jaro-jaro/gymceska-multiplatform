@@ -40,7 +40,9 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <intent-filter android:label="Gymceska deeplink">
+            <intent-filter
+                android:autoVerify="true"
+                android:label="Gymceska deeplink">
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
@@ -48,9 +50,12 @@
 
                 <data android:scheme="http" />
                 <data android:host="gymceska.web.app" />
-                <data android:pathPrefix="/#" />
                 <data android:scheme="https" />
             </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
     </application>
 
