@@ -106,7 +106,7 @@ object TvorbaRozvrhu {
 
                                 is CellData.Removed -> Cell.Removed(
                                     reasonText = data.removedinfo?.substringBefore(" (") ?: "",
-                                    subject = data.also(::println).removedinfo?.substringInParentheses()?.substringBefore(", ", "") ?: "",
+                                    subject = data.removedinfo?.substringInParentheses()?.substringBefore(", ", "") ?: "",
                                     teacherName = data.removedinfo?.substringInParentheses()?.substringAfter(", ", "") ?: "",
                                     klass = klass,
                                 )
