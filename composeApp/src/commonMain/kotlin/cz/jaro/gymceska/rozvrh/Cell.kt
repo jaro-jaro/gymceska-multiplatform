@@ -46,6 +46,7 @@ sealed interface Cell {
     sealed interface Data : Cell {
         val klass: String get() = ""
     }
+
     sealed interface Abnormal : Data
 
     @Serializable
@@ -162,7 +163,7 @@ fun Cell(
     teachers: List<Timetable.Teacher>,
     openTimetable: (timetable: Timetable) -> Unit,
     forceOneColumnCells: Boolean = false,
-    onSubjectClick: (() -> Unit)?
+    onSubjectClick: (() -> Unit)?,
 ) {
     val onRoomClick = if (cell is Cell.Normal && cell.room.isNotBlank()) (onClick@{
         openTimetable(rooms.find<Timetable.Room> { cell.room == it.zkratka } ?: return@onClick)
@@ -182,16 +183,13 @@ fun Cell(
     Surface(
         color = cell.backgroundColor(),
         contentColor = cell.textColor(),
-        onClick = {
-            onSubjectClick?.invoke()
-        },
-        enabled = onSubjectClick != null && cell.subjectLike.isBlank(),
     ) {
         when {
             wholeRowCell -> BaseCell(
                 size = Size(10F, height),
                 center = cell.subjectLike,
             )
+
             !twoRowCell -> BaseCell(
                 size = Size(1F, height),
                 center = cell.subjectLike,
@@ -203,9 +201,11 @@ fun Cell(
                 onTopEndClick = onClassClick,
                 centerStyle = TextStyle(
                     color = cell.subjectColor(),
+                    fontWeight = FontWeight.Bold,
                 ),
                 onCenterClick = onSubjectClick,
             )
+
             twoRowCell -> BaseCell(
                 size = Size(1F, height),
                 bottomStart = cell.subjectLike,
@@ -278,81 +278,75 @@ fun BaseCell(
         ) {
             val columns = listOf(topStart, topEnd).count { it != null }
             if (topStart != null) Box(
-                Modifier.size(cellWidth / columns, cellHeight / rows).padding(1.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                ResponsiveText(
-                    text = topStart,
-                    style = topStartStyle,
-                    modifier = Modifier.clickable(enabled = onTopStartClick != null) {
+                Modifier
+                    .size(cellWidth / columns, cellHeight / rows)
+                    .padding(1.dp)
+                    .clickable(enabled = onTopStartClick != null) {
                         onTopStartClick?.invoke()
                     },
-                )
-            }
-            if (topEnd != null) Box(
-                Modifier.size(cellWidth / columns, cellHeight / rows).padding(1.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                ResponsiveText(
-                    text = topEnd,
-                    style = topEndStyle,
-                    modifier = Modifier.clickable(enabled = onTopEndClick != null) {
+                ResponsiveText(text = topStart, style = topStartStyle)
+            }
+            if (topEnd != null) Box(
+                Modifier
+                    .size(cellWidth / columns, cellHeight / rows)
+                    .padding(1.dp)
+                    .clickable(enabled = onTopEndClick != null) {
                         onTopEndClick?.invoke()
                     },
-                )
+                contentAlignment = Alignment.Center,
+            ) {
+                ResponsiveText(text = topEnd, style = topEndStyle)
             }
         }
         if (center != null) Box(
-            Modifier.size(cellWidth, cellHeight / rows).padding(1.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            ResponsiveText(
-                text = center,
-                style = centerStyle,
-                modifier = Modifier.clickable(enabled = onCenterClick != null) {
+            Modifier
+                .size(cellWidth, cellHeight / rows)
+                .padding(1.dp)
+                .clickable(enabled = onCenterClick != null) {
                     onCenterClick?.invoke()
                 },
-            )
+            contentAlignment = Alignment.Center,
+        ) {
+            ResponsiveText(text = center, style = centerStyle)
         }
         if (isBottom) Row(
             Modifier.size(cellWidth, cellHeight / rows),
         ) {
             val columns = listOf(bottomStart, bottomCenter, bottomEnd).count { it != null }
             if (bottomStart != null) Box(
-                Modifier.size(cellWidth / columns, cellHeight / rows).padding(1.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                ResponsiveText(
-                    text = bottomStart,
-                    style = bottomStartStyle,
-                    modifier = Modifier.clickable(enabled = onBottomStartClick != null) {
+                Modifier
+                    .size(cellWidth / columns, cellHeight / rows)
+                    .padding(1.dp)
+                    .clickable(enabled = onBottomStartClick != null) {
                         onBottomStartClick?.invoke()
                     },
-                )
+                contentAlignment = Alignment.Center,
+            ) {
+                ResponsiveText(text = bottomStart, style = bottomStartStyle)
             }
             if (bottomCenter != null) Box(
-                Modifier.size(cellWidth / columns, cellHeight / rows).padding(1.dp),
+                Modifier
+                    .size(cellWidth / columns, cellHeight / rows)
+                    .padding(1.dp)
+                    .clickable(enabled = onBottomCenterClick != null) {
+                        onBottomCenterClick?.invoke()
+                    },
                 contentAlignment = Alignment.Center,
             ) {
-                ResponsiveText(
-                    text = bottomCenter,
-                    style = bottomCenterStyle,
-                    modifier = Modifier.clickable(enabled = onBottomCenterClick != null) {
-                        onBottomCenterClick?.invoke()
-                    }
-                )
+                ResponsiveText(text = bottomCenter, style = bottomCenterStyle)
             }
             if (bottomEnd != null) Box(
-                Modifier.size(cellWidth / columns, cellHeight / rows).padding(1.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                ResponsiveText(
-                    text = bottomEnd,
-                    style = bottomEndStyle,
-                    modifier = Modifier.clickable(enabled = onBottomEndClick != null) {
+                Modifier
+                    .size(cellWidth / columns, cellHeight / rows)
+                    .padding(1.dp)
+                    .clickable(enabled = onBottomEndClick != null) {
                         onBottomEndClick?.invoke()
                     },
-                )
+                contentAlignment = Alignment.Center,
+            ) {
+                ResponsiveText(text = bottomEnd, style = bottomEndStyle)
             }
         }
     }
