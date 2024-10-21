@@ -39,7 +39,7 @@ sealed interface Cell {
     fun ColorScheme.backgroundColor(): Color = background
     fun ColorScheme.textColor(): Color = contentColorFor(backgroundColor())
     fun ColorScheme.subjectColor(): Color = textColor()
-    val popupData: Map<String, String>? get() = null
+    val popupData: List<Pair<String, String>>? get() = null
     val isWholeDay: Boolean get() = false
 
     sealed interface Control : Cell
@@ -69,7 +69,7 @@ sealed interface Cell {
         override fun ColorScheme.backgroundColor() = if (changeInfo != null) errorContainer else background
         override fun ColorScheme.subjectColor() = if (theme.isNotBlank() && changeInfo == null) primary else textColor()
         override val popupData
-            get() = mapOfNotNull(
+            get() = pairsOfNotNull(
                 "Předmět:" to subjectName.takeUnless(String::isBlank),
                 "Vyučující:" to teacherName.takeUnless(String::isBlank),
                 "Učebna:" to room.takeUnless(String::isBlank),
@@ -78,6 +78,43 @@ sealed interface Cell {
                 "Téma hodiny:" to theme.takeUnless(String::isBlank),
                 "Změna:" to changeInfo?.takeUnless(String::isBlank),
             )
+    }
+
+    @Serializable
+    @SerialName("ST")
+    data class ST(
+        val subject: String = "ST",
+        val subjectName: String = "Sportovní trénink",
+        override val klass: String = "",
+        val groups: List<STGroup>,
+    ) : Data {
+        @Serializable
+        data class STGroup(
+            val changeInfo: String? = null,
+            val group: String = "",
+            val theme: String = "",
+            val teacher: String = "",
+            val teacherName: String = "",
+        )
+
+        override val subjectLike get() = subject
+        override val classLike get() = klass
+        override fun ColorScheme.backgroundColor() = if (groups.any { it.changeInfo != null }) errorContainer else background
+        override fun ColorScheme.subjectColor() =
+            if (groups.any { it.theme.isNotBlank() } && groups.none { it.changeInfo != null }) primary else textColor()
+
+        override val popupData
+            get() = pairsOfNotNull(
+                "Předmět:" to subjectName.takeUnless(String::isBlank),
+                "Třída:" to klass.takeUnless(String::isBlank),
+            ) + groups.flatMap {
+                pairsOfNotNull(
+                    "" to it.group,
+                    "    Vyučující:" to it.teacherName + " (${it.teacher})",
+                    "    Téma hodiny:" to it.theme.takeUnless(String::isBlank),
+                    "    Změna:" to it.changeInfo?.takeUnless(String::isBlank),
+                )
+            }
     }
 
     @Serializable
@@ -101,7 +138,7 @@ sealed interface Cell {
         override fun ColorScheme.backgroundColor() = errorContainer
         override val classLike get() = klass
         override val popupData
-            get() = mapOfNotNull(
+            get() = pairsOfNotNull(
                 reasonText to "",
                 "Předmět:" to subject.takeUnless(String::isBlank),
                 "Vyučující:" to teacherName.takeUnless(String::isBlank),
@@ -121,7 +158,7 @@ sealed interface Cell {
         override val subjectLike get() = reason
         override val classLike get() = klass and (group ?: "")
         override val popupData
-            get() = mapOfNotNull(
+            get() = pairsOfNotNull(
                 reasonText to "",
                 "Třída:" to klass.takeUnless(String::isBlank),
                 "Skupina:" to group?.takeUnless(String::isBlank),
@@ -229,10 +266,10 @@ fun Cell(
     }
 }
 
-fun mapOfNotNull(vararg pairs: Pair<String?, String?>?) = pairs.mapNotNull {
+fun pairsOfNotNull(vararg pairs: Pair<String?, String?>?) = pairs.mapNotNull {
     if (it?.first == null || it.second == null) null
     else it.first!! to it.second!!
-}.toMap()
+}
 
 infix fun String.and(other: String) = if (this.isEmpty() || other.isEmpty()) "$this$other" else "$this $other"
 
@@ -366,4 +403,5 @@ fun Cell.Data.copy(klass: String = this.klass) = when (this) {
     is Cell.Absent -> copy(klass = klass)
     is Cell.Removed -> copy(klass = klass)
     is Cell.DayOff -> copy(klass = klass)
+    is Cell.ST -> copy(klass = klass)
 }

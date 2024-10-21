@@ -161,7 +161,7 @@ fun Tabulka(
                                 Modifier.padding(8.dp),
                             ) {
                                 bunka.popupData!!.forEach {
-                                    Text("${it.key} ${it.value}")
+                                    Text("${it.first} ${it.second}")
                                 }
                             }
                         }

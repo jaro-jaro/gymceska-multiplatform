@@ -126,6 +126,29 @@ object TvorbaRozvrhu {
                             } else listOf(baseCell)
                         }
                         ?.distinct()
+                        ?.let { cells ->
+                            val st = cells.filterIsInstance<Cell.Normal>()
+                                .filter { it.subject == "ST" }
+                                .ifEmpty { null }
+                                ?.let { sts ->
+                                    Cell.ST(
+                                        klass = klass,
+                                        groups = sts.map {
+                                            Cell.ST.STGroup(
+                                                changeInfo = it.changeInfo,
+                                                group = it.group,
+                                                theme = it.theme,
+                                                teacher = it.teacher,
+                                                teacherName = it.teacherName,
+                                            )
+                                        }.distinct(),
+                                    )
+                                }
+                            if (st != null)
+                                cells.filterIsInstance<Cell.Normal>()
+                                    .filter { it.subject != "ST" } + cells.filter { it !is Cell.Normal } + st
+                            else cells
+                        }
                         ?.ifEmpty {
                             listOf(Cell.Empty)
                         }
@@ -167,11 +190,27 @@ object TvorbaRozvrhu {
                         return@den
                     }
                     hodina.forEach hodina@{ bunka ->
-                        if (bunka.teacherLike.isEmpty() || bunka.subjectLike.isEmpty()) {
+                        if (bunka is Cell.Empty) {
+                            return@hodina
+                        }
+                        if (bunka is Cell.ST && target is Timetable.Teacher) {
+                            val group = bunka.groups.find {
+                                it.teacher == target.zkratka
+                            } ?: return@hodina
+                            novaTabulka[i][j] += Cell.Normal(
+                                changeInfo = group.changeInfo,
+                                subjectName = bunka.subjectName,
+                                subject = bunka.subject,
+                                teacher = group.teacher,
+                                teacherName = group.teacherName,
+                                klass = bunka.klass,
+                                group = group.group,
+                                theme = group.theme,
+                            )
                             return@hodina
                         }
                         val zajimavaVec = when (target) {
-                            is Timetable.Teacher -> bunka.teacherLike.split(",").first()
+                            is Timetable.Teacher -> bunka.teacherLike
                             is Timetable.Room -> bunka.roomLike
                             else -> throw IllegalArgumentException()
                         }
@@ -373,9 +412,11 @@ fun Lesson.filtrovatHodinu(
             is Cell.Absent -> mojeBunka.copy(
                 group = spojene.map { it.classLike }.distinct().joinToString(", ")
             )
+
             is Cell.Normal -> mojeBunka.copy(
                 group = spojene.map { it.classLike }.distinct().joinToString(", ")
             )
+
             else -> mojeBunka
         }
     }.ifEmpty { listOf(Cell.Empty) }

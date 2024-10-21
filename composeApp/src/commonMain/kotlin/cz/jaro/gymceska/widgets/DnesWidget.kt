@@ -95,6 +95,7 @@ suspend fun Repository.rozvrhWidgetData(): Pair<LocalDate, List<Cell>> {
                         is Cell.Removed -> bunka.copy(subject = "$i. ${bunka.subject}")
                         is Cell.Normal -> bunka.copy(subject = "$i. ${bunka.subject}")
                         is Cell.Header -> bunka.copy(title = "$i. ${bunka.title}")
+                        is Cell.ST -> bunka.copy(subject = "$i. ${bunka.subject}")
                         Cell.Empty -> Cell.Header(title = "$i.")
                     }
                 }

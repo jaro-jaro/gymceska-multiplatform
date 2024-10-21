@@ -120,10 +120,11 @@ class DnesWidget : GlanceAppWidget() {
                                             .fillMaxWidth()
                                             .defaultWeight()
                                             .background(
-                                                when (it) {
-                                                    is Cell.Normal, is Cell.Control -> bg
-                                                    is Cell.Removed -> bg2
-                                                    is Cell.Absent, is Cell.DayOff -> bg3
+                                                when {
+                                                    it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
+                                                            || it is Cell.ST && it.groups.any { it.changeInfo != null } -> bg2
+                                                    it is Cell.Normal || it is Cell.ST || it is Cell.Control -> bg
+                                                    else /*it is Cell.Absent || it is Cell.DayOff*/ -> bg3
                                                 }
                                             ),
                                         contentAlignment = Alignment.Center
@@ -140,10 +141,11 @@ class DnesWidget : GlanceAppWidget() {
                                                     .clickable(actionStartActivity<MainActivity>())
                                                     .padding(all = 8.dp),
                                                 style = TextStyle(
-                                                    color = when (it) {
-                                                        is Cell.Normal, is Cell.Control -> onbg
-                                                        is Cell.Removed -> onbg2
-                                                        is Cell.Absent, is Cell.DayOff -> onbg3
+                                                    color = when {
+                                                        it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
+                                                                || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Control -> onbg
+                                                        else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     }
                                                 ),
                                             )
@@ -160,10 +162,11 @@ class DnesWidget : GlanceAppWidget() {
                                                     .clickable(actionStartActivity<MainActivity>())
                                                     .padding(all = 8.dp),
                                                 style = TextStyle(
-                                                    color = when (it) {
-                                                        is Cell.Normal, is Cell.Control -> onbg
-                                                        is Cell.Removed -> onbg2
-                                                        is Cell.Absent, is Cell.DayOff -> onbg3
+                                                    color = when {
+                                                        it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
+                                                                || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Control -> onbg
+                                                        else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     }
                                                 ),
                                             )
@@ -185,10 +188,11 @@ class DnesWidget : GlanceAppWidget() {
                                                     .fillMaxWidth()
                                                     .padding(horizontal = 4.dp),
                                                 style = TextStyle(
-                                                    color = when (it) {
-                                                        is Cell.Normal, is Cell.Control -> onbg
-                                                        is Cell.Removed -> onbg2
-                                                        is Cell.Absent, is Cell.DayOff -> onbg3
+                                                    color = when {
+                                                        it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
+                                                                || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Control -> onbg
+                                                        else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     },
                                                     textAlign = TextAlign.Center
                                                 ),
@@ -200,10 +204,11 @@ class DnesWidget : GlanceAppWidget() {
                                                     .clickable(actionStartActivity<MainActivity>())
                                                     .padding(bottom = 8.dp),
                                                 style = TextStyle(
-                                                    color = when (it) {
-                                                        is Cell.Normal, is Cell.Control -> onbg
-                                                        is Cell.Removed -> onbg2
-                                                        is Cell.Absent, is Cell.DayOff -> onbg3
+                                                    color = when {
+                                                        it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
+                                                                || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Control -> onbg
+                                                        else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     }
                                                 ),
                                             )
