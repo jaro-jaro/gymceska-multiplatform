@@ -13,3 +13,5 @@ actual fun Navigator(
         navController.navigateUp()
     }
 }
+
+actual fun setAppTitle(title: String) {}

@@ -14,3 +14,5 @@ interface Navigator {
     fun navigate(route: Route)
     fun navigateUp()
 }
+
+expect fun setAppTitle(title: String)

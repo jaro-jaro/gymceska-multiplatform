@@ -25,3 +25,7 @@ actual fun Navigator(
         }
     }
 }
+
+actual fun setAppTitle(title: String) {
+    window.document.title = title
+}
