@@ -209,7 +209,8 @@ class RozvrhViewModel(
     val alwaysTwoRowCells = repo.nastaveni.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::alwaysTwoRowCells)
 
     val result = combine(vjec, mujRozvrh, repo.nastaveni, zobrazitMujRozvrh) { vjec, mujRozvrh, nastaveni, zobrazitMujRozvrh ->
-        when (vjec) {
+        if (vjec is Class && vjec.odkaz == null) null
+        else when (vjec) {
             is Class -> repo.ziskatRozvrh(
                 trida = vjec,
                 stalost = stalost,
