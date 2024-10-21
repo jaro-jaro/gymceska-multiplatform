@@ -40,30 +40,16 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import cz.jaro.gymceska.MainActivity
-import cz.jaro.gymceska.PrepnoutRozvrhWidget
 import cz.jaro.gymceska.R
 import cz.jaro.gymceska.Repository
-import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.rozvrh.Cell
-import cz.jaro.gymceska.rozvrh.TimetableType
-import cz.jaro.gymceska.rozvrh.filtrovatDen
-import cz.jaro.gymceska.ukoly.time
-import cz.jaro.gymceska.ukoly.today
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DatePeriod
-import kotlinx.datetime.LocalTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
-import kotlin.time.Duration.Companion.hours
 
 
 @Suppress("unused")
@@ -72,7 +58,7 @@ class DnesWidget : GlanceAppWidget() {
     @SuppressLint("RestrictedApi")
     @Composable
     fun Content(
-        context: Context
+        context: Context,
     ) = GlanceTheme {
         val prefs = currentState<Preferences>()
         val bunky = Json.decodeFromString<List<Cell>>(prefs[stringPreferencesKey("hodiny")] ?: "[]")
@@ -269,44 +255,7 @@ class DnesWidget : GlanceAppWidget() {
                 super.onUpdate(context, appWidgetManager, appWidgetIds)
 
                 CoroutineScope(Dispatchers.IO).launch {
-                    val nastaveni = repo.nastaveni.first()
-
-                    val dnes = rozvrhZobrazitNaDnesek()
-
-                    val den = today().plus(DatePeriod(days = if (dnes) 0 else 1))
-                    val cisloDne = den.dayOfWeek.value // 1-5 (2-7)
-
-                    val stalost = if (cisloDne == 1 && !dnes) TimetableType.NextWeek else TimetableType.ThisWeek
-
-                    val hodiny = repo.ziskatRozvrh(stalost).let { result ->
-                        if (result !is Uspech) return@let listOf(Cell.Header("Žádná data!"))
-
-                        val tabulka = result.rozvrh
-
-                        tabulka
-                            .getOrNull(cisloDne)
-                            ?.asSequence()
-                            ?.drop(1)
-                            ?.mapIndexed { i, hodina -> i to hodina }
-                            ?.filter { (_, hodina) -> hodina.first().subjectLike.isNotBlank() }
-                            ?.map { (i, hodina) -> hodina.map { bunka -> when (bunka) {
-                                is Cell.Absent -> bunka.copy(reason = "$i. ${bunka.reason}")
-                                is Cell.DayOff -> bunka.copy(reasonText = "$i. ${bunka.reasonText}")
-                                is Cell.Removed -> bunka.copy(subject = "$i. ${bunka.subject}")
-                                is Cell.Normal -> bunka.copy(subject = "$i. ${bunka.subject}")
-                                is Cell.Header -> bunka.copy(title = "$i. ${bunka.title}")
-                                Cell.Empty -> Cell.Header(title = "$i.")
-                            } } }
-                            ?.toList()
-                            ?.filtrovatDen(true, nastaveni.mojeSkupiny)
-                            ?.mapNotNull { hodina -> hodina.firstOrNull() }
-                            ?.ifEmpty {
-                                listOf(
-                                    Cell.Header("Žádné hodiny!"),
-                                )
-                            }
-                            ?: listOf(Cell.Header("Víkend"))
-                    }
+                    val (den, hodiny) = repo.rozvrhWidgetData()
 
                     appWidgetIds.forEach {
                         val id = GlanceAppWidgetManager(context).getGlanceIdBy(it)
@@ -318,50 +267,6 @@ class DnesWidget : GlanceAppWidget() {
                         glanceAppWidget.update(context, id)
                     }
                 }
-            }
-
-            private suspend fun rozvrhZobrazitNaDnesek() =
-                when (val nastaveni = repo.nastaveni.first().prepnoutRozvrhWidget) {
-                    is PrepnoutRozvrhWidget.OPulnoci -> true
-                    is PrepnoutRozvrhWidget.VCas -> {
-                        val cas = time()
-                        cas < nastaveni.cas
-                    }
-
-                    is PrepnoutRozvrhWidget.PoKonciVyucovani -> {
-                        val cas = Clock.System.now()
-                        val konecVyucovani = zjistitKonecVyucovani()
-
-                        (cas - nastaveni.poHodin.hours).toLocalDateTime(TimeZone.currentSystemDefault()).time < konecVyucovani
-                    }
-                }
-
-            private suspend fun zjistitKonecVyucovani(): LocalTime {
-                val nastaveni = repo.nastaveni.first()
-
-                val result = repo.ziskatRozvrh(TimetableType.ThisWeek)
-
-                if (result !is Uspech) return LocalTime(0, 0)
-
-                val tabulka = result.rozvrh
-
-                val denTydne = today().dayOfWeek.value /* 1-5 (6-7) */
-
-                val den = tabulka.getOrNull(denTydne) ?: return LocalTime(12, 0)
-
-                val hodina = den
-                    .mapIndexed { i, hodina -> i to hodina }
-                    .drop(1)
-                    .filter { (_, hodina) -> hodina.first().subjectLike.isNotBlank() }
-                    .lastOrNull { (_, hodina) ->
-                        hodina.any { bunka ->
-                            bunka.classLike.isEmpty() || bunka.classLike in nastaveni.mojeSkupiny
-                        }
-                    }
-                    ?.first
-                    ?: return LocalTime(12, 0)
-
-                return tabulka.first()[hodina].first().teacherLike.split(" - ")[1].split(":").let { LocalTime(it[0].toInt(), it[1].toInt()) }
             }
         }
     }

@@ -104,10 +104,6 @@ class RozvrhViewModel(
         } ?: emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), emptyList())
 
-    private fun toLocalTime(it: String) = it.split(":").map(String::toInt).toLocalTime()
-    private fun List<LocalTime>.toRange() = this[0]..this[1]
-    private fun List<Int>.toLocalTime() = LocalTime(this[0], this[1])
-
     val vjec = combineStates(
         viewModelScope,
         repo.nastaveni, tridy, mistnosti, vyucujici,
@@ -253,16 +249,6 @@ class RozvrhViewModel(
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), null)
 
-    private fun Week.editCells(
-        editCell: (Cell) -> Cell,
-    ) = map { day ->
-        day.map { lesson ->
-            lesson.map { cell ->
-                editCell(cell)
-            }
-        }
-    }
-
     val stahnoutVse: () -> Unit = {
         viewModelScope.launch {
             repo.stahnoutVse()
@@ -344,3 +330,21 @@ class RozvrhViewModel(
         }
     }
 }
+
+fun Week.editCells(
+    editCell: (Cell) -> Cell,
+) = map { day ->
+    day.editCells(editCell)
+}
+
+fun Day.editCells(
+    editCell: (Cell) -> Cell,
+) = map { lesson ->
+    lesson.map { cell ->
+        editCell(cell)
+    }
+}
+
+fun toLocalTime(it: String) = it.split(":").map(String::toInt).toLocalTime()
+fun List<LocalTime>.toRange() = this[0]..this[1]
+fun List<Int>.toLocalTime() = LocalTime(this[0], this[1])
