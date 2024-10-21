@@ -227,7 +227,7 @@ fun RozvrhContent(
 
             Error -> Text("Omlouváme se, ale došlo k chybě při stahování rozvrhu. Zkuste to znovu.")
             TridaNeexistuje -> Text("Tato třída neexistuje")
-            ZadnaData -> Text("Jste offline a nemáte stažená žádná data z dřívjejška.")
+            ZadnaData -> Text("Jste offline a nemáte stažená žádná data z dřívějška.")
         }
     }
 }
