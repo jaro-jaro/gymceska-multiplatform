@@ -188,6 +188,10 @@ fun Cell(
             wholeRowCell -> BaseCell(
                 size = Size(10F, height),
                 center = cell.subjectLike,
+                centerStyle = TextStyle(
+                    color = cell.subjectColor(),
+                    fontWeight = FontWeight.Bold,
+                ),
             )
 
             !twoRowCell -> BaseCell(
