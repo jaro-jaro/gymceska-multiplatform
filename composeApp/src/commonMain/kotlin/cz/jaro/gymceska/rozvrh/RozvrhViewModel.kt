@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
+import kotlin.js.JsName
 import kotlin.reflect.KClass
 import kotlin.time.Duration.Companion.seconds
 
@@ -331,6 +332,7 @@ class RozvrhViewModel(
     }
 }
 
+@JsName("editCellsOfffWeek")
 fun Week.editCells(
     editCell: (Cell) -> Cell,
 ) = map { day ->
