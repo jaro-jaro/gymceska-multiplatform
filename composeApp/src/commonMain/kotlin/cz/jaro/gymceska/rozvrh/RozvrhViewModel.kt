@@ -5,16 +5,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Navigator
-import cz.jaro.gymceska.Repository
+import cz.jaro.gymceska.OnlineTimetableSource
 import cz.jaro.gymceska.Route.Rozvrh
+import cz.jaro.gymceska.SettingsFlow
+import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.combineStates
+import cz.jaro.gymceska.getTeachers
 import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.rozvrh.Timetable.Class
 import cz.jaro.gymceska.rozvrh.Timetable.DenVjec
 import cz.jaro.gymceska.rozvrh.Timetable.HodinaVjec
 import cz.jaro.gymceska.rozvrh.Timetable.Room
 import cz.jaro.gymceska.rozvrh.Timetable.Teacher
+import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.unaryPlus
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -31,7 +35,8 @@ import kotlin.time.Duration.Companion.seconds
 
 class RozvrhViewModel(
     private val params: Parameters,
-    private val repo: Repository,
+    private val timetableSource: OnlineTimetableSource,
+    private val settings: SettingsFlow,
 ) : ViewModel() {
     data class Parameters(
         val arg: String,
@@ -90,17 +95,18 @@ class RozvrhViewModel(
 
     lateinit var navigator: Navigator
 
-    val tridy = repo.tridy
-    val mistnosti = repo.mistnosti
-    val vyucujici = repo.vyucujici
-    private val vyucujici2 = repo.vyucujici2
-    private val odemkleMistnosti = repo.odemkleMistnosti
-    private val velkeMistnosti = repo.velkeMistnosti
+    private val classListSource = timetableSource.classListSource
+    val tridy = classListSource.classes
+    val mistnosti = classListSource.rooms
+    val vyucujici = classListSource.teachers
+    private val vyucujici2 = classListSource.vyucujici2
+    private val odemkleMistnosti = classListSource.odemkleMistnosti
+    private val velkeMistnosti = classListSource.velkeMistnosti
 
     val hodiny = flow {
-        emit(repo.ziskatRozvrh(
-            trida = repo.nastaveni.value.mojeTrida,
-            stalost = TimetableType.ThisWeek,
+        emit(timetableSource.getTimetable(
+            klass = settings.value.mojeTrida,
+            type = TimetableType.ThisWeek,
         ).tabulka?.topHeaders()?.map {
             it.subtitle.split(" - ").map(::toLocalTime).toRange()
         } ?: emptyList())
@@ -108,7 +114,7 @@ class RozvrhViewModel(
 
     val vjec = combineStates(
         viewModelScope,
-        repo.nastaveni, tridy, mistnosti, vyucujici,
+        settings, tridy, mistnosti, vyucujici,
         SharingStarted.WhileSubscribed(5.seconds),
     ) { nastaveni, tridy, mistnosti, vyucujici ->
         if (params.decoded == null) return@combineStates nastaveni.mojeTrida
@@ -125,7 +131,7 @@ class RozvrhViewModel(
 
     val stalost = params.decoded?.stalost ?: TimetableType.defaultToday()
 
-    private val _mujRozvrh = repo.nastaveni.mapState(
+    private val _mujRozvrh = settings.mapState(
         viewModelScope, SharingStarted.WhileSubscribed(5.seconds)
     ) { nastaveni ->
         params.decoded?.mujRozvrh ?: nastaveni.defaultMujRozvrh
@@ -133,7 +139,7 @@ class RozvrhViewModel(
 
     val mujRozvrh = combineStates(
         viewModelScope,
-        _mujRozvrh, repo.nastaveni, vjec,
+        _mujRozvrh, settings, vjec,
         SharingStarted.WhileSubscribed(5.seconds),
     ) { mujRozvrh, nastaveni, vjec ->
         mujRozvrh && vjec == nastaveni.mojeTrida
@@ -197,24 +203,24 @@ class RozvrhViewModel(
 
     val zobrazitMujRozvrh = combineStates(
         viewModelScope,
-        vjec, repo.nastaveni,
+        vjec, settings,
         SharingStarted.WhileSubscribed(5.seconds),
     ) { vjec, nastaveni ->
         vjec == nastaveni.mojeTrida
     }
 
-    val zoom = repo.nastaveni.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::zoom)
+    val zoom = settings.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::zoom)
 
-    val currentlyDownloading = repo.currentlyDownloading
+    val currentlyDownloading = timetableSource.currentlyDownloading
 
-    val alwaysTwoRowCells = repo.nastaveni.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::alwaysTwoRowCells)
+    val alwaysTwoRowCells = settings.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::alwaysTwoRowCells)
 
-    val result = combine(vjec, mujRozvrh, repo.nastaveni, zobrazitMujRozvrh) { vjec, mujRozvrh, nastaveni, zobrazitMujRozvrh ->
+    val result = combine(vjec, mujRozvrh, settings, zobrazitMujRozvrh) { vjec, mujRozvrh, nastaveni, zobrazitMujRozvrh ->
         if (vjec is Class && vjec.odkaz == null) null
         else when (vjec) {
-            is Class -> repo.ziskatRozvrh(
-                trida = vjec,
-                stalost = stalost,
+            is Class -> timetableSource.getTimetable(
+                klass = vjec,
+                type = stalost,
             ).upravitTabulku {
                 it.editCells { cell ->
                     if (cell is Cell.Data) cell.copy(klass = "") else cell
@@ -228,8 +234,8 @@ class RozvrhViewModel(
             is Room,
                 -> TvorbaRozvrhu.createTimetableForTeacherOrRoom(
                 target = vjec,
-                type = stalost,
-                repo = repo
+                classListSource = classListSource,
+                getTimetable = { timetableSource.getTimetable(it, stalost) },
             ).upravitTabulku { week ->
                 week.editCells { cell ->
                     if (cell is Cell.Normal) when (vjec) {
@@ -245,8 +251,8 @@ class RozvrhViewModel(
             is HodinaVjec,
                 -> TvorbaRozvrhu.createTimetableForDayOrLesson(
                 target = vjec,
-                type = stalost,
-                repo = repo
+                classListSource = classListSource,
+                getTimetable = { timetableSource.getTimetable(it, stalost) },
             )
         }
     }
@@ -254,7 +260,7 @@ class RozvrhViewModel(
 
     val stahnoutVse: () -> Unit = {
         viewModelScope.launch {
-            repo.stahnoutVse()
+            timetableSource.downloadAll()
         }
     }
 
@@ -269,7 +275,7 @@ class RozvrhViewModel(
         viewModelScope.launch {
             val plneTridy = tridy.value.drop(1).flatMap { trida ->
                 progress("Prohledávám třídu\n${trida.zkratka}")
-                repo.ziskatRozvrh(trida, stalost).let { result ->
+                timetableSource.getTimetable(trida, stalost).let { result ->
                     if (result !is Uspech) {
                         onComplete(null)
                         return@launch
@@ -307,7 +313,7 @@ class RozvrhViewModel(
         viewModelScope.launch {
             val zaneprazdneniUcitele = tridy.value.drop(1).flatMap { trida ->
                 progress("Prohledávám třídu\n${trida.zkratka}")
-                repo.ziskatRozvrh(trida, stalost).let { result ->
+                timetableSource.getTimetable(trida, stalost).let { result ->
                     if (result !is Uspech) {
                         onComplete(null)
                         return@launch
@@ -324,7 +330,7 @@ class RozvrhViewModel(
             val vysledek =
                 vyucujici.value.drop(1).filter { it.zkratka !in zaneprazdneniUcitele && it.zkratka in vyucujici2.value }.toMutableList()
 
-            val ucitele = repo.ziskaUcitele(repo.nastaveni.first().mojeTrida)
+            val ucitele = timetableSource.getTeachers(settings.first().mojeTrida)
             if (FiltrNajdiMi.JenSvi in filtry) vysledek.retainAll {
                 it.zkratka in ucitele
             }
@@ -334,7 +340,7 @@ class RozvrhViewModel(
     }
 }
 
-fun Week.editCells(
+fun TimetableData.editCells(
     editCell: (Cell) -> Cell,
 ) = map { day ->
     day.editCells(editCell)
@@ -342,7 +348,7 @@ fun Week.editCells(
 
 @JsName("editCellsOfDay")
 @JvmName("editCellsOfDay")
-fun Day.editCells(
+fun List<List<Cell>>.editCells(
     editCell: (Cell) -> Cell,
 ) = map { lesson ->
     lesson.map { cell ->

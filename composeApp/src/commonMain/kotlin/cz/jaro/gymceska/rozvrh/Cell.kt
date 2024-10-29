@@ -26,10 +26,6 @@ import cz.jaro.gymceska.ResponsiveText
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-typealias Week = List<Day>
-typealias Day = List<Lesson>
-typealias Lesson = List<Cell>
-
 @Serializable
 sealed interface Cell {
     val roomLike: String get() = ""
@@ -42,12 +38,14 @@ sealed interface Cell {
     val popupData: List<Pair<String, String>>? get() = null
     val isWholeDay: Boolean get() = false
 
-    sealed interface Control : Cell
+    sealed interface Permanent : Cell
+    sealed interface PermanentNonHeader : Permanent, NonHeader
+    sealed interface NonHeader : Cell
     sealed interface Data : Cell {
         val klass: String get() = ""
     }
 
-    sealed interface Abnormal : Data
+    sealed interface Abnormal : Data, NonHeader
 
     @Serializable
     @SerialName("Normal")
@@ -61,7 +59,7 @@ sealed interface Cell {
         override val klass: String = "",
         val group: String = "",
         val theme: String = "",
-    ) : Data {
+    ) : Data, PermanentNonHeader {
         override val roomLike get() = room
         override val subjectLike get() = subject
         override val teacherLike get() = teacher
@@ -87,7 +85,7 @@ sealed interface Cell {
         val subjectName: String = "Sportovní trénink",
         override val klass: String = "",
         val groups: List<STGroup>,
-    ) : Data {
+    ) : Data, NonHeader {
         @Serializable
         data class STGroup(
             val changeInfo: String? = null,
@@ -122,7 +120,7 @@ sealed interface Cell {
     data class Header(
         val title: String = "",
         val subtitle: String = "",
-    ) : Control {
+    ) : Cell, Permanent {
         override val subjectLike get() = title
         override val teacherLike get() = subtitle
     }
@@ -179,7 +177,7 @@ sealed interface Cell {
 
     @Serializable
     @SerialName("Empty")
-    data object Empty : Control
+    data object Empty : PermanentNonHeader
 }
 
 @Composable
@@ -392,11 +390,6 @@ fun BaseCell(
         }
     }
 }
-
-fun Week.justTimetable(): Week = drop(1).map { it.drop(1) }
-fun Week.topHeaders() = first().drop(1).map { it.single() as Cell.Header }
-fun Week.startHeaders() = drop(1).map { it.first().single() as Cell.Header }
-fun Week.cornerHeader() = first().first().single() as Cell.Header
 
 fun Cell.Data.copy(klass: String = this.klass) = when (this) {
     is Cell.Normal -> copy(klass = klass)

@@ -71,19 +71,18 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import cz.jaro.compose_dialog.dialogState
 import cz.jaro.compose_dialog.show
 import cz.jaro.gymceska.Error
 import cz.jaro.gymceska.Navigator
-import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
+import cz.jaro.gymceska.viewModel
 import kotlinx.datetime.LocalTime
 import org.koin.core.Koin
 
@@ -96,17 +95,11 @@ fun Rozvrh(
     val horScrollState = rememberScrollState(args.x ?: 0)
     val verScrollState = rememberScrollState(args.y ?: 0)
 
-    val repo = koin.get<Repository>()
-    val viewModel = viewModel<RozvrhViewModel> {
-        RozvrhViewModel(
-            repo = repo,
-            params = RozvrhViewModel.Parameters(
-                arg = args.vjec,
-                horScrollState = horScrollState,
-                verScrollState = verScrollState,
-            )
-        )
-    }
+    val viewModel = koin.viewModel<RozvrhViewModel>(RozvrhViewModel.Parameters(
+        arg = args.vjec,
+        horScrollState = horScrollState,
+        verScrollState = verScrollState,
+    ))
 
     LaunchedEffect(Unit) {
         viewModel.navigator = navigator

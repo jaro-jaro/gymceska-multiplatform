@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.OfflineRuzneCasti
 import cz.jaro.gymceska.Online
+import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.ZdrojRozvrhu
 import cz.jaro.gymceska.theme.GymceskaTheme
 import cz.jaro.gymceska.theme.LocalIsDarkThemeUsed
@@ -52,12 +52,11 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.isoDayNumber
 
 context(ColumnScope)
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Tabulka(
     vjec: Timetable,
     stalost: TimetableType,
-    tabulka: Week,
+    tabulka: TimetableData,
     kliklNaNeco: (vjec: Timetable) -> Unit,
     rozvrhOfflineWarning: ZdrojRozvrhu?,
     tridy: List<Timetable.Class>,

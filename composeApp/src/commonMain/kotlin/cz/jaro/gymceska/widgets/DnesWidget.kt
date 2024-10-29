@@ -1,7 +1,8 @@
 package cz.jaro.gymceska.widgets
 
+import cz.jaro.gymceska.OnlineTimetableSource
 import cz.jaro.gymceska.PrepnoutRozvrhWidget
-import cz.jaro.gymceska.Repository
+import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.rozvrh.Cell
 import cz.jaro.gymceska.rozvrh.TimetableType
@@ -11,7 +12,6 @@ import cz.jaro.gymceska.rozvrh.filtrovatDen
 import cz.jaro.gymceska.rozvrh.toLocalTime
 import cz.jaro.gymceska.ukoly.time
 import cz.jaro.gymceska.ukoly.today
-import kotlinx.coroutines.flow.first
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
@@ -22,8 +22,8 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Duration.Companion.hours
 
-private suspend fun Repository.rozvrhZobrazitNaDnesek() =
-    when (val nastaveni = nastaveni.first().prepnoutRozvrhWidget) {
+private suspend fun OnlineTimetableSource.rozvrhZobrazitNaDnesek(settings: SettingsFlow) =
+    when (val nastaveni = settings.value.prepnoutRozvrhWidget) {
         is PrepnoutRozvrhWidget.OPulnoci -> true
         is PrepnoutRozvrhWidget.VCas -> {
             val cas = time()
@@ -32,16 +32,16 @@ private suspend fun Repository.rozvrhZobrazitNaDnesek() =
 
         is PrepnoutRozvrhWidget.PoKonciVyucovani -> {
             val cas = Clock.System.now()
-            val konecVyucovani = this.zjistitKonecVyucovani()
+            val konecVyucovani = zjistitKonecVyucovani(settings)
 
             (cas - nastaveni.poHodin.hours).toLocalDateTime(TimeZone.currentSystemDefault()).time < konecVyucovani
         }
     }
 
-private suspend fun Repository.zjistitKonecVyucovani(): LocalTime {
-    val nastaveni = nastaveni.first()
+private suspend fun OnlineTimetableSource.zjistitKonecVyucovani(settings: SettingsFlow): LocalTime {
+    val nastaveni = settings.value
 
-    val result = ziskatRozvrh(TimetableType.ThisWeek)
+    val result = getTimetable(nastaveni.mojeTrida, TimetableType.ThisWeek)
 
     if (result !is Uspech) return LocalTime(0, 0)
 
@@ -66,17 +66,16 @@ private suspend fun Repository.zjistitKonecVyucovani(): LocalTime {
     return tabulka.first()[hodina].first().teacherLike.split(" - ")[1].let(::toLocalTime)
 }
 
-suspend fun Repository.rozvrhWidgetData(): Pair<LocalDate, List<Cell>> {
-    val nastaveni = nastaveni.first()
-
-    val dnes = rozvrhZobrazitNaDnesek()
+suspend fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair<LocalDate, List<Cell>> {
+    val nastaveni = settings.value
+    val dnes = rozvrhZobrazitNaDnesek(settings)
 
     val den = today().plus(DatePeriod(days = if (dnes) 0 else 1))
     val cisloDne = den.dayOfWeek.isoDayNumber
 
     val stalost = if (cisloDne == 1 && !dnes) TimetableType.NextWeek else TimetableType.ThisWeek
 
-    val hodiny = ziskatRozvrh(stalost).let { result ->
+    val hodiny = getTimetable(nastaveni.mojeTrida, stalost).let { result ->
         if (result !is Uspech) return@let listOf(Cell.Header("Žádná data!"))
 
         val tabulka = result.rozvrh
@@ -85,7 +84,7 @@ suspend fun Repository.rozvrhWidgetData(): Pair<LocalDate, List<Cell>> {
             .getOrNull(cisloDne)
             ?.asSequence()
             ?.drop(1)
-            ?.mapIndexed { i, hodina -> i to hodina }.also(::println)
+            ?.mapIndexed { i, hodina -> i to hodina.filterIsInstance<Cell.NonHeader>() /*cast*/ }.also(::println)
             ?.filter { (_, hodina) -> hodina.first().subjectLike.isNotBlank() }.also(::println)
             ?.map { (i, hodina) ->
                 hodina.map { bunka ->
@@ -94,16 +93,16 @@ suspend fun Repository.rozvrhWidgetData(): Pair<LocalDate, List<Cell>> {
                         is Cell.DayOff -> bunka.copy(reasonText = "$i. ${bunka.reasonText}")
                         is Cell.Removed -> bunka.copy(subject = "$i. ${bunka.subject}")
                         is Cell.Normal -> bunka.copy(subject = "$i. ${bunka.subject}")
-                        is Cell.Header -> bunka.copy(title = "$i. ${bunka.title}")
                         is Cell.ST -> bunka.copy(subject = "$i. ${bunka.subject}")
                         Cell.Empty -> Cell.Header(title = "$i.")
                     }
                 }
-            }.also(::println)
-            ?.toList().also(::println)
+            }
+            ?.toList()
             ?.editCells { cell ->
                 if (cell is Cell.Data) cell.copy(klass = "") else cell
             }
+            ?.map { it.filterIsInstance<Cell.NonHeader>() /*cast*/ }
             ?.filtrovatDen(true, nastaveni.mojeSkupiny).also(::println)
             ?.mapNotNull { hodina -> hodina.firstOrNull() }.also(::println)
             ?.ifEmpty {

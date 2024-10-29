@@ -15,6 +15,7 @@ import dev.gitlive.firebase.FirebaseOptions
 import dev.gitlive.firebase.initialize
 import kotlinx.browser.window
 import org.jetbrains.skiko.wasm.onWasmReady
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalSettingsApi::class)
@@ -36,27 +37,18 @@ fun main() {
                 )
             )
         }
-        single {
-            UserOnlineManager { true }
-        }
-        single {
-            UserIdProvider {
-                ""
-            }
-        }
-
-        single {
-            StorageSettings().makeObservable()
-        }
+        single { UserOnlineManager { true } }
+        single { StorageSettings().makeObservable() }
+        single { NoAdminManager } bind AdminManager::class
     })
 
-    val repo = koinApp.koin.get<Repository>()
+    val settingsFlow = koinApp.koin.get<SettingsFlow>()
 
     onWasmReady {
         CanvasBasedWindow(
             title = "Gymceska",
         ) {
-            val nastaveni by repo.nastaveni.collectAsStateWithLifecycle(Nastaveni(mojeTrida = Timetable.Class("")))
+            val nastaveni by settingsFlow.collectAsStateWithLifecycle(Nastaveni(mojeTrida = Timetable.Class("")))
 
             GymceskaTheme(
                 useDarkTheme = if (nastaveni.darkModePodleSystemu) isSystemInDarkTheme() else nastaveni.darkMode,

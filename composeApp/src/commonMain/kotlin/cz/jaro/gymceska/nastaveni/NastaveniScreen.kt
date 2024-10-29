@@ -58,13 +58,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import cz.jaro.gymceska.BuildKonfig
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Platform
 import cz.jaro.gymceska.PrepnoutRozvrhWidget
-import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.openWebsiteLauncher
 import cz.jaro.gymceska.platform
@@ -74,6 +72,7 @@ import cz.jaro.gymceska.rozvrh.Vybiratko
 import cz.jaro.gymceska.rozvrh.defaultToday
 import cz.jaro.gymceska.theme.Theme
 import cz.jaro.gymceska.theme.areDynamicColorsSupported
+import cz.jaro.gymceska.viewModel
 import cz.jaro.gymceska.widgets.areWidgetsSupported
 import kotlinx.datetime.LocalTime
 import org.koin.core.Koin
@@ -85,15 +84,10 @@ fun Nastaveni(
     navigator: Navigator,
     koin: Koin,
 ) {
-    val repo = koin.get<Repository>()
-    val viewModel = viewModel<NastaveniViewModel> {
-        NastaveniViewModel(
-            repo = repo,
-        )
-    }
+    val viewModel = koin.viewModel<NastaveniViewModel>()
 
     val tridy by viewModel.tridyFlow.collectAsStateWithLifecycle(emptyList())
-    val nastaveni by viewModel.nastaveni.collectAsStateWithLifecycle(null)
+    val nastaveni by viewModel.settings.collectAsStateWithLifecycle(null)
     val skupiny by viewModel.skupiny.collectAsStateWithLifecycle(null)
 
     NastaveniContent(

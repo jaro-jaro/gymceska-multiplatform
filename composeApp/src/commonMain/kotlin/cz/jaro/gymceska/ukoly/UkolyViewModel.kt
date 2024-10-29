@@ -2,7 +2,10 @@ package cz.jaro.gymceska.ukoly
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import cz.jaro.gymceska.Repository
+import cz.jaro.gymceska.AdminManager
+import cz.jaro.gymceska.SettingsFlow
+import cz.jaro.gymceska.UkolyRepository
+import cz.jaro.gymceska.UserOnlineManager
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.map
@@ -15,22 +18,25 @@ import kotlinx.coroutines.flow.combine as kombajn
 
 @OptIn(ExperimentalUuidApi::class)
 class UkolyViewModel(
-    private val repo: Repository
+    private val repo: UkolyRepository,
+    userOnlineManager: UserOnlineManager,
+    settings: SettingsFlow,
+    adminManager: AdminManager,
 ) : ViewModel() {
 
     private val idNadpis1 = Uuid.random()
     private val idNadpis2 = Uuid.random()
 
-    val jeOnline = repo.isOnlineFlow
+    val jeOnline = userOnlineManager.isOnline
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), false)
 
-    val inteligentni = repo.jeZarizeniPovoleno
+    val inteligentni = adminManager.isAdmin
 
     val ukoly = repo.ukoly.map { ukoly ->
         ukoly?.sortedBy(::dateFromUkol)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), null)
 
-    val state = kombajn(ukoly, repo.skrtleUkoly, repo.nastaveni) { ukoly, skrtle, nastaveni ->
+    val state = kombajn(ukoly, repo.skrtleUkoly, settings) { ukoly, skrtle, nastaveni ->
         if (ukoly == null) UkolyState.Nacitani
         else UkolyState.Nacteno(
             ukoly = ukoly.map {

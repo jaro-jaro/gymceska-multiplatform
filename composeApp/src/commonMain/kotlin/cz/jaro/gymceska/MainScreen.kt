@@ -24,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import cz.jaro.compose_dialog.dialogState
 import cz.jaro.gymceska.nastaveni.Nastaveni
 import cz.jaro.gymceska.rozvrh.Rozvrh
+import cz.jaro.gymceska.rozvrh.manual.RozvrhManual
 import cz.jaro.gymceska.ukoly.SpravceUkolu
 import cz.jaro.gymceska.ukoly.Ukoly
 import dev.gitlive.firebase.Firebase
@@ -136,6 +137,7 @@ fun MainContent(
                 )
             },
         ) {
+            route<Route.RozvrhManual> { RozvrhManual(args = it, navigator = navigator, koin = koin) }
             route<Route.Rozvrh> { Rozvrh(args = it, navigator = navigator, koin = koin) }
             route<Route.Ukoly> { Ukoly(args = it, navigator = navigator, koin = koin) }
             route<Route.SpravceUkolu> { SpravceUkolu(args = it, navigator = navigator, koin = koin) }

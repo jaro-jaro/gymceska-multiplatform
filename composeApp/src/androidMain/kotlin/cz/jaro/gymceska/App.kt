@@ -8,9 +8,11 @@ import android.net.NetworkCapabilities
 import android.provider.Settings
 import com.russhwolf.settings.ObservableSettings
 import com.russhwolf.settings.SharedPreferencesSettings
-import dev.gitlive.firebase.*
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.FirebaseApp
 import dev.gitlive.firebase.analytics.analytics
 import dev.gitlive.firebase.crashlytics.crashlytics
+import dev.gitlive.firebase.initialize
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
@@ -28,6 +30,7 @@ class App : Application() {
                 Firebase.analytics.setUserId(getUserId())
                 Firebase.crashlytics.setUserId(getUserId())
             } } bind FirebaseApp::class
+            single { AndroidAppUpdateManager(get(), get(), get()) } bind AdminManager::class
         })
     }
 

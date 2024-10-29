@@ -1,12 +1,20 @@
 package cz.jaro.gymceska.rozvrh
 
 import com.fleeksoft.ksoup.nodes.Document
+import cz.jaro.gymceska.ClassListSource
+import cz.jaro.gymceska.Day
+import cz.jaro.gymceska.EmptyTimetables.type
+import cz.jaro.gymceska.Lesson
 import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.OfflineRuzneCasti
 import cz.jaro.gymceska.Online
-import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Result
+import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.Uspech
+import cz.jaro.gymceska.cornerHeader
+import cz.jaro.gymceska.justTimetable
+import cz.jaro.gymceska.startHeaders
+import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.today
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
@@ -24,7 +32,7 @@ object TvorbaRozvrhu {
         type: TimetableType,
         doc: Document,
         klass: String,
-    ): Week = listOf(
+    ): TimetableData = listOf(
         listOf(
             listOf(
                 Cell.Header(
@@ -168,18 +176,18 @@ object TvorbaRozvrhu {
 
     suspend fun createTimetableForTeacherOrRoom(
         target: Timetable,
-        type: TimetableType,
-        repo: Repository,
+        classListSource: ClassListSource,
+        getTimetable: suspend (klass: Timetable.Class) -> Result
     ): Result {
         require(target is Timetable.Room || target is Timetable.Teacher)
 
-        val seznamNazvu = repo.tridy.value.drop(1)
+        val seznamNazvu = classListSource.classes.value.drop(1)
 
         val novaTabulka = emptyTyden(target)
 
         val nejstarsi = seznamNazvu.fold(null as LocalDateTime?) { zatimNejstarsi, trida ->
 
-            val result = repo.ziskatRozvrh(trida, type)
+            val result = getTimetable(trida)
 
             if (result !is Uspech) return result
 
@@ -240,18 +248,18 @@ object TvorbaRozvrhu {
 
     suspend fun createTimetableForDayOrLesson(
         target: Timetable,
-        type: TimetableType,
-        repo: Repository,
+        classListSource: ClassListSource,
+        getTimetable: suspend (klass: Timetable.Class) -> Result
     ): Result {
         require(target is Timetable.DenVjec || target is Timetable.HodinaVjec)
 
-        val seznamNazvu = repo.tridy.value.drop(1)
+        val seznamNazvu = classListSource.classes.value.drop(1)
 
         val novaTabulka = emptyTyden(target, seznamNazvu.count())
 
         val nejstarsi = seznamNazvu.fold(null as LocalDateTime?) { zatimNejstarsi, trida ->
 
-            val result = repo.ziskatRozvrh(trida, type)
+            val result = getTimetable(trida)
 
             if (result !is Uspech) return result
 
@@ -378,16 +386,16 @@ val Result.tabulka
         else -> null
     }
 
-fun Result.upravitTabulku(edit: (Week) -> Week) = when (this) {
+fun Result.upravitTabulku(edit: (TimetableData) -> TimetableData) = when (this) {
     is Uspech -> copy(rozvrh = edit(rozvrh))
     else -> this
 }
 
-fun Week.filtrovatTabulku(
+fun TimetableData.filtrovatTabulku(
     mujRozvrh: Boolean = false,
     mojeSkupiny: Set<String> = emptySet(),
-) = map { den ->
-    den.filtrovatDen(mujRozvrh, mojeSkupiny)
+): TimetableData = listOf(listOf(listOf(cornerHeader())) + topHeaders().map { listOf(it) }) + startHeaders().zip(justTimetable()) { h, day ->
+     listOf(listOf(h)) + day.filtrovatDen(mujRozvrh, mojeSkupiny)
 }
 
 fun Day.filtrovatDen(
