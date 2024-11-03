@@ -1,7 +1,7 @@
 [versions]
 compose-plugin = "1.7.0"
 androidx-activity-compose = "1.9.3"
-androidx-core = "1.13.1"
+androidx-core = "1.15.0"
 desugar_jdk_libs = "2.1.2"
 filekit-core = "0.8.7"
 firebase = "2.1.0"
