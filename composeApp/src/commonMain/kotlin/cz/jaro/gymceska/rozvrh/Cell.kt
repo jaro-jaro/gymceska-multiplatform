@@ -38,13 +38,18 @@ sealed interface Cell {
     val popupData: List<Pair<String, String>>? get() = null
     val isWholeDay: Boolean get() = false
 
+    @Serializable
     sealed interface Permanent : Cell
+    @Serializable
     sealed interface PermanentNonHeader : Permanent, NonHeader
+    @Serializable
     sealed interface NonHeader : Cell
+    @Serializable
     sealed interface Data : Cell {
         val klass: String get() = ""
     }
 
+    @Serializable
     sealed interface Abnormal : Data, NonHeader
 
     @Serializable
