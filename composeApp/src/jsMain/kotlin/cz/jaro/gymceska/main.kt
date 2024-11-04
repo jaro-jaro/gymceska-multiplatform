@@ -40,6 +40,7 @@ fun main() {
         single { UserOnlineManager { true } }
         single { StorageSettings().makeObservable() }
         single { NoAdminManager } bind AdminManager::class
+        single { LocalFileManager.Default } bind LocalFileManager::class
     })
 
     val settingsFlow = koinApp.koin.get<SettingsFlow>()

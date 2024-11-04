@@ -37,7 +37,8 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import cz.jaro.gymceska.MainActivity
 import cz.jaro.gymceska.R
-import cz.jaro.gymceska.Repository
+import cz.jaro.gymceska.SettingsFlow
+import cz.jaro.gymceska.UkolyRepository
 import cz.jaro.gymceska.ukoly.JednoduchyUkol
 import cz.jaro.gymceska.ukoly.StavUkolu
 import cz.jaro.gymceska.ukoly.dateFromUkol
@@ -165,7 +166,8 @@ class UkolyWidget : GlanceAppWidget() {
         class Reciever : GlanceAppWidgetReceiver(), KoinComponent {
             override val glanceAppWidget: GlanceAppWidget = UkolyWidget()
 
-            private val repo = get<Repository>()
+            private val repo = get<UkolyRepository>()
+            private val settings = get<SettingsFlow>()
 
             override fun onReceive(context: Context, intent: Intent) {
                 if (intent.hasExtra(EXTRA_KEY_WIDGET_IDS)) {
@@ -181,7 +183,7 @@ class UkolyWidget : GlanceAppWidget() {
                 CoroutineScope(Dispatchers.IO).launch {
                     val rawUkoly = repo.ukoly.first()
                     val skrtle = repo.skrtleUkoly.first()
-                    val nastaveni = repo.nastaveni.first()
+                    val nastaveni = settings.value
                     val ukoly = rawUkoly
                         ?.sortedBy(::dateFromUkol)
                         ?.map {

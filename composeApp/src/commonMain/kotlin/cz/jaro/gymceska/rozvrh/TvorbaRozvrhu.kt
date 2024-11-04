@@ -3,7 +3,6 @@ package cz.jaro.gymceska.rozvrh
 import com.fleeksoft.ksoup.nodes.Document
 import cz.jaro.gymceska.ClassListSource
 import cz.jaro.gymceska.Day
-import cz.jaro.gymceska.EmptyTimetables.type
 import cz.jaro.gymceska.Lesson
 import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.OfflineRuzneCasti
@@ -177,11 +176,11 @@ object TvorbaRozvrhu {
     suspend fun createTimetableForTeacherOrRoom(
         target: Timetable,
         classListSource: ClassListSource,
-        getTimetable: suspend (klass: Timetable.Class) -> Result
+        getTimetable: suspend (klass: Timetable.Class) -> Result,
     ): Result {
         require(target is Timetable.Room || target is Timetable.Teacher)
 
-        val seznamNazvu = classListSource.classes.value.drop(1)
+        val seznamNazvu = classListSource.classes.value
 
         val novaTabulka = emptyTyden(target)
 
@@ -241,7 +240,6 @@ object TvorbaRozvrhu {
                 }
             }
         }
-        novaTabulka[0][0][0] = Cell.Header(title = weekParity(type))
         return if (nejstarsi == null) Uspech(novaTabulka, Online)
         else Uspech(novaTabulka, OfflineRuzneCasti(nejstarsi))
     }
@@ -253,7 +251,7 @@ object TvorbaRozvrhu {
     ): Result {
         require(target is Timetable.DenVjec || target is Timetable.HodinaVjec)
 
-        val seznamNazvu = classListSource.classes.value.drop(1)
+        val seznamNazvu = classListSource.classes.value
 
         val novaTabulka = emptyTyden(target, seznamNazvu.count())
 
@@ -297,7 +295,6 @@ object TvorbaRozvrhu {
                 }
             }
         }
-        novaTabulka[0][0][0] = Cell.Header(title = weekParity(type))
         return if (nejstarsi == null) Uspech(novaTabulka, Online)
         else Uspech(novaTabulka, OfflineRuzneCasti(nejstarsi))
     }

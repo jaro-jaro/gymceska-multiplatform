@@ -31,6 +31,7 @@ class App : Application() {
                 Firebase.crashlytics.setUserId(getUserId())
             } } bind FirebaseApp::class
             single { AndroidAppUpdateManager(get(), get(), get()) } bind AdminManager::class
+            single { AndroidLocalFileManager(get()) } bind LocalFileManager::class
         })
     }
 

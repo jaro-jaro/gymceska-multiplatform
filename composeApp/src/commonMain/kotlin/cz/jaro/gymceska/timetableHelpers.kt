@@ -1,6 +1,7 @@
 package cz.jaro.gymceska
 
 import cz.jaro.gymceska.rozvrh.Cell
+import kotlin.jvm.JvmName
 
 typealias TimetableData = List<List<List<Cell>>>
 typealias PermanentTimetableData = List<List<List<Cell.Permanent>>>
@@ -11,6 +12,7 @@ typealias PermanentWeek = List<PermanentDay>
 typealias PermanentDay = List<PermanentLesson>
 typealias PermanentLesson = List<Cell.PermanentNonHeader>
 
+@JvmName("justPermanentTimetable")
 fun PermanentTimetableData.justTimetable(): PermanentWeek =
     drop(1).map { it.drop(1).map { l -> l.map { c -> c as Cell.PermanentNonHeader } } }
 

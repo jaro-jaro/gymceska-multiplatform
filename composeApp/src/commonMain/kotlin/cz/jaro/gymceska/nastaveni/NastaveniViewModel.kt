@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.OnlineTimetableSource
 import cz.jaro.gymceska.SettingsFlow
+import cz.jaro.gymceska.Timetables
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.getGroups
 import cz.jaro.gymceska.rozvrh.TimetableType
@@ -42,20 +43,24 @@ class NastaveniViewModel(
                     finish(false)
                     return@mapNotNull null
                 }
-                it.nazev to res.rozvrh
+                it.zkratka to res.rozvrh
             }.toMap()
             update("Už to skoro je!")
-            val data = Json.encodeToString(vse)
+            val data = Json.encodeToString(
+                Timetables(stalost, vse)
+            )
 
             val dnes = today()
 
             FileKit.saveFile(
-                extension = "json",
+                extension = "rozvrh",
                 baseName = "ROZVRH-${dnes.year}-${dnes.monthNumber}-${dnes.dayOfMonth}-$stalost",
                 bytes = data.encodeToByteArray(),
             )
+            finish(true)
         }
     }
+
     fun resetRemoteConfig() {
         viewModelScope.launch {
             onlineTimetableSource.classListSource.resetLists()

@@ -14,14 +14,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -132,7 +139,7 @@ fun NastaveniContent(
             ViewSettings(nastaveni, upravitNastaveni)
             if (areWidgetsSupported()) WidgetSettings(nastaveni, upravitNastaveni)
             MyClassAndGroupsSettings(nastaveni, tridy, upravitNastaveni, skupiny)
-            DownloadAndRefresh(stahnoutVse, resetRemoteConfig)
+            DownloadAndRefresh(stahnoutVse, resetRemoteConfig, navigator)
             VersionAndLinks()
             SimulateCrash()
         }
@@ -431,7 +438,11 @@ private fun MyClassAndGroupsSettings(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun DownloadAndRefresh(stahnoutVse: (TimetableType, (String) -> Unit, (Boolean) -> Unit) -> Unit, resetRemoteConfig: () -> Unit) {
+private fun DownloadAndRefresh(
+    stahnoutVse: (TimetableType, (String) -> Unit, (Boolean) -> Unit) -> Unit,
+    resetRemoteConfig: () -> Unit,
+    navigator: Navigator,
+) {
     var stahnoutNastaveniDialog by remember { mutableStateOf(false) }
     var stalost by remember { mutableStateOf(TimetableType.defaultToday()) }
     var nacitame by remember { mutableStateOf(false) }
@@ -510,16 +521,33 @@ private fun DownloadAndRefresh(stahnoutVse: (TimetableType, (String) -> Unit, (B
     TextButton(
         onClick = {
             stahnoutNastaveniDialog = true
-        }
+        },
+        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
     ) {
+        Icon(Icons.Default.Download, null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         Text("Stáhnout rozvrhy")
     }
 
     TextButton(
         onClick = {
-            resetRemoteConfig()
-        }
+            navigator.navigate(Route.RozvrhManual(""))
+        },
+        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
     ) {
+        Icon(Icons.Default.FileOpen, null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        Text("Otevřít rozvrh ze souboru")
+    }
+
+    TextButton(
+        onClick = {
+            resetRemoteConfig()
+        },
+        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+    ) {
+        Icon(Icons.Default.Refresh, null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         Text("Obnovit seznamy")
     }
 }
@@ -527,6 +555,8 @@ private fun DownloadAndRefresh(stahnoutVse: (TimetableType, (String) -> Unit, (B
 @OptIn(ExperimentalTextApi::class)
 @Composable
 private fun VersionAndLinks() {
+    HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
+
     Text("Verze aplikace: ${BuildKonfig.versionName} (${BuildKonfig.versionCode})")
 
     TextWithLink(buildAnnotatedString {
@@ -590,17 +620,18 @@ private fun VersionAndLinks() {
 }
 
 @Composable
-private fun TextWithLink(text: AnnotatedString) {
-    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val openUrl = openWebsiteLauncher
+private fun TextWithLink(text: AnnotatedString) = ClickableText(text, openWebsiteLauncher)
 
+@Composable
+private fun ClickableText(text: AnnotatedString, onClick: (String) -> Unit) {
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         text = text,
         modifier = Modifier.pointerInput(Unit) {
             detectTapGestures { pos ->
                 layoutResult?.let { layoutResult ->
                     val offset = layoutResult.getOffsetForPosition(pos)
-                    text.getStringAnnotations(tag = "link", start = offset, end = offset).firstOrNull()?.item?.let(openUrl)
+                    text.getStringAnnotations(tag = "link", start = offset, end = offset).firstOrNull()?.item?.let(onClick)
                 }
             }
         },

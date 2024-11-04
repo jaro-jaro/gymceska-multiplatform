@@ -5,15 +5,18 @@ import androidx.lifecycle.ViewModel
 import com.russhwolf.settings.ObservableSettings
 import cz.jaro.gymceska.nastaveni.NastaveniViewModel
 import cz.jaro.gymceska.rozvrh.RozvrhViewModel
+import cz.jaro.gymceska.rozvrh.manual.RozvrhManualViewModel
 import cz.jaro.gymceska.ukoly.UkolyViewModel
 import org.koin.core.Koin
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
+import org.koin.core.module.KoinApplicationDslMarker
 import org.koin.core.module.Module
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
+@KoinApplicationDslMarker
 fun initKoin(platformSpecificModule: Module): KoinApplication {
     return startKoin {
         modules(platformSpecificModule, commonModule)
@@ -30,6 +33,7 @@ val commonModule = module {
     factory { RozvrhViewModel(it.get(), get(), get()) }
     factory { UkolyViewModel(get(), get(), get(), get()) }
     factory { NastaveniViewModel(get(), get()) }
+    factory { RozvrhManualViewModel(it.get(), get(), get()) }
 }
 
 @Composable

@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
+import kotlinx.serialization.Serializable
 import kotlin.js.JsName
 import kotlin.time.Duration.Companion.seconds
 
@@ -17,26 +18,16 @@ interface ClassListSource {
     val teachers: StateFlow<List<Timetable.Teacher>>
 }
 
-sealed interface Timetables {
-    val type: TimetableType
-    val timetables: Map<Timetable.Class, TimetableData>
-}
+@Serializable
+data class Timetables(
+    val type: TimetableType,
+    val timetables: Map<String, TimetableData>,
+)
 
-data class PermanentTimetables(
-    override val timetables: Map<Timetable.Class, PermanentTimetableData>,
-) : Timetables {
-    override val type = TimetableType.Permanent
-}
-
-data object EmptyTimetables : Timetables {
-    override val type = TimetableType.ThisWeek
-    override val timetables = emptyMap<Timetable.Class, TimetableData>()
-}
-
-data class CurrentTimetables(
-    override val timetables: Map<Timetable.Class, TimetableData>,
-    override val type: TimetableType,
-) : Timetables
+val EmptyTimetables = Timetables(
+    type = TimetableType.ThisWeek,
+    timetables = emptyMap(),
+)
 
 
 fun interface UserOnlineManager {

@@ -225,7 +225,6 @@ fun RozvrhContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PrepinatkoStalosti(
     stalost: TimetableType,
@@ -251,7 +250,7 @@ private fun PrepinatkoStalosti(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun Vybiratko(
+fun Vybiratko(
     vjec: Timetable?,
     zobrazitMujRozvrh: Boolean,
     zmenitMujRozvrh: () -> Unit,
@@ -300,6 +299,11 @@ private fun Vybiratko(
                         }
                     ) { Icon(Icons.Default.Home, null) }
 
+                    Box(Modifier.minimumInteractiveComponentSize()) {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    }
+                }
+                else {
                     Box(Modifier.minimumInteractiveComponentSize()) {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     }
@@ -411,10 +415,10 @@ private fun MenuVybiratka(
     vybratRozvrh: (Timetable) -> Unit,
     hide: () -> Unit,
 ) {
-    val dny by lazy { listOf(Timetable.Class("Dny")) + Seznamy.dny }
-    val hodiny by lazy { listOf(Timetable.Class("Hodiny")) + Seznamy.hodiny }
+    val dny by lazy { Seznamy.dny }
+    val hodiny by lazy { Seznamy.hodiny }
     val seznamy = listOf(if (vjec is Timetable.DenVjec) dny else if (vjec is Timetable.HodinaVjec) hodiny else tridy, mistnosti, vyucujici)
-    val nadpisy = seznamy.map { it.first().nazev }
+    val nadpisy = listOf(if (vjec is Timetable.DenVjec) "Dny:" else if (vjec is Timetable.HodinaVjec) "Hodiny:" else "Třídy:", "Mistnosti:", "Učitelé:")
     Row(
         Modifier.height(IntrinsicSize.Max)
     ) {
@@ -467,14 +471,14 @@ private fun MenuVybiratka(
 }
 
 @Composable
-private fun NapovedaKMistostem(mistnosti: List<Timetable.Room>) = IconButton(
+private fun NapovedaKMistostem(mistnosti: List<Timetable.Room>) = if (mistnosti.any { it.napoveda != null }) IconButton(
     onClick = {
         dialogState.show(
             confirmButton = { TextButton(::hide) { Text("OK") } },
             title = { Text("Nápověda k místnostem") },
             content = {
                 LazyColumn {
-                    items(mistnosti.drop(1)) {
+                    items(mistnosti.filter { it.napoveda != null }.drop(1)) {
                         Text("${it.nazev} - to je${it.napoveda}")
                     }
                 }
@@ -483,4 +487,4 @@ private fun NapovedaKMistostem(mistnosti: List<Timetable.Room>) = IconButton(
     }
 ) {
     Icon(Icons.AutoMirrored.Filled.Help, null)
-}
+} else Unit

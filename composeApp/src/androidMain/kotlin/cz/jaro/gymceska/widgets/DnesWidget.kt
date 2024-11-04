@@ -40,8 +40,9 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import cz.jaro.gymceska.MainActivity
+import cz.jaro.gymceska.OnlineTimetableSource
 import cz.jaro.gymceska.R
-import cz.jaro.gymceska.Repository
+import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.rozvrh.Cell
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -123,7 +124,7 @@ class DnesWidget : GlanceAppWidget() {
                                                 when {
                                                     it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
                                                             || it is Cell.ST && it.groups.any { it.changeInfo != null } -> bg2
-                                                    it is Cell.Normal || it is Cell.ST || it is Cell.Control -> bg
+                                                    it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> bg
                                                     else /*it is Cell.Absent || it is Cell.DayOff*/ -> bg3
                                                 }
                                             ),
@@ -144,7 +145,7 @@ class DnesWidget : GlanceAppWidget() {
                                                     color = when {
                                                         it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
                                                                 || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Control -> onbg
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> bg
                                                         else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     }
                                                 ),
@@ -165,7 +166,7 @@ class DnesWidget : GlanceAppWidget() {
                                                     color = when {
                                                         it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
                                                                 || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Control -> onbg
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> bg
                                                         else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     }
                                                 ),
@@ -191,7 +192,7 @@ class DnesWidget : GlanceAppWidget() {
                                                     color = when {
                                                         it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
                                                                 || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Control -> onbg
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> bg
                                                         else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     },
                                                     textAlign = TextAlign.Center
@@ -207,7 +208,7 @@ class DnesWidget : GlanceAppWidget() {
                                                     color = when {
                                                         it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
                                                                 || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Control -> onbg
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> bg
                                                         else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     }
                                                 ),
@@ -247,7 +248,8 @@ class DnesWidget : GlanceAppWidget() {
         class Reciever : GlanceAppWidgetReceiver(), KoinComponent {
             override val glanceAppWidget: GlanceAppWidget = DnesWidget()
 
-            private val repo = get<Repository>()
+            private val timetableSource = get<OnlineTimetableSource>()
+            private val settings = get<SettingsFlow>()
 
             override fun onReceive(context: Context, intent: Intent) {
                 if (intent.hasExtra(EXTRA_KEY_WIDGET_IDS)) {
@@ -260,7 +262,7 @@ class DnesWidget : GlanceAppWidget() {
                 super.onUpdate(context, appWidgetManager, appWidgetIds)
 
                 CoroutineScope(Dispatchers.IO).launch {
-                    val (den, hodiny) = repo.rozvrhWidgetData()
+                    val (den, hodiny) = timetableSource.rozvrhWidgetData(settings)
 
                     appWidgetIds.forEach {
                         val id = GlanceAppWidgetManager(context).getGlanceIdBy(it)

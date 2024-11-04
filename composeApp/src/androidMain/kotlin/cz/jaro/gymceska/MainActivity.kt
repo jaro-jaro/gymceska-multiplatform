@@ -17,8 +17,8 @@ import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.network.parseGetRequest
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.ktx.Firebase
-import cz.jaro.gymceska.rozvrh.Timetable
 import cz.jaro.gymceska.theme.GymceskaTheme
+import io.github.vinceglb.filekit.core.FileKit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -31,6 +31,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 //        enableEdgeToEdge(SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT), SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT))
+
+        FileKit.init(this)
 
         val uri = intent?.action?.equals(Intent.ACTION_VIEW)?.let { intent?.data }?.run { toString().removePrefix("${scheme}://${host}/#") }
 
@@ -60,11 +62,11 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val repo = koinInject<Repository>()
+            val nastaveni by koinInject<SettingsFlow>().collectAsStateWithLifecycle()
+            val aaum = koinInject<AndroidAppUpdateManager>()
 
-            val nastaveni by repo.nastaveni.collectAsStateWithLifecycle(Nastaveni(mojeTrida = Timetable.Class("")))
-            val verzeNaRozbiti by repo.verzeNaRozbiti.collectAsStateWithLifecycle()
-            val jePotrebaAktualizovatAplikaci by repo.jePotrebaAktualizovatAplikaci.collectAsStateWithLifecycle(false)
+            val verzeNaRozbiti by aaum.breakingVersion.collectAsStateWithLifecycle()
+            val jePotrebaAktualizovatAplikaci by aaum.isAppUpdateNeeded.collectAsStateWithLifecycle(false)
 
             GymceskaTheme(
                 useDarkTheme = if (nastaveni.darkModePodleSystemu) isSystemInDarkTheme() else nastaveni.darkMode,
