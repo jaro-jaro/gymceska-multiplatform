@@ -4,6 +4,7 @@ import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.ObservableSettings
 import com.russhwolf.settings.contains
 import com.russhwolf.settings.coroutines.getStringOrNullStateFlow
+import com.russhwolf.settings.set
 import cz.jaro.gymceska.FirebaseClassListSource.Companion.fromJson
 import cz.jaro.gymceska.rozvrh.Timetable
 import kotlinx.coroutines.CoroutineScope

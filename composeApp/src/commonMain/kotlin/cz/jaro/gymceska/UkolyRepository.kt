@@ -3,6 +3,7 @@ package cz.jaro.gymceska
 import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.ObservableSettings
 import com.russhwolf.settings.coroutines.getStringOrNullFlow
+import com.russhwolf.settings.set
 import cz.jaro.gymceska.ukoly.Ukol
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseApp
