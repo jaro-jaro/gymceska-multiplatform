@@ -2,6 +2,8 @@ package cz.jaro.gymceska
 
 import com.fleeksoft.ksoup.nodes.Document
 import com.russhwolf.settings.ObservableSettings
+import com.russhwolf.settings.set
+import cz.jaro.gymceska.FirebaseClassListSource.Companion.fromJson
 import cz.jaro.gymceska.rozvrh.Cell
 import cz.jaro.gymceska.rozvrh.Timetable
 import cz.jaro.gymceska.rozvrh.TimetableType
