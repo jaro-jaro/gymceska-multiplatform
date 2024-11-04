@@ -104,7 +104,7 @@ class OnlineTimetableSource(
                 return ZadnaData
             }
 
-        val rozvrh = settings.getStringOrNull(Keys.rozvrh(klass, type))?.fromJson<Week>()
+        val rozvrh = settings.getStringOrNull(Keys.rozvrh(klass, type))?.fromJson<TimetableData>()
             ?: run {
                 return ZadnaData
             }
