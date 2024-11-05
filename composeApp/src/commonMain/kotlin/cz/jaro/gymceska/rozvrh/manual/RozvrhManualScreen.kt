@@ -1,9 +1,16 @@
 package cz.jaro.gymceska.rozvrh.manual
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,13 +42,6 @@ fun RozvrhManual(
     navigator: Navigator,
     koin: Koin,
 ) {
-//    val viewModel = RozvrhManualViewModel(
-//        params = RozvrhManualViewModel.Parameters(
-//            arg = args.vjec,
-//        ),
-//        timetableSource = koin.get(),
-//        settings = koin.get(),
-//    )
     val viewModel = koin.viewModel<RozvrhManualViewModel>(
         RozvrhManualViewModel.Parameters(
             arg = args.vjec,
@@ -117,8 +117,11 @@ fun RozvrhManualContent(
         else {
             TextButton(
                 onClick = load,
-                Modifier.padding(all = 8.dp)
+                Modifier.padding(all = 8.dp),
+                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding
             ) {
+                Icon(Icons.Default.Upload, null, Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                 Text("Nahrát rozvrh")
             }
         }
