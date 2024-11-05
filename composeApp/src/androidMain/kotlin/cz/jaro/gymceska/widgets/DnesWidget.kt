@@ -145,7 +145,7 @@ class DnesWidget : GlanceAppWidget() {
                                                     color = when {
                                                         it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
                                                                 || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> bg
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> onbg
                                                         else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     }
                                                 ),
@@ -166,7 +166,7 @@ class DnesWidget : GlanceAppWidget() {
                                                     color = when {
                                                         it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
                                                                 || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> bg
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> onbg
                                                         else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     }
                                                 ),
@@ -192,7 +192,7 @@ class DnesWidget : GlanceAppWidget() {
                                                     color = when {
                                                         it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
                                                                 || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> bg
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> onbg
                                                         else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     },
                                                     textAlign = TextAlign.Center
@@ -208,7 +208,7 @@ class DnesWidget : GlanceAppWidget() {
                                                     color = when {
                                                         it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
                                                                 || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> bg
+                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> onbg
                                                         else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
                                                     }
                                                 ),
