@@ -37,8 +37,8 @@ import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.window.DialogProperties
-import cz.jaro.compose_dialog.dialogManager
-import cz.jaro.compose_dialog.show
+import cz.jaro.better_dialog.dialogManager
+import cz.jaro.better_dialog.show
 import cz.jaro.gymceska.ActionScope
 import cz.jaro.gymceska.Navigation
 import cz.jaro.gymceska.Navigator

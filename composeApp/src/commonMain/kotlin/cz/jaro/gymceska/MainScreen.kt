@@ -21,7 +21,8 @@ import androidx.navigation.NavGraph
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
-import cz.jaro.compose_dialog.dialogManager
+import cz.jaro.better_dialog.AlertDialog
+import cz.jaro.better_dialog.dialogManager
 import cz.jaro.gymceska.nastaveni.Nastaveni
 import cz.jaro.gymceska.rozvrh.Rozvrh
 import cz.jaro.gymceska.rozvrh.editor.RozvrhEditor
@@ -85,7 +86,7 @@ fun MainContent(
         )
     }
     Surface {
-        cz.jaro.compose_dialog.AlertDialog(dialogManager)
+        AlertDialog(dialogManager)
         val navController = rememberNavController()
 
         LaunchedEffect(Unit) {

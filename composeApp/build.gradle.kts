@@ -55,12 +55,9 @@ kotlin {
             implementation(libs.firebase.crashlytics)
             implementation(libs.androidx.browser)
         }
-        jsMain {
-            dependsOn(commonMain.get())
-            dependencies {
-                implementation(compose.html.core)
-                implementation(libs.multiplatform.settings.make.observable)
-            }
+        jsMain.dependencies {
+            implementation(compose.html.core)
+            implementation(libs.multiplatform.settings.make.observable)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -90,6 +87,7 @@ kotlin {
             implementation(libs.multiplatform.settings.coroutines)
             implementation(libs.androidx.navigation.compose)
             implementation(libs.firebase.analytics)
+            implementation(libs.better.dialog)
         }
     }
     @OptIn(ExperimentalKotlinGradlePluginApi::class)

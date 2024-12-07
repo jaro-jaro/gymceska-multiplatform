@@ -23,6 +23,7 @@ adaptive = "1.0.0"
 multiplatform-settings = "1.2.0"
 browser = "1.8.0"
 buildkonfig = "0.15.2"
+compose-dialog = "1.2.1"
 
 [libraries]
 # Androidx
@@ -64,6 +65,8 @@ koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin"
 koin-compose = { group = "io.insert-koin", name = "koin-compose", version.ref = "koin-compose" }
 # Semantic versioning
 semver = { module = "io.github.z4kn4fein:semver", version.ref = "semver" }
+# Dialog
+better_dialog = { module = "com.github.jaro-jaro.compose-dialog:better_dialog", version.ref = "compose-dialog" }
 # Filekit
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit-core" }
 # Multiplatform Settings

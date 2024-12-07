@@ -73,8 +73,8 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
-import cz.jaro.compose_dialog.dialogManager
-import cz.jaro.compose_dialog.show
+import cz.jaro.better_dialog.dialogManager
+import cz.jaro.better_dialog.show
 import cz.jaro.gymceska.Error
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result

@@ -34,8 +34,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cz.jaro.compose_dialog.dialogManager
-import cz.jaro.compose_dialog.show
+import cz.jaro.better_dialog.dialogManager
+import cz.jaro.better_dialog.show
 import cz.jaro.gymceska.Error
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
