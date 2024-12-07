@@ -35,7 +35,7 @@ class SettingsFlow private constructor(
         settings = settings,
         classes = tridy,
         scope = CoroutineScope(Dispatchers.Default),
-        { t -> Nastaveni(mojeTrida = t.getOrElse(1) { t.first() }) }
+        { t -> Nastaveni(mojeTrida = t.getOrElse(0) { Timetable.Class("") }) }
     )
 
     fun edit(edit: (Nastaveni) -> Nastaveni) {

@@ -37,6 +37,7 @@ import cz.jaro.gymceska.Navigation
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.ukoly.time
 import cz.jaro.gymceska.ukoly.today
 import kotlinx.datetime.Clock.System
@@ -53,7 +54,7 @@ fun RozvrhNavigation(
     navigator: Navigator,
     najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
     najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
-    result: Result?,
+    result: Result<out TimetableData>?,
     vybratRozvrh: (Timetable) -> Unit,
     currentlyDownloading: Timetable.Class?,
     content: @Composable (PaddingValues) -> Unit,
@@ -86,7 +87,7 @@ fun RozvrhNavigation(
 @OptIn(ExperimentalMaterial3Api::class)
 private fun ActionScope.Actions(
     stahnoutVse: () -> Unit,
-    result: Result?,
+    result: Result<out TimetableData>?,
     vybratRozvrh: (Timetable) -> Unit,
     najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
     najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,

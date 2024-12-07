@@ -1,14 +1,12 @@
 package cz.jaro.gymceska
 
-sealed interface Result
+sealed interface Result<T>
 
-data object TridaNeexistuje : Result
+class TridaNeexistuje<T> : Result<T>
+class ZadnaData<T> : Result<T>
+class Error<T> : Result<T>
 
-data object ZadnaData : Result
-
-data object Error : Result
-
-data class Uspech(
-    val rozvrh: TimetableData,
+data class Uspech<T>(
+    val rozvrh: T,
     val zdroj: ZdrojRozvrhu,
-) : Result
+) : Result<T>

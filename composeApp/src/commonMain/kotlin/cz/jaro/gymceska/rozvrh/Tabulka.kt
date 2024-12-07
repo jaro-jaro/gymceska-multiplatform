@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollDispatcher
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.pointer.PointerEvent
@@ -40,6 +41,9 @@ import cz.jaro.gymceska.OfflineRuzneCasti
 import cz.jaro.gymceska.Online
 import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.ZdrojRozvrhu
+import cz.jaro.gymceska.rozvrh.editor.Address
+import cz.jaro.gymceska.rozvrh.editor.CellAddress
+import cz.jaro.gymceska.rozvrh.editor.LessonAddress
 import cz.jaro.gymceska.theme.GymceskaTheme
 import cz.jaro.gymceska.theme.LocalIsDarkThemeUsed
 import cz.jaro.gymceska.theme.LocalIsDynamicThemeUsed
@@ -67,6 +71,9 @@ fun Tabulka(
     horScrollState: ScrollState,
     verScrollState: ScrollState,
     alwaysTwoRowCells: Boolean,
+    icon: ((Address) -> ImageVector?)? = null,
+    roomLongClick: ((Address) -> Unit)? = null,
+    subjectClick: ((Address) -> Unit)? = null,
 ) {
     if (tabulka.isEmpty()) return
 
@@ -75,7 +82,7 @@ fun Tabulka(
 
     val canAllowCellsSmallerThan1 = mujRozvrh || vjec !is Timetable.Class || alwaysTwoRowCells
     val maxByRow = tabulka.drop(1).map {
-        it.drop(1).maxOf { hodina -> hodina.size }
+        it.drop(1).maxOf { lesson -> lesson.size }
     }
     val rowHeight = maxByRow.map { max ->
         if (max == 1) 1F
@@ -85,14 +92,14 @@ fun Tabulka(
 
     BaseTable(
         data = tabulka,
-        cornerCellContent = { hodina ->
+        cornerCellContent = { lesson ->
             BaseCell(
                 size = Size(.5F, .5F),
-                center = hodina.single().subjectLike,
+                center = lesson.single().subjectLike,
             )
         },
-        topHeaderCellContent = { _, hodina ->
-            val bunka = hodina.single()
+        topHeaderCellContent = { _, lesson ->
+            val bunka = lesson.single()
             BaseCell(
                 size = Size(1F, .5F),
                 center = bunka.subjectLike,
@@ -105,8 +112,8 @@ fun Tabulka(
                 }
             )
         },
-        startHeaderCellContent = { row, hodina ->
-            val bunka = hodina.single()
+        startHeaderCellContent = { row, lesson ->
+            val bunka = lesson.single()
             BaseCell(
                 size = Size(.5F, rowHeight[row]),
                 center = bunka.subjectLike,
@@ -121,7 +128,7 @@ fun Tabulka(
                 }
             )
         },
-        cellContent = { row, column, hodina ->
+        cellContent = { row, column, lesson ->
             val highlight = when (vjec) {
                 is Timetable.Class, is Timetable.Room, is Timetable.Teacher -> currentDay == row && currentLesson == column
                 is Timetable.DenVjec -> vjec.index - 1 == currentDay && currentLesson == column
@@ -130,25 +137,28 @@ fun Tabulka(
             Column(
                 if (highlight) Modifier.border(4.dp, MaterialTheme.colorScheme.tertiary) else Modifier,
             ) {
-                val baseHeight = rowHeight[row] / hodina.size
-                hodina.forEach { bunka ->
+                val baseHeight = rowHeight[row] / lesson.size
+                lesson.forEachIndexed { cellIndex, cell ->
                     val cellHeight = when {
-                        !mujRozvrh && vjec is Timetable.Class && hodina.size == 1 && bunka.classLike.isNotBlank() -> baseHeight * 4F / 5F
+                        !mujRozvrh && vjec is Timetable.Class && lesson.size == 1 && cell.classLike.isNotBlank() -> baseHeight * 4F / 5F
                         else -> baseHeight
                     }
 
                     var menuOpened by remember { mutableStateOf(false) }
                     Cell(
                         height = cellHeight,
-                        cell = bunka,
+                        cell = cell,
                         classes = tridy,
                         rooms = mistnosti,
                         teachers = vyucujici,
                         openTimetable = kliklNaNeco,
                         forceOneColumnCells = vjec is Timetable.HodinaVjec,
                         onSubjectClick = {
-                            menuOpened = true
-                        }.takeUnless { bunka.popupData == null },
+                            subjectClick?.invoke(CellAddress(row, column, cellIndex))
+                            if (cell.popupData != null) menuOpened = true
+                        }.takeIf { cell.popupData != null || subjectClick != null },
+                        onRoomLongClick = roomLongClick?.let { ({ roomLongClick.invoke(CellAddress(row, column, cellIndex)) }) },
+                        icon = icon?.invoke(CellAddress(row, column, cellIndex)),
                     )
                     DropdownMenu(expanded = menuOpened, onDismissRequest = { menuOpened = false }) {
                         GymceskaTheme(
@@ -159,14 +169,18 @@ fun Tabulka(
                             Column(
                                 Modifier.padding(8.dp),
                             ) {
-                                bunka.popupData!!.forEach {
+                                cell.popupData!!.forEach {
                                     Text("${it.first} ${it.second}")
                                 }
                             }
                         }
                     }
                     if (cellHeight < baseHeight) BaseCell(
-                        size = Size(width = 1F, height = baseHeight - cellHeight)
+                        size = Size(width = 1F, height = baseHeight - cellHeight),
+                        centerIcon = icon?.invoke(LessonAddress(row, column)),
+                        onCenterClick = {
+                            subjectClick?.invoke(LessonAddress(row, column)); Unit
+                        }.takeUnless { subjectClick == null },
                     )
                 }
             }

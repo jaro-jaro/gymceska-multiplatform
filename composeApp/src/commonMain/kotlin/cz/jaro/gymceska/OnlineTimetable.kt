@@ -78,10 +78,10 @@ class OnlineTimetableSource(
     suspend fun getTimetable(
         klass: Timetable.Class,
         type: TimetableType,
-    ): Result {
+    ): Result<TimetableData> {
         if (isOnline() && !pouzitOfflineRozvrh(klass, type)) try {
             _currentlyDownloading.value = klass
-            val doc = getTimetableDocument(klass.odkaz?.replace("###", type.code) ?: return TridaNeexistuje)
+            val doc = getTimetableDocument(klass.odkaz?.replace("###", type.code) ?: return TridaNeexistuje())
 
             val rozvrh = TvorbaRozvrhu.createTimetableForClass(
                 type = type,
@@ -101,12 +101,12 @@ class OnlineTimetableSource(
 
         val kdy = settings.getLongOrNull(Keys.rozvrhPosledni(klass, type))?.let { Instant.fromEpochSeconds(it) }
             ?: run {
-                return ZadnaData
+                return ZadnaData()
             }
 
         val rozvrh = settings.getStringOrNull(Keys.rozvrh(klass, type))?.fromJson<TimetableData>()
             ?: run {
-                return ZadnaData
+                return ZadnaData()
             }
 
         return Uspech(rozvrh, Offline(kdy.toLocalDateTime(TimeZone.currentSystemDefault())))
@@ -144,13 +144,13 @@ class FirebaseClassListSource(
 
     override val classes = configActive.map {
         remoteConfig.get<String>("tridy").fromJson<List<Timetable.Class>>()
-    }.stateIn(scope, SharingStarted.Eagerly, listOf(Timetable.Class("Třídy")))
+    }.stateIn(scope, SharingStarted.Eagerly, listOf())
     override val rooms = configActive.map {
         remoteConfig.get<String>("mistnosti").fromJson<List<Timetable.Room>>()
-    }.stateIn(scope, SharingStarted.Eagerly, listOf(Timetable.Room("Místnosti")))
+    }.stateIn(scope, SharingStarted.Eagerly, listOf())
     override val teachers = configActive.map {
         remoteConfig.get<String>("vyucujici").fromJson<List<Timetable.Teacher>>()
-    }.stateIn(scope, SharingStarted.Eagerly, listOf(Timetable.Teacher("Vyučující", "")))
+    }.stateIn(scope, SharingStarted.Eagerly, listOf())
     val vyucujici2 = configActive.map {
         remoteConfig.get<String>("vyucujici2").fromJson<List<String>>()
     }.stateIn(scope, SharingStarted.Eagerly, listOf())
@@ -167,13 +167,14 @@ class FirebaseClassListSource(
         }
 
         inline fun <reified T> String.fromJson(): T = json.decodeFromString(this)
+        inline fun <reified T> T.toJson(): String = json.encodeToString(this)
     }
 }
 
 suspend fun OnlineTimetableSource.getTimetable(
     type: TimetableType,
     settingsFlow: SettingsFlow,
-): Result = getTimetable(settingsFlow.value.mojeTrida, type)
+): Result<TimetableData> = getTimetable(settingsFlow.value.mojeTrida, type)
 
 suspend fun OnlineTimetableSource.getGroups(klass: Timetable.Class): Sequence<String> {
     val result = getTimetable(klass, TimetableType.Permanent)

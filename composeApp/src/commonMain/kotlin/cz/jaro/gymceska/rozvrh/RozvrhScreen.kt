@@ -73,12 +73,13 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
-import cz.jaro.compose_dialog.dialogState
+import cz.jaro.compose_dialog.dialogManager
 import cz.jaro.compose_dialog.show
 import cz.jaro.gymceska.Error
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
@@ -145,7 +146,7 @@ fun Rozvrh(
 
 @Composable
 fun RozvrhContent(
-    result: Result?,
+    result: Result<out TimetableData>?,
     vjec: Timetable?,
     stalost: TimetableType,
     vybratRozvrh: (Timetable) -> Unit,
@@ -218,9 +219,9 @@ fun RozvrhContent(
                 )
             }
 
-            Error -> Text("Omlouváme se, ale došlo k chybě při stahování rozvrhu. Zkuste to znovu.")
-            TridaNeexistuje -> Text("Tato třída neexistuje")
-            ZadnaData -> Text("Jste offline a nemáte stažená žádná data z dřívějška.")
+            is Error -> Text("Omlouváme se, ale došlo k chybě při stahování rozvrhu. Zkuste to znovu.")
+            is TridaNeexistuje -> Text("Tato třída neexistuje")
+            is ZadnaData -> Text("Jste offline a nemáte stažená žádná data z dřívějška.")
         }
     }
 }
@@ -473,7 +474,7 @@ private fun MenuVybiratka(
 @Composable
 private fun NapovedaKMistostem(mistnosti: List<Timetable.Room>) = if (mistnosti.any { it.napoveda != null }) IconButton(
     onClick = {
-        dialogState.show(
+        dialogManager.show(
             confirmButton = { TextButton(::hide) { Text("OK") } },
             title = { Text("Nápověda k místnostem") },
             content = {

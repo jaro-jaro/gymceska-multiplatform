@@ -1,12 +1,23 @@
-package cz.jaro.gymceska
+package cz.jaro.gymceska.rozvrh.manual
 
 import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.ObservableSettings
 import com.russhwolf.settings.coroutines.getStringOrNullStateFlow
 import com.russhwolf.settings.set
+import cz.jaro.gymceska.ClassListSource
 import cz.jaro.gymceska.FirebaseClassListSource.Companion.fromJson
+import cz.jaro.gymceska.Offline
+import cz.jaro.gymceska.TimetableData
+import cz.jaro.gymceska.Timetables
+import cz.jaro.gymceska.TridaNeexistuje
+import cz.jaro.gymceska.Uspech
+import cz.jaro.gymceska.ZadnaData
+import cz.jaro.gymceska.filterNotNullState
+import cz.jaro.gymceska.justTimetable
+import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.rozvrh.Cell
 import cz.jaro.gymceska.rozvrh.Timetable
+import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.ukoly.now
 import io.github.vinceglb.filekit.core.FileKit
 import io.github.vinceglb.filekit.core.PickerMode
@@ -29,9 +40,10 @@ class LocalTimetableSource(
     }
 
     private val saved = settings.getStringOrNullStateFlow(scope, Keys.SAVED)
-    private val timetables = try {
+    @PublishedApi
+    internal val timetables = try {
         saved.mapState(scope, SharingStarted.Eagerly) {
-            saved.value?.let(::loadSavedTimetable)?.fromJson<Timetables>()
+            saved.value?.let(::loadSavedTimetable)?.fromJson<Timetables<TimetableData>>()
         }
     } catch (e: IllegalArgumentException) {
         try {
@@ -41,6 +53,8 @@ class LocalTimetableSource(
         }
         throw e
     }
+
+    inline fun copyTimetables(callback: (Timetables<TimetableData>?) -> Unit) = callback(timetables.value)
 
     suspend fun loadFile() {
         settings[Keys.SAVED] = FileKit.pickFile(
@@ -59,26 +73,38 @@ class LocalTimetableSource(
         timetables.value?.timetables?.let { timetables ->
             timetables[klass.zkratka]?.let {
                 Uspech(it, Offline(now()))
-            } ?: TridaNeexistuje
-        } ?: ZadnaData
+            } ?: TridaNeexistuje()
+        } ?: ZadnaData()
 
     val type = timetables.mapState(scope, SharingStarted.Eagerly) { it?.type }
 
-    val classListSource = LocalClassListSource(timetables.filterNotNullState(scope, EmptyTimetables))
+    val classListSource = LocalClassListSource(timetables.filterNotNullState(
+        scope, Timetables(
+            type = TimetableType.ThisWeek,
+            timetables = emptyMap(),
+        )
+    ))
 }
 
 interface LocalFileManager {
-    suspend fun PlatformFile.getSaveData(): String = readBytes().decodeToString()
-    fun loadSavedTimetable(savedData: String): String = savedData
-    fun cleanup(savedData: String) = Unit
+    suspend fun String.getSaveData(): String
+    fun loadSavedTimetable(savedData: String): String
+    fun cleanup(savedData: String)
 
-    companion object Default : LocalFileManager
+    companion object Default : LocalFileManager {
+        override suspend fun String.getSaveData() = this
+        override fun loadSavedTimetable(savedData: String) = savedData
+        override fun cleanup(savedData: String) = Unit
+    }
 }
 
+context(LocalFileManager)
+suspend fun PlatformFile.getSaveData(): String = readBytes().decodeToString().getSaveData()
+
 class LocalClassListSource(
-    timetables: StateFlow<Timetables>,
+    timetables: StateFlow<Timetables<TimetableData>>,
 ) : ClassListSource {
-    private fun Timetables.cells() = timetables.flatMap { (_, week) ->
+    private fun Timetables<TimetableData>.cells() = timetables.flatMap { (_, week) ->
         week.justTimetable().flatMap { day ->
             day.flatten()
         }

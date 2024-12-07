@@ -2,12 +2,10 @@ package cz.jaro.gymceska.rozvrh.manual
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import cz.jaro.gymceska.LocalTimetableSource
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.SettingsFlow
-import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.combineStates
 import cz.jaro.gymceska.justTimetable
@@ -24,6 +22,8 @@ import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.rozvrh.TvorbaRozvrhu
 import cz.jaro.gymceska.rozvrh.copy
 import cz.jaro.gymceska.rozvrh.dny
+import cz.jaro.gymceska.rozvrh.editCells
+import cz.jaro.gymceska.rozvrh.editor.CellAddress
 import cz.jaro.gymceska.rozvrh.hodiny
 import cz.jaro.gymceska.rozvrh.tabulka
 import cz.jaro.gymceska.rozvrh.upravitTabulku
@@ -34,8 +34,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
-import kotlin.js.JsName
-import kotlin.jvm.JvmName
 import kotlin.reflect.KClass
 import kotlin.time.Duration.Companion.seconds
 
@@ -250,19 +248,23 @@ class RozvrhManualViewModel(
     }
 }
 
-fun TimetableData.editCells(
-    editCell: (Cell) -> Cell,
+fun <T: Cell, U> List<List<List<T>>>.editCells(
+    editCell: (T) -> U,
 ) = map { day ->
-    day.editCells(editCell)
+    day.map { lesson ->
+        lesson.mapNotNull { cell ->
+            editCell(cell)
+        }
+    }
 }
 
-@JsName("editCellsOfDay")
-@JvmName("editCellsOfDay")
-fun List<List<Cell>>.editCells(
-    editCell: (Cell) -> Cell,
-) = map { lesson ->
-    lesson.map { cell ->
-        editCell(cell)
+fun <T: Cell, U> List<List<List<T>>>.editCellsIndexed(
+    editCell: (CellAddress, T) -> U,
+) = mapIndexed { dayIndex, day ->
+    day.mapIndexed { lessonIndex, lesson ->
+        lesson.mapIndexed { cellIndex, cell ->
+            editCell(CellAddress(dayIndex - 1, lessonIndex - 1, cellIndex), cell)
+        }.filterNotNull()
     }
 }
 

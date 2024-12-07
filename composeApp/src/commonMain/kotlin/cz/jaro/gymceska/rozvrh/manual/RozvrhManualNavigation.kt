@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TableChart
@@ -28,12 +29,10 @@ import androidx.compose.ui.window.DialogProperties
 import cz.jaro.gymceska.ActionScope
 import cz.jaro.gymceska.Navigation
 import cz.jaro.gymceska.Navigator
-import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.rozvrh.Seznamy
 import cz.jaro.gymceska.rozvrh.Timetable
 import cz.jaro.gymceska.rozvrh.Vybiratko
-import cz.jaro.gymceska.rozvrh.tabulka
 import cz.jaro.gymceska.ukoly.time
 import cz.jaro.gymceska.ukoly.today
 import kotlinx.datetime.Clock.System
@@ -49,7 +48,7 @@ fun RozvrhManualNavigation(
     navigator: Navigator,
     najdiMiVolnouTridu: (Int, List<Int>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
     najdiMiVolnehoUcitele: (Int, List<Int>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
-    result: Result?,
+    hodiny: List<ClosedRange<LocalTime>>,
     vybratRozvrh: (Timetable) -> Unit,
     remove: () -> Unit,
     loaded: Boolean,
@@ -57,12 +56,17 @@ fun RozvrhManualNavigation(
 ) = Navigation(
     title = "Manuál",
     actions = {
-        Actions(result, vybratRozvrh, najdiMiVolnouTridu, najdiMiVolnehoUcitele, remove, loaded)
+        Actions(hodiny, vybratRozvrh, najdiMiVolnouTridu, najdiMiVolnehoUcitele, remove, loaded)
     },
     currentDestination = Route.RozvrhManual(""),
     navigator = navigator,
     content = content,
     minorNavigationItems = {
+        MinorNavigationItem(
+            destination = Route.RozvrhEditor(""),
+            title = "Editor",
+            icon = Icons.Default.Edit,
+        )
         MinorNavigationItem(
             destination = Route.RozvrhManual(""),
             title = "Manuální",
@@ -79,7 +83,7 @@ fun RozvrhManualNavigation(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun ActionScope.Actions(
-    result: Result?,
+    hodiny: List<ClosedRange<LocalTime>>,
     vybratRozvrh: (Timetable) -> Unit,
     najdiMiVolnouTridu: (Int, List<Int>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
     najdiMiVolnehoUcitele: (Int, List<Int>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
@@ -114,24 +118,12 @@ private fun ActionScope.Actions(
                 .let { if (it > 5) 1 else it } - 1
         )
     }
-    var hodinaIndexy by remember(result) {
+    var hodinaIndexy by remember(hodiny) {
         mutableStateOf(
             listOf(
-                result
-                    ?.tabulka
-                    ?.get(0)
-                    ?.drop(1)
-                    ?.indexOfFirst {
-                        try {
-                            val cas = it.first().teacherLike.split(" - ").first()
-                            val hm = cas.split(":")
-                            (System.now() - 10.minutes).toLocalDateTime(TimeZone.currentSystemDefault()).time < LocalTime(hm[0].toInt(), hm[1].toInt())
-                        } catch (e: Exception) {
-                            false
-                        }
-                    }
-                    ?.coerceAtLeast(0)
-                    ?: 0
+                hodiny.indexOfFirst {
+                    (System.now() - 10.minutes).toLocalDateTime(TimeZone.currentSystemDefault()).time < it.start
+                }.coerceAtLeast(0)
             )
         )
     }

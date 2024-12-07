@@ -8,6 +8,7 @@ import android.net.NetworkCapabilities
 import android.provider.Settings
 import com.russhwolf.settings.ObservableSettings
 import com.russhwolf.settings.SharedPreferencesSettings
+import cz.jaro.gymceska.rozvrh.manual.LocalFileManager
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseApp
 import dev.gitlive.firebase.analytics.analytics

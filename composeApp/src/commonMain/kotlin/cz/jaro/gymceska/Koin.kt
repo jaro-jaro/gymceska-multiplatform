@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModel
 import com.russhwolf.settings.ObservableSettings
 import cz.jaro.gymceska.nastaveni.NastaveniViewModel
 import cz.jaro.gymceska.rozvrh.RozvrhViewModel
+import cz.jaro.gymceska.rozvrh.editor.EditedTimetableSource
+import cz.jaro.gymceska.rozvrh.editor.RozvrhEditorViewModel
+import cz.jaro.gymceska.rozvrh.manual.LocalTimetableSource
 import cz.jaro.gymceska.rozvrh.manual.RozvrhManualViewModel
 import cz.jaro.gymceska.ukoly.UkolyViewModel
 import org.koin.core.Koin
@@ -27,6 +30,7 @@ val commonModule = module {
     single { OnlineTimetableSource(get(), get(), get()) }
     single { UkolyRepository(get(), get(), get()) }
     single { LocalTimetableSource(get(), get()) }
+    single { EditedTimetableSource(get(), get()) }
     single { get<OnlineTimetableSource>().classListSource } bind ClassListSource::class
     single { SettingsFlow(get(), get<ObservableSettings>()) }
 
@@ -34,6 +38,7 @@ val commonModule = module {
     factory { UkolyViewModel(get(), get(), get(), get()) }
     factory { NastaveniViewModel(get(), get()) }
     factory { RozvrhManualViewModel(it.get(), get(), get()) }
+    factory { RozvrhEditorViewModel(it.get(), get(), get(), get()) }
 }
 
 @Composable

@@ -19,16 +19,10 @@ interface ClassListSource {
 }
 
 @Serializable
-data class Timetables(
+data class Timetables <T>(
     val type: TimetableType,
-    val timetables: Map<String, TimetableData>,
+    val timetables: Map<String, T>,
 )
-
-val EmptyTimetables = Timetables(
-    type = TimetableType.ThisWeek,
-    timetables = emptyMap(),
-)
-
 
 fun interface UserOnlineManager {
     fun isOnline(): Boolean

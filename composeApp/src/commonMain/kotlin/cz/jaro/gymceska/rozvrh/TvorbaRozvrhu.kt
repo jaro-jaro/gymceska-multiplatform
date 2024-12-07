@@ -3,13 +3,16 @@ package cz.jaro.gymceska.rozvrh
 import com.fleeksoft.ksoup.nodes.Document
 import cz.jaro.gymceska.ClassListSource
 import cz.jaro.gymceska.Day
+import cz.jaro.gymceska.Error
 import cz.jaro.gymceska.Lesson
 import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.OfflineRuzneCasti
 import cz.jaro.gymceska.Online
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.TimetableData
+import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
+import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.cornerHeader
 import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.startHeaders
@@ -173,11 +176,11 @@ object TvorbaRozvrhu {
                 }
         }
 
-    suspend fun createTimetableForTeacherOrRoom(
+    inline fun createTimetableForTeacherOrRoom(
         target: Timetable,
         classListSource: ClassListSource,
-        getTimetable: suspend (klass: Timetable.Class) -> Result,
-    ): Result {
+        getTimetable: (klass: Timetable.Class) -> Result<out TimetableData>,
+    ): Result<out TimetableData> {
         require(target is Timetable.Room || target is Timetable.Teacher)
 
         val seznamNazvu = classListSource.classes.value
@@ -244,11 +247,11 @@ object TvorbaRozvrhu {
         else Uspech(novaTabulka, OfflineRuzneCasti(nejstarsi))
     }
 
-    suspend fun createTimetableForDayOrLesson(
+    inline fun <T : TimetableData> createTimetableForDayOrLesson(
         target: Timetable,
         classListSource: ClassListSource,
-        getTimetable: suspend (klass: Timetable.Class) -> Result
-    ): Result {
+        getTimetable: (klass: Timetable.Class) -> Result<T>
+    ): Result<out TimetableData> {
         require(target is Timetable.DenVjec || target is Timetable.HodinaVjec)
 
         val seznamNazvu = classListSource.classes.value
@@ -299,7 +302,8 @@ object TvorbaRozvrhu {
         else Uspech(novaTabulka, OfflineRuzneCasti(nejstarsi))
     }
 
-    private fun emptyTyden(
+    @PublishedApi
+    internal fun emptyTyden(
         target: Timetable,
         classCount: Int = 0,
     ): MutableList<MutableList<MutableList<Cell>>> {
@@ -375,17 +379,19 @@ object TvorbaRozvrhu {
 
 //private fun <E> MutableList<E>.takeInPlace(n: Int) = retainAll(take(n))
 
-private fun <E> List<E>.singleOrGet(index: Int) = singleOrNull() ?: get(index)
+fun <E> List<E>.singleOrGet(index: Int) = singleOrNull() ?: get(index)
 
-val Result.tabulka
+val <T> Result<T>.tabulka
     get() = when (this) {
         is Uspech -> rozvrh
         else -> null
     }
 
-fun Result.upravitTabulku(edit: (TimetableData) -> TimetableData) = when (this) {
-    is Uspech -> copy(rozvrh = edit(rozvrh))
-    else -> this
+fun <T, U> Result<T>.upravitTabulku(edit: (T) -> U) = when (this) {
+    is Uspech -> Uspech(rozvrh = edit(rozvrh), zdroj = zdroj)
+    is ZadnaData -> ZadnaData()
+    is Error -> Error()
+    is TridaNeexistuje -> TridaNeexistuje()
 }
 
 fun TimetableData.filtrovatTabulku(

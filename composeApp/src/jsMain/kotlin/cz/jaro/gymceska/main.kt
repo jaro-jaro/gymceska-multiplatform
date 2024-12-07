@@ -9,6 +9,7 @@ import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.StorageSettings
 import com.russhwolf.settings.observable.makeObservable
 import cz.jaro.gymceska.rozvrh.Timetable
+import cz.jaro.gymceska.rozvrh.manual.LocalFileManager
 import cz.jaro.gymceska.theme.GymceskaTheme
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseOptions

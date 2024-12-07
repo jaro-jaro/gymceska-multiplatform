@@ -1,20 +1,28 @@
 package cz.jaro.gymceska
 
 import cz.jaro.gymceska.rozvrh.Cell
+import cz.jaro.gymceska.rozvrh.editor.CellForEdit
 import kotlin.jvm.JvmName
 
 typealias TimetableData = List<List<List<Cell>>>
-typealias PermanentTimetableData = List<List<List<Cell.Permanent>>>
+typealias TimetableDataForEdit = List<List<List<Cell.ForEdit>>>
 typealias Week = List<Day>
 typealias Day = List<Lesson>
 typealias Lesson = List<Cell.NonHeader>
-typealias PermanentWeek = List<PermanentDay>
-typealias PermanentDay = List<PermanentLesson>
-typealias PermanentLesson = List<Cell.PermanentNonHeader>
+typealias AdvancedWeekData = List<List<List<Cell.Edit>>>
+typealias AdvancedDay = List<List<Cell.Edit>>
+typealias AdvancedLesson = List<Cell.Edit>
+typealias WeekForEdit = List<DayForEdit>
+typealias DayForEdit = List<LessonForEdit>
+typealias LessonForEdit = List<CellForEdit>
+typealias MutableWeek = MutableList<MutableDay>
+typealias MutableDay = MutableList<MutableLesson>
+typealias MutableLesson = MutableList<Cell.Edit>
 
-@JvmName("justPermanentTimetable")
-fun PermanentTimetableData.justTimetable(): PermanentWeek =
-    drop(1).map { it.drop(1).map { l -> l.map { c -> c as Cell.PermanentNonHeader } } }
+
+@JvmName("justTimetableForEdit")
+fun TimetableDataForEdit.justTimetable(): WeekForEdit =
+    drop(1).map { it.drop(1).map { l -> l.map { c -> c as CellForEdit } } }
 
 fun TimetableData.justTimetable(): Week = drop(1).map { it.drop(1).map { l -> l.map { c -> c as Cell.NonHeader } } }
 fun TimetableData.topHeaders() = first().drop(1).map { it.single() as Cell.Header }

@@ -94,7 +94,7 @@ suspend fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair
                         is Cell.Removed -> bunka.copy(subject = "$i. ${bunka.subject}")
                         is Cell.Normal -> bunka.copy(subject = "$i. ${bunka.subject}")
                         is Cell.ST -> bunka.copy(subject = "$i. ${bunka.subject}")
-                        Cell.Empty -> Cell.Header(title = "$i.")
+                        else -> Cell.Header(title = "$i.")
                     }
                 }
             }

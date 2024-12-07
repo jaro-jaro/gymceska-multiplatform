@@ -24,6 +24,7 @@ import cz.jaro.gymceska.Error
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
@@ -84,7 +85,7 @@ fun RozvrhManual(
 
 @Composable
 fun RozvrhManualContent(
-    result: Result?,
+    result: Result<out TimetableData>?,
     vjec: Timetable?,
     vybratRozvrh: (Timetable) -> Unit,
     navigator: Navigator,
@@ -103,7 +104,7 @@ fun RozvrhManualContent(
     navigator = navigator,
     najdiMiVolnouTridu = najdiMiVolnouTridu,
     najdiMiVolnehoUcitele = najdiMiVolnehoUcitele,
-    result = result,
+    hodiny = hodiny,
     vybratRozvrh = vybratRozvrh,
     remove = remove,
     loaded = loaded,
@@ -146,9 +147,9 @@ fun RozvrhManualContent(
                 )
             }
 
-            Error -> Text("Omlouváme se, ale došlo k chybě při načítání rozvrhu. Zkuste to znovu.")
-            TridaNeexistuje -> Text("Omlouváme se, rozvrhy jsou poškozeny, prosím, odstraňte je a opakujte akci")
-            ZadnaData -> Text("Nemáte nahrané žádné rozvrhy")
+            is Error -> Text("Omlouváme se, ale došlo k chybě při načítání rozvrhu. Zkuste to znovu.")
+            is TridaNeexistuje -> Text("Omlouváme se, rozvrhy jsou poškozeny, prosím, odstraňte je a opakujte akci")
+            is ZadnaData -> Text("Nemáte nahrané žádné rozvrhy")
         }
     }
 }
