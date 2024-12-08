@@ -1,17 +1,27 @@
 package cz.jaro.gymceska
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.DEFAULT_CONCURRENCY
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flattenMerge
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
+inline fun <reified T, R> combineStates(
+    coroutineScope: CoroutineScope,
+    flows: Iterable<StateFlow<T>>,
+    sharingStarted: SharingStarted = SharingStarted.Eagerly,
+    crossinline transform: (Array<T>) -> R
+) = combine(flows, transform)
+    .stateIn(coroutineScope, sharingStarted, transform(flows.map { it.value }.toTypedArray()))
+
 inline fun <T, R> StateFlow<T>.mapState(
     coroutineScope: CoroutineScope,
-    sharingStarted: SharingStarted,
+    sharingStarted: SharingStarted = SharingStarted.Eagerly,
     crossinline transform: (value: T) -> R,
 ): StateFlow<R> = map(transform)
     .stateIn(coroutineScope, sharingStarted, transform(value))
@@ -67,3 +77,10 @@ fun <T1, T2, T3, T4, R> combineStates(
     transform: (T1, T2, T3, T4) -> R,
 ): StateFlow<R> = combine(flow, flow2, flow3, flow4, transform)
     .stateIn(coroutineScope, sharingStarted, transform(flow.value, flow2.value, flow3.value, flow4.value))
+
+fun <T> StateFlow<StateFlow<T>>.flattenMergeStates(
+    coroutineScope: CoroutineScope,
+    sharingStarted: SharingStarted = SharingStarted.Eagerly,
+    concurrency: Int = DEFAULT_CONCURRENCY
+) = flattenMerge(concurrency)
+    .stateIn(coroutineScope, sharingStarted, value.value)

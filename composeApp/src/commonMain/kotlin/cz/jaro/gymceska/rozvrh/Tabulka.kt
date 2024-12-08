@@ -10,7 +10,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -36,11 +35,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.unit.dp
-import cz.jaro.gymceska.Offline
-import cz.jaro.gymceska.OfflineRuzneCasti
-import cz.jaro.gymceska.Online
 import cz.jaro.gymceska.TimetableData
-import cz.jaro.gymceska.ZdrojRozvrhu
 import cz.jaro.gymceska.rozvrh.editor.Address
 import cz.jaro.gymceska.rozvrh.editor.CellAddress
 import cz.jaro.gymceska.rozvrh.editor.LessonAddress
@@ -62,7 +57,6 @@ fun Tabulka(
     stalost: TimetableType,
     tabulka: TimetableData,
     kliklNaNeco: (vjec: Timetable) -> Unit,
-    rozvrhOfflineWarning: ZdrojRozvrhu?,
     tridy: List<Timetable.Class>,
     mistnosti: List<Timetable.Room>,
     vyucujici: List<Timetable.Teacher>,
@@ -185,20 +179,7 @@ fun Tabulka(
                 }
             }
         },
-        bottomContent = {
-            rozvrhOfflineWarning?.let {
-                Text(
-                    when (it) {
-                        Online -> "Prohlížíte si aktuální rozvrh."
-                        is Offline -> "Prohlížíte si verzi rozvrhu z ${it.ziskano.dayOfMonth}. ${it.ziskano.monthNumber}. ${it.ziskano.hour}:${it.ziskano.minute.nula()}. "
-                        is OfflineRuzneCasti -> "Nejstarší část tohoto rozvrhu pochází z ${it.nejstarsi.dayOfMonth}. ${it.nejstarsi.monthNumber}. ${it.nejstarsi.hour}:${it.nejstarsi.minute.nula()}. "
-                    } + if (it != Online) "Pro aktualizaci dat klikněte Stáhnout vše." else "",
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                )
-            }
-        },
+        bottomContent = {},
         horScrollState = horScrollState,
         verScrollState = verScrollState
     )

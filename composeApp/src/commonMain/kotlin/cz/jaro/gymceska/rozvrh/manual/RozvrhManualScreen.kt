@@ -20,12 +20,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cz.jaro.gymceska.Error
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.TimetableData
-import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.rozvrh.LocalCellZoom
@@ -130,11 +128,10 @@ fun RozvrhManualContent(
             is Uspech -> CompositionLocalProvider(LocalCellZoom provides zoom) {
                 Tabulka(
                     vjec = vjec,
-                    tabulka = result.rozvrh,
+                    tabulka = result.timetable,
                     kliklNaNeco = { vjec ->
                         vybratRozvrh(vjec)
                     },
-                    rozvrhOfflineWarning = result.zdroj,
                     tridy = tridy,
                     mistnosti = mistnosti,
                     vyucujici = vyucujici,
@@ -148,7 +145,6 @@ fun RozvrhManualContent(
             }
 
             is Error -> Text("Omlouváme se, ale došlo k chybě při načítání rozvrhu. Zkuste to znovu.")
-            is TridaNeexistuje -> Text("Omlouváme se, rozvrhy jsou poškozeny, prosím, odstraňte je a opakujte akci")
             is ZadnaData -> Text("Nemáte nahrané žádné rozvrhy")
         }
     }

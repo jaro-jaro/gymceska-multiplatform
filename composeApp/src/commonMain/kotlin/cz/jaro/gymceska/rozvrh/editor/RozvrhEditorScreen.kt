@@ -36,12 +36,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cz.jaro.better_dialog.dialogManager
 import cz.jaro.better_dialog.show
-import cz.jaro.gymceska.Error
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.TimetableDataForEdit
-import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.justTimetable
@@ -293,11 +291,10 @@ fun RozvrhEditorContent(
 
                 Tabulka(
                     vjec = timetable,
-                    tabulka = result.rozvrh,
+                    tabulka = result.timetable,
                     kliklNaNeco = { vjec ->
                         selectTimetable(vjec)
                     },
-                    rozvrhOfflineWarning = result.zdroj,
                     tridy = classes,
                     mistnosti = rooms,
                     vyucujici = teachers,
@@ -311,7 +308,7 @@ fun RozvrhEditorContent(
                         when {
                             timetable !is Timetable.Class -> null
                             address is CellAddress -> {
-                                val cell = result.rozvrh[address]
+                                val cell = result.timetable[address]
                                 when {
                                     memory == null && cell !is Cell.EmptyForEdit -> Icons.Default.FileCopy
                                     memory == null -> null
@@ -332,7 +329,7 @@ fun RozvrhEditorContent(
                     roomLongClick = { address ->
                         if (timetable !is Timetable.Class) return@Tabulka
                         if (address !is CellAddress) return@Tabulka
-                        val cell = result.rozvrh[address]
+                        val cell = result.timetable[address]
                         dialogManager.show(
                             state = cell.room,
                             confirmButton = {
@@ -389,7 +386,7 @@ fun RozvrhEditorContent(
                         when {
                             timetable !is Timetable.Class -> Unit
                             address is CellAddress -> {
-                                val cell = result.rozvrh[address]
+                                val cell = result.timetable[address]
                                 when {
                                     memory == null && cell !is Cell.EmptyForEdit -> remember(address)
                                     memory == null -> Unit
@@ -409,7 +406,6 @@ fun RozvrhEditorContent(
             }
 
             is Error -> Text("Omlouváme se, ale došlo k chybě při načítání rozvrhu. Zkuste to znovu.")
-            is TridaNeexistuje -> Text("Omlouváme se, rozvrhy jsou poškozeny, prosím, odstraňte je a opakujte akci")
             is ZadnaData -> Text("Nemáte nahrané žádné rozvrhy")
         }
     }

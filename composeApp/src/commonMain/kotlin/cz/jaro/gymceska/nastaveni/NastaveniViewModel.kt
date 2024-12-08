@@ -38,12 +38,12 @@ class NastaveniViewModel(
             val tridy = tridyFlow.value
             val vse = tridy.mapNotNull {
                 update(it.nazev)
-                val res = onlineTimetableSource.getTimetable(it, stalost)
+                val res = onlineTimetableSource.getTimetable(it, stalost).value
                 if (res !is Uspech) {
                     finish(false)
                     return@mapNotNull null
                 }
-                it.zkratka to res.rozvrh
+                it.zkratka to res.timetable
             }.toMap()
             update("Už to skoro je!")
             val data = Json.encodeToString(

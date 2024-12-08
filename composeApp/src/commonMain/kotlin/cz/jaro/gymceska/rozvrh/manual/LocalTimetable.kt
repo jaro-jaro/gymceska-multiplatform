@@ -6,10 +6,8 @@ import com.russhwolf.settings.coroutines.getStringOrNullStateFlow
 import com.russhwolf.settings.set
 import cz.jaro.gymceska.ClassListSource
 import cz.jaro.gymceska.FirebaseClassListSource.Companion.fromJson
-import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.Timetables
-import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.filterNotNullState
@@ -18,11 +16,9 @@ import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.rozvrh.Cell
 import cz.jaro.gymceska.rozvrh.Timetable
 import cz.jaro.gymceska.rozvrh.TimetableType
-import cz.jaro.gymceska.ukoly.now
 import io.github.vinceglb.filekit.core.FileKit
 import io.github.vinceglb.filekit.core.PickerMode
 import io.github.vinceglb.filekit.core.PickerType
-import io.github.vinceglb.filekit.core.PlatformFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,6 +36,7 @@ class LocalTimetableSource(
     }
 
     private val saved = settings.getStringOrNullStateFlow(scope, Keys.SAVED)
+
     @PublishedApi
     internal val timetables = try {
         saved.mapState(scope, SharingStarted.Eagerly) {
@@ -61,7 +58,7 @@ class LocalTimetableSource(
             type = PickerType.File(listOf("rozvrh")),
             mode = PickerMode.Single,
             title = "Vyberte soubor s rozvrhem",
-        )?.getSaveData()
+        )?.readBytes()?.decodeToString()?.getSaveData()
     }
 
     fun removedSavedTimetable() {
@@ -70,20 +67,22 @@ class LocalTimetableSource(
     }
 
     fun getTimetable(klass: Timetable.Class) =
-        timetables.value?.timetables?.let { timetables ->
-            timetables[klass.zkratka]?.let {
-                Uspech(it, Offline(now()))
-            } ?: TridaNeexistuje()
-        } ?: ZadnaData()
+        timetables.mapState(scope) {
+            it?.timetables?.let { timetables ->
+                timetables[klass.zkratka]?.let(::Uspech)
+            } ?: ZadnaData()
+        }
 
     val type = timetables.mapState(scope, SharingStarted.Eagerly) { it?.type }
 
-    val classListSource = LocalClassListSource(timetables.filterNotNullState(
-        scope, Timetables(
-            type = TimetableType.ThisWeek,
-            timetables = emptyMap(),
+    val classListSource = LocalClassListSource(
+        timetables.filterNotNullState(
+            scope, Timetables(
+                type = TimetableType.ThisWeek,
+                timetables = emptyMap(),
+            )
         )
-    ))
+    )
 }
 
 interface LocalFileManager {
@@ -97,9 +96,6 @@ interface LocalFileManager {
         override fun cleanup(savedData: String) = Unit
     }
 }
-
-context(LocalFileManager)
-suspend fun PlatformFile.getSaveData(): String = readBytes().decodeToString().getSaveData()
 
 class LocalClassListSource(
     timetables: StateFlow<Timetables<TimetableData>>,

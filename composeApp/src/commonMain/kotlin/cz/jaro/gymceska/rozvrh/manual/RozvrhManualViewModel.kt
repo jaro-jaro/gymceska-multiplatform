@@ -8,6 +8,7 @@ import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.combineStates
+import cz.jaro.gymceska.flattenMergeStates
 import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.rozvrh.Cell
@@ -25,13 +26,12 @@ import cz.jaro.gymceska.rozvrh.dny
 import cz.jaro.gymceska.rozvrh.editCells
 import cz.jaro.gymceska.rozvrh.editor.CellAddress
 import cz.jaro.gymceska.rozvrh.hodiny
-import cz.jaro.gymceska.rozvrh.tabulka
+import cz.jaro.gymceska.rozvrh.timetable
 import cz.jaro.gymceska.rozvrh.upravitTabulku
 import cz.jaro.gymceska.topHeaders
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
 import kotlin.reflect.KClass
@@ -97,7 +97,7 @@ class RozvrhManualViewModel(
     val hodiny = tridy.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds)) {
         timetableSource.getTimetable(
             klass = tridy.value.firstOrNull() ?: return@mapState emptyList(),
-        ).tabulka.also(::println)?.topHeaders()?.map {
+        ).value.timetable.also(::println)?.topHeaders()?.map {
             it.subtitle.split(" - ").map(::toLocalTime).toRange()
         } ?: emptyList()
     }
@@ -138,12 +138,12 @@ class RozvrhManualViewModel(
     val zoom = settings.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::zoom)
     val alwaysTwoRowCells = settings.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::alwaysTwoRowCells)
 
-    val result = vjec.map { vjec ->
-        if (vjec == null) null
+    val result = vjec.mapState(viewModelScope) { vjec ->
+        if (vjec == null) MutableStateFlow(null)
         else when (vjec) {
             is Class -> timetableSource.getTimetable(
                 klass = vjec,
-            ).upravitTabulku {
+            ).upravitTabulku(viewModelScope) {
                 it.editCells { cell ->
                     if (cell is Cell.Data) cell.copy(klass = "") else cell
                 }
@@ -152,10 +152,11 @@ class RozvrhManualViewModel(
             is Teacher,
             is Room,
                 -> TvorbaRozvrhu.createTimetableForTeacherOrRoom(
+                viewModelScope,
                 target = vjec,
                 classListSource = classListSource,
                 getTimetable = { timetableSource.getTimetable(it) },
-            ).upravitTabulku { week ->
+            ).upravitTabulku(viewModelScope) { week ->
                 week.editCells { cell ->
                     if (cell is Cell.Normal) when (vjec) {
                         is Teacher -> cell.copy(teacher = "")
@@ -169,13 +170,13 @@ class RozvrhManualViewModel(
             is DenVjec,
             is HodinaVjec,
                 -> TvorbaRozvrhu.createTimetableForDayOrLesson(
+                viewModelScope,
                 target = vjec,
                 classListSource = classListSource,
                 getTimetable = { timetableSource.getTimetable(it) },
             )
         }
-    }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), null)
+    }.flattenMergeStates(viewModelScope)
 
     fun najdiMivolnouTridu(
         den: Int,
@@ -186,12 +187,12 @@ class RozvrhManualViewModel(
         viewModelScope.launch {
             val plneTridy = tridy.value.flatMap { trida ->
                 progress("Prohledávám třídu\n${trida.zkratka}")
-                timetableSource.getTimetable(trida).let { result ->
+                timetableSource.getTimetable(trida).value.let { result ->
                     if (result !is Uspech) {
                         onComplete(null)
                         return@launch
                     }
-                    result.rozvrh
+                    result.timetable
                 }.justTimetable()[den].slice(hodiny).flatMap { hodina ->
                     hodina.map { bunka ->
                         bunka.roomLike
@@ -215,12 +216,12 @@ class RozvrhManualViewModel(
         viewModelScope.launch {
             val zaneprazdneniUcitele = tridy.value.drop(1).flatMap { trida ->
                 progress("Prohledávám třídu\n${trida.zkratka}")
-                timetableSource.getTimetable(trida).let { result ->
+                timetableSource.getTimetable(trida).value.let { result ->
                     if (result !is Uspech) {
                         onComplete(null)
                         return@launch
                     }
-                    result.rozvrh
+                    result.timetable
                 }.drop(1)[den].drop(1).slice(hodiny).flatMap { hodina ->
                     hodina.map { bunka ->
                         bunka.teacherLike

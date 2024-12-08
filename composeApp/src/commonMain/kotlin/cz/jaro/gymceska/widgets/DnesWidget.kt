@@ -22,7 +22,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Duration.Companion.hours
 
-private suspend fun OnlineTimetableSource.rozvrhZobrazitNaDnesek(settings: SettingsFlow) =
+private fun OnlineTimetableSource.rozvrhZobrazitNaDnesek(settings: SettingsFlow) =
     when (val nastaveni = settings.value.prepnoutRozvrhWidget) {
         is PrepnoutRozvrhWidget.OPulnoci -> true
         is PrepnoutRozvrhWidget.VCas -> {
@@ -38,14 +38,14 @@ private suspend fun OnlineTimetableSource.rozvrhZobrazitNaDnesek(settings: Setti
         }
     }
 
-private suspend fun OnlineTimetableSource.zjistitKonecVyucovani(settings: SettingsFlow): LocalTime {
+private fun OnlineTimetableSource.zjistitKonecVyucovani(settings: SettingsFlow): LocalTime {
     val nastaveni = settings.value
 
-    val result = getTimetable(nastaveni.mojeTrida, TimetableType.ThisWeek)
+    val result = getTimetable(nastaveni.mojeTrida, TimetableType.ThisWeek).value
 
     if (result !is Uspech) return LocalTime(0, 0)
 
-    val tabulka = result.rozvrh
+    val tabulka = result.timetable
 
     val denTydne = today().dayOfWeek.isoDayNumber
 
@@ -75,10 +75,10 @@ suspend fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair
 
     val stalost = if (cisloDne == 1 && !dnes) TimetableType.NextWeek else TimetableType.ThisWeek
 
-    val hodiny = getTimetable(nastaveni.mojeTrida, stalost).let { result ->
+    val hodiny = getTimetable(nastaveni.mojeTrida, stalost).value.let { result ->
         if (result !is Uspech) return@let listOf(Cell.Header("Žádná data!"))
 
-        val tabulka = result.rozvrh
+        val tabulka = result.timetable
 
         tabulka
             .getOrNull(cisloDne)
