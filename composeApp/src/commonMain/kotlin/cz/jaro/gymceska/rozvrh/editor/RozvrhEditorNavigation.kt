@@ -37,7 +37,7 @@ import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.window.DialogProperties
-import cz.jaro.better_dialog.dialogManager
+import cz.jaro.better_dialog.globalDialogManager
 import cz.jaro.better_dialog.show
 import cz.jaro.gymceska.ActionScope
 import cz.jaro.gymceska.Navigation
@@ -199,7 +199,7 @@ private fun showConflicts(
     teachers: List<Timetable.Teacher>,
     selectTimetable: (Timetable) -> Unit,
     conflicts: List<String>,
-) = dialogManager.show(
+) = globalDialogManager.show(
     confirmButton = { TextButton(::hide) { Text("OK") } },
     content = {
         LazyColumn {
@@ -268,7 +268,7 @@ fun findMe(
     najdiMiVolnouTridu: (Int, List<Int>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
     najdiMiVolnehoUcitele: (Int, List<Int>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
 ) {
-    dialogManager.show(
+    globalDialogManager.show(
         state = FindMeSettings(
             findRoom = false,
             dayIndex = today().dayOfWeek.isoDayNumber
@@ -283,7 +283,7 @@ fun findMe(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val loading = dialogManager.show(
+                    val loading = globalDialogManager.show(
                         state = "Hledám...",
                         confirmButton = {},
                         title = { Text(customState) },
@@ -378,7 +378,7 @@ fun findMeResult(
     classes: List<Timetable.Room> = emptyList(),
     teachers: List<Timetable.Teacher> = emptyList(),
 ) {
-    dialogManager.show(
+    globalDialogManager.show(
         confirmButton = { TextButton(::hide) { Text("OK") } },
         title = {
             Text(text = "Najdi mi ${if (settings.findRoom) "volnou učebnu" else "volného učitele"}")

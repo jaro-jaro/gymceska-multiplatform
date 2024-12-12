@@ -73,7 +73,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
-import cz.jaro.better_dialog.dialogManager
+import cz.jaro.better_dialog.globalDialogManager
 import cz.jaro.better_dialog.show
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
@@ -470,7 +470,7 @@ private fun MenuVybiratka(
 @Composable
 private fun NapovedaKMistostem(mistnosti: List<Timetable.Room>) = if (mistnosti.any { it.napoveda != null }) IconButton(
     onClick = {
-        dialogManager.show(
+        globalDialogManager.show(
             confirmButton = { TextButton(::hide) { Text("OK") } },
             title = { Text("Nápověda k místnostem") },
             content = {

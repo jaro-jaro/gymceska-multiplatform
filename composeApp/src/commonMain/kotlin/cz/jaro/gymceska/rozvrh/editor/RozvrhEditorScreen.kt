@@ -34,7 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cz.jaro.better_dialog.dialogManager
+import cz.jaro.better_dialog.globalDialogManager
 import cz.jaro.better_dialog.show
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
@@ -158,7 +158,7 @@ fun RozvrhEditorContent(
     fun vysledkyDialog(
         results: List<String>,
         address: Address,
-    ) = dialogManager.show(
+    ) = globalDialogManager.show(
         confirmButton = { TextButton(::hide) { Text("OK") } },
         content = {
             LazyColumn {
@@ -189,7 +189,7 @@ fun RozvrhEditorContent(
     fun vysledkyDialog2(
         results: List<String>,
         address: LessonAddress,
-    ) = dialogManager.show(
+    ) = globalDialogManager.show(
         confirmButton = { TextButton(::hide) { Text("OK") } },
         content = {
             LazyColumn {
@@ -330,7 +330,7 @@ fun RozvrhEditorContent(
                         if (timetable !is Timetable.Class) return@Tabulka
                         if (address !is CellAddress) return@Tabulka
                         val cell = result.timetable[address]
-                        dialogManager.show(
+                        globalDialogManager.show(
                             state = cell.room,
                             confirmButton = {
                                 TextButton(
