@@ -54,7 +54,7 @@ data class Change(
     val toLocation: CellAddress,
 )
 
-typealias CellForEdit = Cell.ForEditNonHeader<out Address>
+typealias CellForEdit = Cell.DataForEdit<out Address>
 
 @Serializable(AdvancedWeek.Serializer::class)
 class AdvancedWeek {

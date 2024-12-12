@@ -230,7 +230,7 @@ fun RozvrhEditorContent(
         }
         if (loaded && result != null && timetable != null) when (result) {
             is Uspech -> CompositionLocalProvider(LocalCellZoom provides zoom) {
-                fun editCell(address: CellAddress, cell: Cell.ForEditNonHeader<out Address>) = dialogManager.show(
+                fun editCell(address: CellAddress, cell: Cell.DataForEdit<out Address>) = globalDialogManager.show(
                     confirmButton = {
                         TextButton(::hide) { Text("Zrušit") }
                     },
