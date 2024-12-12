@@ -35,6 +35,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.rozvrh.editor.Address
 import cz.jaro.gymceska.rozvrh.editor.CellAddress
@@ -44,8 +45,7 @@ import cz.jaro.gymceska.theme.LocalIsDarkThemeUsed
 import cz.jaro.gymceska.theme.LocalIsDynamicThemeUsed
 import cz.jaro.gymceska.theme.LocalTheme
 import cz.jaro.gymceska.theme.Theme
-import cz.jaro.gymceska.ukoly.time
-import cz.jaro.gymceska.ukoly.today
+import cz.jaro.gymceska.ukoly.nowFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.isoDayNumber
@@ -71,8 +71,9 @@ fun Tabulka(
 ) {
     if (tabulka.isEmpty()) return
 
-    val currentDay = if (stalost == TimetableType.ThisWeek) today().dayOfWeek.isoDayNumber.takeIf { it in 1..5 }?.minus(1) else null
-    val currentLesson = if (stalost == TimetableType.ThisWeek) hodiny.indexOfFirst { it.contains(time()) }.takeUnless { it == -1 } else null
+    val now by nowFlow.collectAsStateWithLifecycle()
+    val currentDay = if (stalost == TimetableType.ThisWeek) now.dayOfWeek.isoDayNumber.takeIf { it in 1..5 }?.minus(1) else null
+    val currentLesson = if (stalost == TimetableType.ThisWeek) hodiny.indexOfFirst { it.contains(now.time) }.takeUnless { it == -1 } else null
 
     val canAllowCellsSmallerThan1 = mujRozvrh || vjec !is Timetable.Class || alwaysTwoRowCells
     val maxByRow = tabulka.drop(1).map {
