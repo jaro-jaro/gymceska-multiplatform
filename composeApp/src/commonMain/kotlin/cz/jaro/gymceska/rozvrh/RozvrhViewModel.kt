@@ -354,8 +354,8 @@ fun TimetableData.editCells(
 
 @JsName("editCellsOfDay")
 @JvmName("editCellsOfDay")
-fun List<List<Cell>>.editCells(
-    editCell: (Cell) -> Cell,
+fun <T : Cell> List<List<T>>.editCells(
+    editCell: (T) -> T,
 ) = map { lesson ->
     lesson.map { cell ->
         editCell(cell)
