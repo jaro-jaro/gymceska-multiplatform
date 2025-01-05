@@ -60,6 +60,7 @@ kotlin {
             implementation(libs.multiplatform.settings.make.observable)
         }
         commonMain.dependencies {
+
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.ui)
@@ -87,7 +88,6 @@ kotlin {
             implementation(libs.multiplatform.settings.coroutines)
             implementation(libs.androidx.navigation.compose)
             implementation(libs.firebase.analytics)
-            implementation(libs.better.dialog)
         }
     }
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
@@ -107,11 +107,11 @@ buildkonfig {
 
 android {
     namespace = "cz.jaro.gymceska"
-    compileSdk = 35
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "cz.jaro.gymceska"
-        minSdk = 26
+        minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
