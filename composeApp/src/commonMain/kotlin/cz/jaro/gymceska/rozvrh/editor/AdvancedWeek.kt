@@ -54,7 +54,7 @@ data class Change(
     val toLocation: CellAddress,
 )
 
-typealias CellForEdit = Cell.ForEditNonHeader<out Address>
+typealias CellForEdit = Cell.DataForEdit<out Address>
 
 @Serializable(AdvancedWeek.Serializer::class)
 class AdvancedWeek {
@@ -86,7 +86,7 @@ class AdvancedWeek {
 
     @OptIn(ExperimentalSerializationApi::class)
     class Serializer : KSerializer<AdvancedWeek> {
-    private val delegateSerializer = serializer<AdvancedWeekData>()
+        private val delegateSerializer = serializer<AdvancedWeekData>()
         override val descriptor = SerialDescriptor("AdvancedWeek", delegateSerializer.descriptor)
         override fun serialize(encoder: Encoder, value: AdvancedWeek) = encoder.encodeSerializableValue(delegateSerializer, value.days)
         override fun deserialize(decoder: Decoder) = AdvancedWeek(decoder.decodeSerializableValue(delegateSerializer))
@@ -201,6 +201,7 @@ fun TimetableDataForEdit.toTimetableData(): TimetableData = map { day ->
         }
     }
 }
+
 fun WeekForEdit.removeEmptys(): AdvancedWeekData = map { day ->
     day.map { lesson ->
         lesson.mapNotNull {
@@ -211,6 +212,7 @@ fun WeekForEdit.removeEmptys(): AdvancedWeekData = map { day ->
         }
     }
 }
+
 fun AdvancedWeek.addEmptys(klass: String): WeekForEdit = mapLessonsIndexed { address, lesson ->
     lesson.ifEmpty {
         listOf(Cell.EmptyForEdit(klass, address))

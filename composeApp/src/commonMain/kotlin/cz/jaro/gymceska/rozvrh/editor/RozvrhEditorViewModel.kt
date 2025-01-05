@@ -6,14 +6,12 @@ import cz.jaro.gymceska.FirebaseClassListSource.Companion.toJson
 import cz.jaro.gymceska.LessonForEdit
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Navigator
-import cz.jaro.gymceska.Online
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.TimetableDataForEdit
 import cz.jaro.gymceska.Timetables
-import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.WeekForEdit
 import cz.jaro.gymceska.ZadnaData
@@ -31,7 +29,7 @@ import cz.jaro.gymceska.rozvrh.hodiny
 import cz.jaro.gymceska.rozvrh.manual.LocalTimetableSource
 import cz.jaro.gymceska.rozvrh.manual.editCells
 import cz.jaro.gymceska.rozvrh.manual.editCellsIndexed
-import cz.jaro.gymceska.rozvrh.tabulka
+import cz.jaro.gymceska.rozvrh.timetable
 import cz.jaro.gymceska.rozvrh.upravitTabulku
 import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.today
@@ -39,6 +37,7 @@ import io.github.vinceglb.filekit.core.FileKit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -117,7 +116,7 @@ class RozvrhEditorViewModel(
     val hodiny = tridy.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds)) {
         savedTimetableSource.getTimetable(
             klass = tridy.value.firstOrNull() ?: return@mapState emptyList(),
-        ).tabulka?.topHeaders().orEmpty().map {
+        ).value.timetable?.topHeaders().orEmpty().map {
             it.subtitle.split(" - ").map(::toLocalTime).toRange()
         }
     }
@@ -159,21 +158,21 @@ class RozvrhEditorViewModel(
     val alwaysTwoRowCells = settings.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::alwaysTwoRowCells)
 
     private fun getTimetable(klass: Timetable.Class, showChanges: Boolean = isShowingChanges.value) =
-        if (showChanges) getEditedTimetable(klass)?.let { Uspech(it, Online) } ?: TridaNeexistuje()
+        if (showChanges) getEditedTimetable(klass).mapState(viewModelScope) { it?.let(::Uspech) ?: ZadnaData() }
         else getSavedTimetable(klass)
 
     private fun getSavedTimetable(klass: Timetable.Class) =
-        savedTimetableSource.getTimetable(klass).upravitTabulku { it.toDataForEdit(klass.zkratka) }
+        savedTimetableSource.getTimetable(klass).upravitTabulku(viewModelScope) { it.toDataForEdit(klass.zkratka) }
 
     private fun getEditedTimetable(klass: Timetable.Class) =
-        editedTimetableSource.getTimetable(klass)?.toTimetableDataForEdit(hodiny.value, klass.zkratka)
+        editedTimetableSource.getTimetable(klass).mapState(viewModelScope) { it?.toTimetableDataForEdit(hodiny.value, klass.zkratka) }
 
     private val update = editedTimetableSource.timetables.map {}
 
     val result = combine(timetable, isShowingChanges, update) { timetable, isShowingChanges, _ ->
         if (timetable == null) null
         else getTimetable2(timetable, false).let { oldData ->
-            oldData.tabulka?.let { old ->
+            oldData.timetable?.let { old ->
                 if (isShowingChanges) getTimetable2(timetable, true).upravitTabulku {
                     it.mark(old)
                 }
@@ -186,10 +185,10 @@ class RozvrhEditorViewModel(
     private fun getTimetable2(
         timetable: Timetable,
         showChanges: Boolean = isShowingChanges.value,
-        getKlass: (Timetable.Class) -> Result<TimetableDataForEdit> = { getTimetable(it, showChanges) },
+        getKlass: (Timetable.Class) -> StateFlow<Result<TimetableDataForEdit>> = { getTimetable(it, showChanges) },
     ): Result<TimetableDataForEdit> =
         when (timetable) {
-            is Timetable.Class -> getKlass(timetable).upravitTabulku {
+            is Timetable.Class -> getKlass(timetable).value.upravitTabulku {
                 it.editCells { cell ->
                     when (cell) {
                         is Cell.Edit -> cell.copy(klass = "")
@@ -202,10 +201,11 @@ class RozvrhEditorViewModel(
             is Timetable.Teacher,
             is Timetable.Room,
                 -> TvorbaRozvrhu.createTimetableForTeacherOrRoom(
+                viewModelScope,
                 target = timetable,
                 classListSource = classListSource,
                 getTimetable = getKlass,
-            ).upravitTabulku { week ->
+            ).value.upravitTabulku { week ->
                 week.editCellsIndexed { address, cell ->
                     when (cell) {
                         is Cell.Header -> cell
@@ -224,10 +224,11 @@ class RozvrhEditorViewModel(
             is Timetable.DenVjec,
             is Timetable.HodinaVjec,
                 -> TvorbaRozvrhu.createTimetableForDayOrLesson(
+                viewModelScope,
                 target = timetable,
                 classListSource = classListSource,
                 getTimetable = getKlass,
-            ).upravitTabulku { week ->
+            ).value.upravitTabulku { week ->
                 week.editCellsIndexed { address, cell ->
                     when (cell) {
                         is Cell.Header -> cell
@@ -249,12 +250,12 @@ class RozvrhEditorViewModel(
         viewModelScope.launch {
             val plneTridy = tridy.value.flatMap { trida ->
                 progress("Prohledávám třídu\n${trida.zkratka}")
-                getTimetable(trida).let { result ->
+                getTimetable(trida).value.let { result ->
                     if (result !is Uspech) {
                         onComplete(null)
                         return@launch
                     }
-                    result.rozvrh
+                    result.timetable
                 }.justTimetable()[den].slice(hodiny).flatMap { hodina ->
                     hodina.map { bunka ->
                         bunka.roomLike
@@ -278,12 +279,12 @@ class RozvrhEditorViewModel(
         viewModelScope.launch {
             val zaneprazdneniUcitele = tridy.value.drop(1).flatMap { trida ->
                 progress("Prohledávám třídu\n${trida.zkratka}")
-                getTimetable(trida).let { result ->
+                getTimetable(trida).value.let { result ->
                     if (result !is Uspech) {
                         onComplete(null)
                         return@launch
                     }
-                    result.rozvrh
+                    result.timetable
                 }.drop(1)[den].drop(1).slice(hodiny).flatMap { hodina ->
                     hodina.map { bunka ->
                         bunka.teacherLike
@@ -309,6 +310,7 @@ class RozvrhEditorViewModel(
             savedTimetableSource.copyTimetables {
                 editedTimetableSource.loadData(
                     it?.map { klass, data ->
+                        println(klass)
                         AdvancedWeek(data.toDataForEdit(klass).justTimetable().removeEmptys())
                     }
                 )
@@ -352,19 +354,19 @@ class RozvrhEditorViewModel(
         _isShowingChanges.value = !_isShowingChanges.value
     }
 
-    fun findConflicts() = findConflicts { getTimetable2(it).tabulka?.justTimetable() }
+    fun findConflicts() = findConflicts { getTimetable2(it).timetable?.justTimetable() }
 
     private fun findConflictsAfterEdit(edit: AdvancedWeek.() -> AdvancedWeek): List<String> {
         require(timetable.value is Timetable.Class)
-        val edited = editedTimetableSource.getTimetable(timetable.value as Timetable.Class)?.edit()
+        val edited = editedTimetableSource.getTimetable(timetable.value as Timetable.Class).mapState(viewModelScope) { it?.edit() }
 
         val conflicts = findConflicts { requestedTimetable ->
             getTimetable2(requestedTimetable) { klass ->
                 when (klass) {
-                    timetable.value -> edited?.days?.let { Uspech(it, Online) } ?: ZadnaData()
+                    timetable.value -> edited.mapState(viewModelScope) { it?.days?.let(::Uspech) ?: ZadnaData() }
                     else -> getTimetable(klass)
                 }
-            }.tabulka?.justTimetable()
+            }.timetable?.justTimetable()
         }
 
         return conflicts
@@ -437,13 +439,13 @@ class RozvrhEditorViewModel(
         val timetable = timetable.value
         require(timetable is Timetable.Class)
         val busyTeachers = tridy.value.flatMap { klass ->
-            val lesson = editedTimetableSource.getTimetable(klass)?.get(address.lessonAddress).orEmpty()
+            val lesson = editedTimetableSource.getTimetable(klass).value?.get(address.lessonAddress).orEmpty()
             lesson.map { cell ->
                 cell.teacher
             }
         }
 
-        val classWeek = editedTimetableSource.getTimetable(timetable)
+        val classWeek = editedTimetableSource.getTimetable(timetable).value
         val teachersInClass = classWeek?.flatMapCells { cell ->
             cell.teacher
         }.orEmpty()
@@ -455,7 +457,7 @@ class RozvrhEditorViewModel(
         val currentTeachers = classWeek?.get(address.lessonAddress).orEmpty().map { it.teacher }
 
         val currentTeacherSchedules = currentTeachers.mapNotNull { v ->
-            getTimetable2(vyucujici.value.first { it.zkratka == v }).tabulka?.justTimetable()
+            getTimetable2(vyucujici.value.first { it.zkratka == v }).timetable?.justTimetable()
         }
 
         val freeLessons = currentTeacherSchedules.first().indices.flatMap { dayIndex ->
@@ -480,7 +482,7 @@ class RozvrhEditorViewModel(
 
     fun whatIsWhere(address: CellAddress): List<String> {
         val vse = tridy.value.map { klass ->
-            val lesson = editedTimetableSource.getTimetable(klass)?.get(address.lessonAddress).orEmpty()
+            val lesson = editedTimetableSource.getTimetable(klass).value?.get(address.lessonAddress).orEmpty()
             "${klass.zkratka}: " + lesson.joinToString { bunka ->
                 "${bunka.subject} (${bunka.room})"
             }
@@ -491,7 +493,7 @@ class RozvrhEditorViewModel(
 
     fun findRoom(address: CellAddress): List<String> {
         val fullRooms = tridy.value.flatMap { klass ->
-            val lesson = editedTimetableSource.getTimetable(klass)?.get(address.lessonAddress).orEmpty()
+            val lesson = editedTimetableSource.getTimetable(klass).value?.get(address.lessonAddress).orEmpty()
             lesson.map { cell ->
                 cell.room
             }

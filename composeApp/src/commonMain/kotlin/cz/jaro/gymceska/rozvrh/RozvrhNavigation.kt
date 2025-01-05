@@ -18,7 +18,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,16 +55,12 @@ fun RozvrhNavigation(
     najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
     result: Result<out TimetableData>?,
     vybratRozvrh: (Timetable) -> Unit,
-    currentlyDownloading: Timetable.Class?,
+    currentlyDownloading: Boolean,
     content: @Composable (PaddingValues) -> Unit,
 ) = Navigation(
     titleContent = {
-        if (currentlyDownloading != null) Row(
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Default.CloudDownload, null, Modifier.padding(start = 16.dp, end = 8.dp))
-            Text(text = currentlyDownloading.nazev, style = MaterialTheme.typography.bodyMedium)
-        }
+        if (currentlyDownloading)
+            Icon(Icons.Default.CloudDownload, null, Modifier.padding(horizontal = 16.dp))
     },
     title = "Rozvrh",
     actions = {
@@ -135,7 +130,7 @@ private fun ActionScope.Actions(
         mutableStateOf(
             listOf(
                 result
-                    ?.tabulka
+                    ?.timetable
                     ?.get(0)
                     ?.drop(1)
                     ?.indexOfFirst {

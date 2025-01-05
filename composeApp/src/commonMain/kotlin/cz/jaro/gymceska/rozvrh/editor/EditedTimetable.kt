@@ -3,6 +3,7 @@ package cz.jaro.gymceska.rozvrh.editor
 import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.ObservableSettings
 import com.russhwolf.settings.coroutines.getStringOrNullStateFlow
+import com.russhwolf.settings.get
 import com.russhwolf.settings.set
 import cz.jaro.gymceska.FirebaseClassListSource.Companion.fromJson
 import cz.jaro.gymceska.FirebaseClassListSource.Companion.toJson
@@ -10,7 +11,6 @@ import cz.jaro.gymceska.Timetables
 import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.rozvrh.Timetable
 import cz.jaro.gymceska.rozvrh.manual.LocalFileManager
-import cz.jaro.gymceska.rozvrh.manual.getSaveData
 import io.github.vinceglb.filekit.core.FileKit
 import io.github.vinceglb.filekit.core.PickerMode
 import io.github.vinceglb.filekit.core.PickerType
@@ -32,7 +32,7 @@ class EditedTimetableSource(
     private val edited = settings.getStringOrNullStateFlow(scope, Keys.EDITED)
     val timetables = try {
         edited.mapState(scope, SharingStarted.Eagerly) {
-            edited.value?.let(::loadSavedTimetable)?.fromJson<Timetables<AdvancedWeek>>()
+            edited.value?.let(::loadSavedTimetable)?.fromJson<Timetables<AdvancedWeek>>(Timetables.serializer(AdvancedWeek.Serializer()))
         }
     } catch (e: Exception) {
         try {
@@ -48,11 +48,12 @@ class EditedTimetableSource(
             type = PickerType.File(listOf("rozvrh")),
             mode = PickerMode.Single,
             title = "Vyberte soubor s upraveným rozvrhem",
-        )?.getSaveData()
+        )?.readBytes()?.decodeToString()?.getSaveData()
     }
 
     suspend fun loadData(data: Timetables<AdvancedWeek>?) {
-        settings[Keys.EDITED] = data?.toJson()?.getSaveData()
+        settings[Keys.EDITED] = data?.toJson(Timetables.serializer(AdvancedWeek.Serializer()))?.getSaveData()
+        println(settings[Keys.EDITED])
     }
 
     fun removedEditedTimetable() {
@@ -66,12 +67,14 @@ class EditedTimetableSource(
                 timetables = data.timetables.toMutableMap().also {
                     it[klass.zkratka] = it[klass.zkratka]!!.modify()
                 }.toMap()
-            ).toJson().getSaveData()
+            ).toJson(Timetables.serializer(AdvancedWeek.Serializer())).getSaveData()
         }
     }
 
     fun getTimetable(klass: Timetable.Class) =
-        timetables.value?.timetables?.let { timetables ->
-            timetables[klass.zkratka]
+        timetables.mapState(scope) {
+            it?.timetables?.let { timetables ->
+                timetables[klass.zkratka]
+            }
         }
 }

@@ -11,6 +11,7 @@ import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.combineStates
+import cz.jaro.gymceska.flattenMergeStates
 import cz.jaro.gymceska.getTeachers
 import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.rozvrh.Timetable.Class
@@ -20,9 +21,9 @@ import cz.jaro.gymceska.rozvrh.Timetable.Room
 import cz.jaro.gymceska.rozvrh.Timetable.Teacher
 import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.unaryPlus
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
@@ -104,10 +105,11 @@ class RozvrhViewModel(
     private val velkeMistnosti = classListSource.velkeMistnosti
 
     val hodiny = flow {
-        emit(timetableSource.getTimetable(
+        emit(
+            timetableSource.getTimetable(
             klass = settings.value.mojeTrida,
             type = TimetableType.ThisWeek,
-        ).tabulka?.topHeaders()?.map {
+        ).value.timetable?.topHeaders()?.map {
             it.subtitle.split(" - ").map(::toLocalTime).toRange()
         } ?: emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), emptyList())
@@ -215,13 +217,16 @@ class RozvrhViewModel(
 
     val alwaysTwoRowCells = settings.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::alwaysTwoRowCells)
 
-    val result = combine(vjec, mujRozvrh, settings, zobrazitMujRozvrh) { vjec, mujRozvrh, nastaveni, zobrazitMujRozvrh ->
-        if (vjec is Class && vjec.odkaz == null) null
+    val result = combineStates(
+        viewModelScope,
+        vjec, mujRozvrh, settings, zobrazitMujRozvrh
+    ) { vjec, mujRozvrh, nastaveni, zobrazitMujRozvrh ->
+        if (vjec is Class && vjec.odkaz == null) MutableStateFlow(null)
         else when (vjec) {
             is Class -> timetableSource.getTimetable(
                 klass = vjec,
                 type = stalost,
-            ).upravitTabulku {
+            ).upravitTabulku(viewModelScope) {
                 it.editCells { cell ->
                     if (cell is Cell.Data) cell.copy(klass = "") else cell
                 }.filtrovatTabulku(
@@ -233,10 +238,11 @@ class RozvrhViewModel(
             is Teacher,
             is Room,
                 -> TvorbaRozvrhu.createTimetableForTeacherOrRoom(
+                coroutineScope = viewModelScope,
                 target = vjec,
                 classListSource = classListSource,
                 getTimetable = { timetableSource.getTimetable(it, stalost) },
-            ).upravitTabulku { week ->
+            ).upravitTabulku(viewModelScope) { week ->
                 week.editCells { cell ->
                     if (cell is Cell.Normal) when (vjec) {
                         is Teacher -> cell.copy(teacher = "")
@@ -250,13 +256,13 @@ class RozvrhViewModel(
             is DenVjec,
             is HodinaVjec,
                 -> TvorbaRozvrhu.createTimetableForDayOrLesson(
+                coroutineScope = viewModelScope,
                 target = vjec,
                 classListSource = classListSource,
                 getTimetable = { timetableSource.getTimetable(it, stalost) },
             )
         }
-    }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), null)
+    }.flattenMergeStates(coroutineScope = viewModelScope)
 
     val stahnoutVse: () -> Unit = {
         viewModelScope.launch {
@@ -275,12 +281,12 @@ class RozvrhViewModel(
         viewModelScope.launch {
             val plneTridy = tridy.value.drop(1).flatMap { trida ->
                 progress("Prohledávám třídu\n${trida.zkratka}")
-                timetableSource.getTimetable(trida, stalost).let { result ->
+                timetableSource.getTimetable(trida, stalost).value.let { result ->
                     if (result !is Uspech) {
                         onComplete(null)
                         return@launch
                     }
-                    result.rozvrh
+                    result.timetable
                 }.drop(1)[den].drop(1).slice(hodiny).flatMap { hodina ->
                     hodina.map { bunka ->
                         bunka.roomLike
@@ -313,12 +319,12 @@ class RozvrhViewModel(
         viewModelScope.launch {
             val zaneprazdneniUcitele = tridy.value.drop(1).flatMap { trida ->
                 progress("Prohledávám třídu\n${trida.zkratka}")
-                timetableSource.getTimetable(trida, stalost).let { result ->
+                timetableSource.getTimetable(trida, stalost).value.let { result ->
                     if (result !is Uspech) {
                         onComplete(null)
                         return@launch
                     }
-                    result.rozvrh
+                    result.timetable
                 }.drop(1)[den].drop(1).slice(hodiny).flatMap { hodina ->
                     hodina.map { bunka ->
                         bunka.teacherLike
@@ -348,8 +354,8 @@ fun TimetableData.editCells(
 
 @JsName("editCellsOfDay")
 @JvmName("editCellsOfDay")
-fun List<List<Cell>>.editCells(
-    editCell: (Cell) -> Cell,
+fun <T : Cell> List<List<T>>.editCells(
+    editCell: (T) -> T,
 ) = map { lesson ->
     lesson.map { cell ->
         editCell(cell)

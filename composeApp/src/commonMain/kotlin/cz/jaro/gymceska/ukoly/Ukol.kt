@@ -1,11 +1,21 @@
 package cz.jaro.gymceska.ukoly
 
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -88,3 +98,19 @@ private val DayOfWeek.zkratka
 fun today() = now().date
 fun time() = now().time
 fun now() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+val nowFlow = ::now
+    .asRepeatingFlow()
+    .stateIn(MainScope(), SharingStarted.WhileSubscribed(5_000), now())
+
+fun <T> (() -> T).asRepeatingFlow(duration: Duration = 500.milliseconds): Flow<T> = flow {
+    while (currentCoroutineContext().isActive) {
+        emit(invoke())
+        delay(duration)
+    }
+}
+fun <T> (suspend () -> T).asRepeatingFlow(duration: Duration = 500.milliseconds): Flow<T> = flow {
+    while (currentCoroutineContext().isActive) {
+        emit(invoke())
+        delay(duration)
+    }
+}

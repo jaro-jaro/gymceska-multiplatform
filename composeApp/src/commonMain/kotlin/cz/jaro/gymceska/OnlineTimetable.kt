@@ -1,7 +1,10 @@
 package cz.jaro.gymceska
 
 import com.fleeksoft.ksoup.nodes.Document
+import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.ObservableSettings
+import com.russhwolf.settings.coroutines.getLongOrNullStateFlow
+import com.russhwolf.settings.coroutines.getStringOrNullStateFlow
 import com.russhwolf.settings.set
 import cz.jaro.gymceska.FirebaseClassListSource.Companion.fromJson
 import cz.jaro.gymceska.rozvrh.Cell
@@ -15,17 +18,22 @@ import dev.gitlive.firebase.remoteconfig.get
 import dev.gitlive.firebase.remoteconfig.remoteConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.IOException
+import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration.Companion.days
@@ -36,7 +44,6 @@ class OnlineTimetableSource(
     userOnlineManager: UserOnlineManager,
     firebase: FirebaseApp,
 ) : UserOnlineManager by userOnlineManager {
-
     object Keys {
         fun rozvrh(trida: Timetable.Class, stalost: TimetableType) = "rozvrh2-_${trida.nazev}_${stalost.nameNominative}"
         fun rozvrhPosledni(trida: Timetable.Class, stalost: TimetableType) = "rozvrh2-_${trida.nazev}_${stalost.nameNominative}_posledni"
@@ -44,44 +51,62 @@ class OnlineTimetableSource(
 
     suspend fun downloadAll(
         types: List<TimetableType> = TimetableType.entries,
+        onProgress: ((TimetableType, Timetable.Class) -> Unit)? = null,
     ) {
         if (!isOnline()) return
-        classListSource.classes.value.forEach { trida ->
-            _currentlyDownloading.value = trida
-            types.forEach { stalost ->
-
-                val doc = getTimetableDocument(trida.odkaz?.replace("###", stalost.code) ?: return)
-
-                val rozvrh = TvorbaRozvrhu.createTimetableForClass(
-                    type = stalost,
-                    doc = doc,
-                    klass = trida.zkratka,
-                )
-
-                settings[Keys.rozvrh(trida, stalost)] = Json.encodeToString(rozvrh)
-                settings[Keys.rozvrhPosledni(trida, stalost)] = Clock.System.now().epochSeconds / 60L * 60L
+        classListSource.classes.value.forEach { klass ->
+            types.forEach { type ->
+                onProgress?.invoke(type, klass)
+                downloadTimetable(klass, type)
             }
         }
-        _currentlyDownloading.value = null
     }
 
-    private fun pouzitOfflineRozvrh(trida: Timetable.Class, stalost: TimetableType): Boolean {
-        val limit = if (stalost == TimetableType.Permanent) 14.days else 1.hours
-        val posledni = settings.getLongOrNull(Keys.rozvrhPosledni(trida, stalost))?.let { Instant.fromEpochSeconds(it) } ?: return false
-        val starost = Clock.System.now() - posledni
-        return starost < limit
+    private fun shouldDownloadTimetable(type: TimetableType, time: Long?): Boolean {
+        val limit = if (type == TimetableType.Permanent) 14.days else 1.5.hours
+        val lastTime = time?.let { Instant.fromEpochSeconds(it) } ?: return true
+        val age = Clock.System.now() - lastTime
+        return age >= limit
     }
 
-    private val _currentlyDownloading = MutableStateFlow<Timetable.Class?>(null)
-    val currentlyDownloading = _currentlyDownloading.asStateFlow()
+    private val scope = CoroutineScope(Dispatchers.Default)
 
-    suspend fun getTimetable(
+    private val toDownload = MutableStateFlow<Set<Pair<Timetable.Class, TimetableType>>>(emptySet())
+    private val _currentlyDownloading = MutableStateFlow<Set<Pair<Timetable.Class, TimetableType>>>(emptySet())
+    val currentlyDownloading = _currentlyDownloading.asStateFlow().mapState(scope) { it.isNotEmpty() }
+
+    @OptIn(ExperimentalSettingsApi::class)
+    fun getTimetable(
         klass: Timetable.Class,
         type: TimetableType,
-    ): Result<TimetableData> {
-        if (isOnline() && !pouzitOfflineRozvrh(klass, type)) try {
-            _currentlyDownloading.value = klass
-            val doc = getTimetableDocument(klass.odkaz?.replace("###", type.code) ?: return TridaNeexistuje())
+    ) = combineStates(
+        scope,
+        settings.getLongOrNullStateFlow(scope, Keys.rozvrhPosledni(klass, type)),
+        settings.getStringOrNullStateFlow(scope, Keys.rozvrh(klass, type)),
+    ) { time, timetable ->
+        if (isOnline() && shouldDownloadTimetable(type, time)) toDownload.value += klass to type
+
+        timetable?.fromJson<TimetableData>()?.let(::Uspech) ?: ZadnaData()
+    }
+
+    init {
+        scope.launch {
+            _currentlyDownloading.combine(toDownload) { currentlyDownloading, toDownload ->
+                toDownload.map { (klass, type) ->
+                    async { if (klass to type !in currentlyDownloading) downloadTimetable(klass, type) }
+                }.awaitAll()
+            }.collect()
+        }
+    }
+
+    private suspend fun downloadTimetable(
+        klass: Timetable.Class,
+        type: TimetableType,
+    ) {
+        toDownload.value -= klass to type
+        _currentlyDownloading.value += klass to type
+        try {
+            val doc = getTimetableDocument(klass.odkaz?.replace("###", type.code) ?: return)
 
             val rozvrh = TvorbaRozvrhu.createTimetableForClass(
                 type = type,
@@ -91,25 +116,11 @@ class OnlineTimetableSource(
 
             settings[Keys.rozvrh(klass, type)] = Json.encodeToString(rozvrh)
             settings[Keys.rozvrhPosledni(klass, type)] = Clock.System.now().epochSeconds / 60L * 60L
-
-            _currentlyDownloading.value = null
-
-            return Uspech(rozvrh, Online)
         } catch (e: IOException) {
             e.printStackTrace()
+        } finally {
+            _currentlyDownloading.value -= klass to type
         }
-
-        val kdy = settings.getLongOrNull(Keys.rozvrhPosledni(klass, type))?.let { Instant.fromEpochSeconds(it) }
-            ?: run {
-                return ZadnaData()
-            }
-
-        val rozvrh = settings.getStringOrNull(Keys.rozvrh(klass, type))?.fromJson<TimetableData>()
-            ?: run {
-                return ZadnaData()
-            }
-
-        return Uspech(rozvrh, Offline(kdy.toLocalDateTime(TimeZone.currentSystemDefault())))
     }
 
     val classListSource = FirebaseClassListSource(this, firebase)
@@ -166,22 +177,19 @@ class FirebaseClassListSource(
             ignoreUnknownKeys = true
         }
 
-        inline fun <reified T> String.fromJson(): T = json.decodeFromString(this)
-        inline fun <reified T> T.toJson(): String = json.encodeToString(this)
+        inline fun <reified T> String.fromJson(serializer: DeserializationStrategy<T>? = null): T =
+            if (serializer == null) json.decodeFromString(this) else json.decodeFromString(serializer, this)
+        inline fun <reified T> T.toJson(serializer: SerializationStrategy<T>? = null): String =
+            if (serializer == null) json.encodeToString(this) else json.encodeToString(serializer, this)
     }
 }
 
-suspend fun OnlineTimetableSource.getTimetable(
-    type: TimetableType,
-    settingsFlow: SettingsFlow,
-): Result<TimetableData> = getTimetable(settingsFlow.value.mojeTrida, type)
-
-suspend fun OnlineTimetableSource.getGroups(klass: Timetable.Class): Sequence<String> {
-    val result = getTimetable(klass, TimetableType.Permanent)
+fun OnlineTimetableSource.getGroups(klass: Timetable.Class): Sequence<String> {
+    val result = getTimetable(klass, TimetableType.Permanent).value
 
     if (result !is Uspech) return emptySequence()
 
-    return result.rozvrh
+    return result.timetable
         .asSequence()
         .flatten()
         .flatten()
@@ -192,12 +200,12 @@ suspend fun OnlineTimetableSource.getGroups(klass: Timetable.Class): Sequence<St
         .sorted()
 }
 
-suspend fun OnlineTimetableSource.getTeachers(trida: Timetable.Class): Sequence<String> {
-    val result = getTimetable(trida, TimetableType.Permanent)
+fun OnlineTimetableSource.getTeachers(trida: Timetable.Class): Sequence<String> {
+    val result = getTimetable(trida, TimetableType.Permanent).value
 
     if (result !is Uspech) return emptySequence()
 
-    return result.rozvrh
+    return result.timetable
         .asSequence()
         .flatten()
         .flatten()

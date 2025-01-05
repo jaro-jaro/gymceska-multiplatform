@@ -49,7 +49,10 @@ sealed interface Cell {
     sealed interface ForEdit : Cell
 
     @Serializable
-    sealed interface ForEditNonHeader<T : Address> : ForEdit, NonHeader, HasClass {
+    sealed interface NonEdit : Cell
+
+    @Serializable
+    sealed interface DataForEdit<T : Address> : ForEdit, NonHeader, HasClass {
         val address: T
         val isEdited: Boolean
     }
@@ -58,7 +61,10 @@ sealed interface Cell {
     sealed interface NonHeader : Cell
 
     @Serializable
-    sealed interface Data : HasClass
+    sealed interface DataOrEmpty : NonEdit, NonHeader
+
+    @Serializable
+    sealed interface Data : DataOrEmpty, HasClass
 
     @Serializable
     sealed interface HasClass : Cell {
@@ -74,7 +80,7 @@ sealed interface Cell {
     }
 
     @Serializable
-    sealed interface Abnormal : Data, NonHeader
+    sealed interface Abnormal : Data
 
     @Serializable
     @SerialName("Normal")
@@ -88,7 +94,7 @@ sealed interface Cell {
         override val klass: String = "",
         val group: String = "",
         val theme: String = "",
-    ) : Data, NonHeader, HasRoom, HasTeacher {
+    ) : Data, HasRoom, HasTeacher {
         override val roomLike get() = room
         override val subjectLike get() = subject
         override val teacherLike get() = teacher
@@ -117,7 +123,7 @@ sealed interface Cell {
         val group: String = "",
         override val address: CellAddress,
         override val isEdited: Boolean = false,
-    ) : ForEditNonHeader<CellAddress>, HasTeacher, HasRoom {
+    ) : DataForEdit<CellAddress>, HasTeacher, HasRoom {
         override val roomLike get() = room
         override val subjectLike get() = subject
         override val teacherLike get() = teacher
@@ -132,7 +138,7 @@ sealed interface Cell {
         val subjectName: String = "Sportovní trénink",
         override val klass: String = "",
         val groups: List<STGroup>,
-    ) : Data, NonHeader {
+    ) : Data {
         @Serializable
         data class STGroup(
             val changeInfo: String? = null,
@@ -167,7 +173,7 @@ sealed interface Cell {
     data class Header(
         val title: String = "",
         val subtitle: String = "",
-    ) : Cell, ForEdit {
+    ) : ForEdit, NonEdit {
         override val subjectLike get() = title
         override val teacherLike get() = subtitle
     }
@@ -224,7 +230,7 @@ sealed interface Cell {
 
     @Serializable
     @SerialName("Empty")
-    data object Empty : NonHeader
+    data object Empty : DataOrEmpty
 
     @Serializable
     @SerialName("EmptyForEdit")
@@ -232,7 +238,7 @@ sealed interface Cell {
         override val klass: String,
         override val address: LessonAddress,
         override val isEdited: Boolean = false,
-    ) : ForEditNonHeader<LessonAddress>, ForEdit
+    ) : DataForEdit<LessonAddress>, ForEdit
 }
 
 @Composable
@@ -503,7 +509,7 @@ fun Cell.Data.copy(klass: String = this.klass) = when (this) {
     is Cell.ST -> copy(klass = klass)
 }
 
-fun <T : Address> Cell.ForEditNonHeader<T>.copy(
+fun <T : Address> Cell.DataForEdit<T>.copy(
     klass: String = this.klass,
     address: T = this.address,
     isEdited: Boolean = this.isEdited,

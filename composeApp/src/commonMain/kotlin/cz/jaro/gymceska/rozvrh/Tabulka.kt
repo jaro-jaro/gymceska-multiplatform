@@ -10,7 +10,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -36,11 +35,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.unit.dp
-import cz.jaro.gymceska.Offline
-import cz.jaro.gymceska.OfflineRuzneCasti
-import cz.jaro.gymceska.Online
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cz.jaro.gymceska.TimetableData
-import cz.jaro.gymceska.ZdrojRozvrhu
 import cz.jaro.gymceska.rozvrh.editor.Address
 import cz.jaro.gymceska.rozvrh.editor.CellAddress
 import cz.jaro.gymceska.rozvrh.editor.LessonAddress
@@ -49,8 +45,7 @@ import cz.jaro.gymceska.theme.LocalIsDarkThemeUsed
 import cz.jaro.gymceska.theme.LocalIsDynamicThemeUsed
 import cz.jaro.gymceska.theme.LocalTheme
 import cz.jaro.gymceska.theme.Theme
-import cz.jaro.gymceska.ukoly.time
-import cz.jaro.gymceska.ukoly.today
+import cz.jaro.gymceska.ukoly.nowFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.isoDayNumber
@@ -62,7 +57,6 @@ fun Tabulka(
     stalost: TimetableType,
     tabulka: TimetableData,
     kliklNaNeco: (vjec: Timetable) -> Unit,
-    rozvrhOfflineWarning: ZdrojRozvrhu?,
     tridy: List<Timetable.Class>,
     mistnosti: List<Timetable.Room>,
     vyucujici: List<Timetable.Teacher>,
@@ -77,8 +71,9 @@ fun Tabulka(
 ) {
     if (tabulka.isEmpty()) return
 
-    val currentDay = if (stalost == TimetableType.ThisWeek) today().dayOfWeek.isoDayNumber.takeIf { it in 1..5 }?.minus(1) else null
-    val currentLesson = if (stalost == TimetableType.ThisWeek) hodiny.indexOfFirst { it.contains(time()) }.takeUnless { it == -1 } else null
+    val now by nowFlow.collectAsStateWithLifecycle()
+    val currentDay = if (stalost == TimetableType.ThisWeek) now.dayOfWeek.isoDayNumber.takeIf { it in 1..5 }?.minus(1) else null
+    val currentLesson = if (stalost == TimetableType.ThisWeek) hodiny.indexOfFirst { it.contains(now.time) }.takeUnless { it == -1 } else null
 
     val canAllowCellsSmallerThan1 = mujRozvrh || vjec !is Timetable.Class || alwaysTwoRowCells
     val maxByRow = tabulka.drop(1).map {
@@ -185,20 +180,7 @@ fun Tabulka(
                 }
             }
         },
-        bottomContent = {
-            rozvrhOfflineWarning?.let {
-                Text(
-                    when (it) {
-                        Online -> "Prohlížíte si aktuální rozvrh."
-                        is Offline -> "Prohlížíte si verzi rozvrhu z ${it.ziskano.dayOfMonth}. ${it.ziskano.monthNumber}. ${it.ziskano.hour}:${it.ziskano.minute.nula()}. "
-                        is OfflineRuzneCasti -> "Nejstarší část tohoto rozvrhu pochází z ${it.nejstarsi.dayOfMonth}. ${it.nejstarsi.monthNumber}. ${it.nejstarsi.hour}:${it.nejstarsi.minute.nula()}. "
-                    } + if (it != Online) "Pro aktualizaci dat klikněte Stáhnout vše." else "",
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                )
-            }
-        },
+        bottomContent = {},
         horScrollState = horScrollState,
         verScrollState = verScrollState
     )

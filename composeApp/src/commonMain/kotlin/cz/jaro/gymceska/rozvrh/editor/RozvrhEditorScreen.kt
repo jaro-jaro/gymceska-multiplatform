@@ -34,14 +34,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cz.jaro.better_dialog.dialogManager
-import cz.jaro.better_dialog.show
-import cz.jaro.gymceska.Error
+import cz.jaro.better_dialog.globalDialogManager
+import cz.jaro.better_dialog.showMaterial
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.TimetableDataForEdit
-import cz.jaro.gymceska.TridaNeexistuje
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.justTimetable
@@ -160,7 +158,7 @@ fun RozvrhEditorContent(
     fun vysledkyDialog(
         results: List<String>,
         address: Address,
-    ) = dialogManager.show(
+    ) = globalDialogManager.showMaterial(
         confirmButton = { TextButton(::hide) { Text("OK") } },
         content = {
             LazyColumn {
@@ -191,7 +189,7 @@ fun RozvrhEditorContent(
     fun vysledkyDialog2(
         results: List<String>,
         address: LessonAddress,
-    ) = dialogManager.show(
+    ) = globalDialogManager.showMaterial(
         confirmButton = { TextButton(::hide) { Text("OK") } },
         content = {
             LazyColumn {
@@ -232,60 +230,56 @@ fun RozvrhEditorContent(
         }
         if (loaded && result != null && timetable != null) when (result) {
             is Uspech -> CompositionLocalProvider(LocalCellZoom provides zoom) {
-                fun editCell(address: CellAddress, cell: Cell.ForEditNonHeader<out Address>) = dialogManager.show(
-                    confirmButton = {
-                        TextButton(::hide) { Text("Zrušit") }
-                    },
+                fun editCell(address: CellAddress, cell: Cell.DataForEdit<out Address>) = globalDialogManager.showMaterial(
+                    confirmButton = { TextButton(::hide) { Text("Zrušit") } },
                     content = {
-                        Column {
-                            require(memory != address)
-                            if (memory is LessonAddress && memory == address.lessonAddress) {
-                                TextButton(
-                                    onClick = {
-                                        remember(null)
-                                        this@show.hide()
-                                    },
-                                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                                ) {
-                                    Icon(Icons.Default.ContentPasteOff, null, Modifier.size(ButtonDefaults.IconSize))
-                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                    Text("Zapomenout")
-                                }
-                                TextButton(
-                                    onClick = {
-                                        vysledkyDialog2(findSwitch(address), address.lessonAddress)
-                                        this@show.hide()
-                                    },
-                                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                                ) {
-                                    Icon(Icons.Default.Shuffle, null, Modifier.size(ButtonDefaults.IconSize))
-                                    Icon(Icons.Default.Search, null, Modifier.size(ButtonDefaults.IconSize))
-                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                    Text("Najít prohození")
-                                }
-                            } else if (cell !is Cell.EmptyForEdit && memory != null && memory is CellAddress) {
-                                TextButton(
-                                    onClick = {
-                                        move(address.lessonAddress)
-                                        this@show.hide()
-                                    },
-                                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                                ) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowRightAlt, null, Modifier.size(ButtonDefaults.IconSize))
-                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                    Text("Přesunout sem")
-                                }
-                                TextButton(
-                                    onClick = {
-                                        switch(address)
-                                        this@show.hide()
-                                    },
-                                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                                ) {
-                                    Icon(Icons.Default.Shuffle, null, Modifier.size(ButtonDefaults.IconSize))
-                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                    Text("Prohodit")
-                                }
+                        require(memory != address)
+                        if (memory is LessonAddress && memory == address.lessonAddress) {
+                            TextButton(
+                                onClick = {
+                                    remember(null)
+                                    hide()
+                                },
+                                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                            ) {
+                                Icon(Icons.Default.ContentPasteOff, null, Modifier.size(ButtonDefaults.IconSize))
+                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                Text("Zapomenout")
+                            }
+                            TextButton(
+                                onClick = {
+                                    vysledkyDialog2(findSwitch(address), address.lessonAddress)
+                                    hide()
+                                },
+                                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                            ) {
+                                Icon(Icons.Default.Shuffle, null, Modifier.size(ButtonDefaults.IconSize))
+                                Icon(Icons.Default.Search, null, Modifier.size(ButtonDefaults.IconSize))
+                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                Text("Najít prohození")
+                            }
+                        } else if (cell !is Cell.EmptyForEdit && memory != null && memory is CellAddress) {
+                            TextButton(
+                                onClick = {
+                                    move(address.lessonAddress)
+                                    hide()
+                                },
+                                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowRightAlt, null, Modifier.size(ButtonDefaults.IconSize))
+                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                Text("Přesunout sem")
+                            }
+                            TextButton(
+                                onClick = {
+                                    switch(address)
+                                    hide()
+                                },
+                                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                            ) {
+                                Icon(Icons.Default.Shuffle, null, Modifier.size(ButtonDefaults.IconSize))
+                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                Text("Prohodit")
                             }
                         }
                     }
@@ -293,11 +287,10 @@ fun RozvrhEditorContent(
 
                 Tabulka(
                     vjec = timetable,
-                    tabulka = result.rozvrh,
+                    tabulka = result.timetable,
                     kliklNaNeco = { vjec ->
                         selectTimetable(vjec)
                     },
-                    rozvrhOfflineWarning = result.zdroj,
                     tridy = classes,
                     mistnosti = rooms,
                     vyucujici = teachers,
@@ -311,7 +304,7 @@ fun RozvrhEditorContent(
                         when {
                             timetable !is Timetable.Class -> null
                             address is CellAddress -> {
-                                val cell = result.rozvrh[address]
+                                val cell = result.timetable[address]
                                 when {
                                     memory == null && cell !is Cell.EmptyForEdit -> Icons.Default.FileCopy
                                     memory == null -> null
@@ -332,8 +325,8 @@ fun RozvrhEditorContent(
                     roomLongClick = { address ->
                         if (timetable !is Timetable.Class) return@Tabulka
                         if (address !is CellAddress) return@Tabulka
-                        val cell = result.rozvrh[address]
-                        dialogManager.show(
+                        val cell = result.timetable[address]
+                        globalDialogManager.showMaterial(
                             state = cell.room,
                             confirmButton = {
                                 TextButton(
@@ -346,41 +339,39 @@ fun RozvrhEditorContent(
                                 }
                             },
                             content = {
-                                Column {
-                                    TextField(
-                                        value = this@show.customState,
-                                        onValueChange = {
-                                            this@show.customState = it
-                                        },
-                                        Modifier
-                                            .fillMaxWidth(1F)
-                                            .padding(8.dp),
-                                        label = {
-                                            Text("Učebna")
-                                        },
-                                    )
-                                    TextButton(
-                                        onClick = {
-                                            vysledkyDialog(findRoom(address.also(::println)).also(::println), address).also(::println)
-                                            this@show.hide()
-                                        },
-                                        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                                    ) {
-                                        Icon(Icons.Default.Search, null, Modifier.size(ButtonDefaults.IconSize))
-                                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                        Text("Najít volnou")
-                                    }
-                                    TextButton(
-                                        onClick = {
-                                            vysledkyDialog(whatIsWhere(address), address)
-                                            this@show.hide()
-                                        },
-                                        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-                                    ) {
-                                        Icon(Icons.Default.QuestionMark, null, Modifier.size(ButtonDefaults.IconSize))
-                                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                        Text("Co kde je?")
-                                    }
+                                TextField(
+                                    value = customState,
+                                    onValueChange = {
+                                        customState = it
+                                    },
+                                    Modifier
+                                        .fillMaxWidth(1F)
+                                        .padding(8.dp),
+                                    label = {
+                                        Text("Učebna")
+                                    },
+                                )
+                                TextButton(
+                                    onClick = {
+                                        vysledkyDialog(findRoom(address.also(::println)).also(::println), address).also(::println)
+                                        hide()
+                                    },
+                                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                                ) {
+                                    Icon(Icons.Default.Search, null, Modifier.size(ButtonDefaults.IconSize))
+                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                    Text("Najít volnou")
+                                }
+                                TextButton(
+                                    onClick = {
+                                        vysledkyDialog(whatIsWhere(address), address)
+                                        hide()
+                                    },
+                                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                                ) {
+                                    Icon(Icons.Default.QuestionMark, null, Modifier.size(ButtonDefaults.IconSize))
+                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                    Text("Co kde je?")
                                 }
                             }
                         )
@@ -389,7 +380,7 @@ fun RozvrhEditorContent(
                         when {
                             timetable !is Timetable.Class -> Unit
                             address is CellAddress -> {
-                                val cell = result.rozvrh[address]
+                                val cell = result.timetable[address]
                                 when {
                                     memory == null && cell !is Cell.EmptyForEdit -> remember(address)
                                     memory == null -> Unit
@@ -409,7 +400,6 @@ fun RozvrhEditorContent(
             }
 
             is Error -> Text("Omlouváme se, ale došlo k chybě při načítání rozvrhu. Zkuste to znovu.")
-            is TridaNeexistuje -> Text("Omlouváme se, rozvrhy jsou poškozeny, prosím, odstraňte je a opakujte akci")
             is ZadnaData -> Text("Nemáte nahrané žádné rozvrhy")
         }
     }
