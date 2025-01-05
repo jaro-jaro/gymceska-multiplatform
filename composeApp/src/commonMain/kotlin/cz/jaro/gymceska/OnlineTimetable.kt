@@ -51,10 +51,12 @@ class OnlineTimetableSource(
 
     suspend fun downloadAll(
         types: List<TimetableType> = TimetableType.entries,
+        onProgress: ((TimetableType, Timetable.Class) -> Unit)? = null,
     ) {
         if (!isOnline()) return
         classListSource.classes.value.forEach { klass ->
             types.forEach { type ->
+                onProgress?.invoke(type, klass)
                 downloadTimetable(klass, type)
             }
         }

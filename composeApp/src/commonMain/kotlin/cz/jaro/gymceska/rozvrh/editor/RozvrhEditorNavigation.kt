@@ -38,7 +38,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.window.DialogProperties
 import cz.jaro.better_dialog.globalDialogManager
-import cz.jaro.better_dialog.show
+import cz.jaro.better_dialog.showMaterial
 import cz.jaro.gymceska.ActionScope
 import cz.jaro.gymceska.Navigation
 import cz.jaro.gymceska.Navigator
@@ -199,7 +199,7 @@ private fun showConflicts(
     teachers: List<Timetable.Teacher>,
     selectTimetable: (Timetable) -> Unit,
     conflicts: List<String>,
-) = globalDialogManager.show(
+) = globalDialogManager.showMaterial(
     confirmButton = { TextButton(::hide) { Text("OK") } },
     content = {
         LazyColumn {
@@ -226,8 +226,8 @@ private fun showChanges(
     val export = changes.joinToString("\n") { change ->
         val den1 = Seznamy.dny[change.fromLocation.dayIndex].zkratka
         val den2 = Seznamy.dny[change.toLocation.dayIndex].zkratka
-        val hodina1 = change.fromLocation.lessonIndex - 1
-        val hodina2 = change.toLocation.lessonIndex - 1
+        val hodina1 = change.fromLocation.lessonIndex
+        val hodina2 = change.toLocation.lessonIndex
         val ucebna1 = change.from.room
         val ucebna2 = change.to.room
         val trida = change.from.klass
@@ -268,7 +268,7 @@ fun findMe(
     najdiMiVolnouTridu: (Int, List<Int>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
     najdiMiVolnehoUcitele: (Int, List<Int>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
 ) {
-    globalDialogManager.show(
+    globalDialogManager.showMaterial(
         state = FindMeSettings(
             findRoom = false,
             dayIndex = today().dayOfWeek.isoDayNumber
@@ -283,7 +283,7 @@ fun findMe(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val loading = globalDialogManager.show(
+                    val loading = globalDialogManager.showMaterial(
                         state = "Hledám...",
                         confirmButton = {},
                         title = { Text(customState) },
@@ -378,7 +378,7 @@ fun findMeResult(
     classes: List<Timetable.Room> = emptyList(),
     teachers: List<Timetable.Teacher> = emptyList(),
 ) {
-    globalDialogManager.show(
+    globalDialogManager.showMaterial(
         confirmButton = { TextButton(::hide) { Text("OK") } },
         title = {
             Text(text = "Najdi mi ${if (settings.findRoom) "volnou učebnu" else "volného učitele"}")

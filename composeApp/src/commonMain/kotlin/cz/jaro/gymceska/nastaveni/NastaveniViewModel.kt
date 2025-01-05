@@ -33,11 +33,14 @@ class NastaveniViewModel(
         }
     }
 
-    fun stahnoutVse(stalost: TimetableType, update: (String) -> Unit, finish: (Boolean) -> Unit) {
+    fun stahnoutVse(stalost: TimetableType, update: (Float) -> Unit, finish: (Boolean) -> Unit) {
         viewModelScope.launch {
             val tridy = tridyFlow.value
+            onlineTimetableSource.downloadAll(listOf(stalost)) { _, klass ->
+                update(.5F * tridy.indexOf(klass) / tridy.size)
+            }
             val vse = tridy.mapNotNull {
-                update(it.nazev)
+                update(.5F + .5F * tridy.indexOf(it) / tridy.size)
                 val res = onlineTimetableSource.getTimetable(it, stalost).value
                 if (res !is Uspech) {
                     finish(false)
@@ -45,7 +48,8 @@ class NastaveniViewModel(
                 }
                 it.zkratka to res.timetable
             }.toMap()
-            update("Už to skoro je!")
+
+            update(.99F)
             val data = Json.encodeToString(
                 Timetables(stalost, vse)
             )

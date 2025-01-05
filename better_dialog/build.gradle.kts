@@ -17,7 +17,9 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    js(KotlinJsCompilerType.IR)
+    js(KotlinJsCompilerType.IR) {
+        browser()
+    }
 
     sourceSets {
         commonMain.dependencies {

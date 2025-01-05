@@ -60,7 +60,7 @@ kotlin {
             implementation(libs.multiplatform.settings.make.observable)
         }
         commonMain.dependencies {
-
+            implementation(project(":better_dialog"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.ui)

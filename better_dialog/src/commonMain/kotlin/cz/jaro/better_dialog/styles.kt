@@ -8,9 +8,7 @@ import androidx.compose.ui.window.DialogProperties
 
 fun AlertDialogManager.show(style: AlertDialogStyle<Nothing?>) = show(style, null)
 
-// Material
-
-fun <D> AlertDialogManager.show(
+fun <D> AlertDialogManager.showMaterial(
     state: D,
     confirmButton: @Composable AlertDialogState<D, AlertDialogStyle.Material<D>>.() -> Unit,
     modifier: Modifier = Modifier.Companion,
@@ -26,7 +24,7 @@ fun <D> AlertDialogManager.show(
     ), state
 )
 
-fun AlertDialogManager.show(
+fun AlertDialogManager.showMaterial(
     confirmButton: @Composable AlertDialogState<Nothing?, AlertDialogStyle.Material<Nothing?>>.() -> Unit,
     modifier: Modifier = Modifier.Companion,
     dismissButton: @Composable (AlertDialogState<Nothing?, AlertDialogStyle.Material<Nothing?>>.() -> Unit)? = null,
@@ -35,11 +33,9 @@ fun AlertDialogManager.show(
     title: @Composable (AlertDialogState<Nothing?, AlertDialogStyle.Material<Nothing?>>.() -> Unit)? = null,
     content: @Composable (AlertDialogStateInColumnScope<Nothing?, AlertDialogStyle.Material<Nothing?>>.() -> Unit)? = null,
     properties: DialogProperties = DialogProperties(),
-) = show(null, confirmButton, modifier, dismissButton, onDismissed, icon, title, content, properties)
+) = showMaterial(null, confirmButton, modifier, dismissButton, onDismissed, icon, title, content, properties)
 
-// Simple
-
-fun AlertDialogManager.show(
+fun AlertDialogManager.showSimple(
     confirmButtonText: String,
     modifier: Modifier = Modifier.Companion,
     onConfirmed: (() -> Unit)? = null,
@@ -55,10 +51,8 @@ fun AlertDialogManager.show(
     )
 )
 
-// Basic
-
 @ExperimentalMaterial3Api
-fun <D> AlertDialogManager.show(
+fun <D> AlertDialogManager.showBasic(
     state: D,
     modifier: Modifier = Modifier.Companion,
     onDismissed: (() -> Unit)? = null,
@@ -71,9 +65,9 @@ fun <D> AlertDialogManager.show(
 )
 
 @ExperimentalMaterial3Api
-fun AlertDialogManager.show(
+fun AlertDialogManager.showBasic(
     modifier: Modifier = Modifier.Companion,
     onDismissed: (() -> Unit)? = null,
     content: @Composable (AlertDialogState<Nothing?, AlertDialogStyle.Basic<Nothing?>>.() -> Unit)? = null,
     properties: DialogProperties = DialogProperties(),
-) = show(null, modifier, onDismissed, content, properties)
+) = showBasic(null, modifier, onDismissed, content, properties)
