@@ -4,6 +4,7 @@ import cz.jaro.gymceska.OnlineTimetableSource
 import cz.jaro.gymceska.PrepnoutRozvrhWidget
 import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.Uspech
+import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.rozvrh.Cell
 import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.rozvrh.copy
@@ -66,7 +67,7 @@ private fun OnlineTimetableSource.zjistitKonecVyucovani(settings: SettingsFlow):
     return tabulka.first()[hodina].first().teacherLike.split(" - ")[1].let(::toLocalTime)
 }
 
-suspend fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair<LocalDate, List<Cell>> {
+fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair<LocalDate, List<Cell>> {
     val nastaveni = settings.value
     val dnes = rozvrhZobrazitNaDnesek(settings)
 
@@ -78,23 +79,21 @@ suspend fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair
     val hodiny = getTimetable(nastaveni.mojeTrida, stalost).value.let { result ->
         if (result !is Uspech) return@let listOf(Cell.Header("Žádná data!"))
 
-        val tabulka = result.timetable
-
-        tabulka
-            .getOrNull(cisloDne)
-            ?.asSequence()
-            ?.drop(1)
-            ?.mapIndexed { i, hodina -> i to hodina.filterIsInstance<Cell.NonHeader>() /*cast*/ }.also(::println)
-            ?.filter { (_, hodina) -> hodina.first().subjectLike.isNotBlank() }.also(::println)
+        result
+            .timetable
+            .justTimetable()
+            .getOrNull(cisloDne - 1)
+            ?.asSequence().also { println(it?.toList()) }
+            ?.mapIndexed { i, hodina -> i to hodina }.also { println(it?.toList()) }
             ?.map { (i, hodina) ->
                 hodina.map { bunka ->
                     when (bunka) {
                         is Cell.Absent -> bunka.copy(reason = "$i. ${bunka.reason}")
-                        is Cell.DayOff -> bunka.copy(reasonText = "$i. ${bunka.reasonText}")
+                        is Cell.DayOff -> bunka
                         is Cell.Removed -> bunka.copy(subject = "$i. ${bunka.subject}")
                         is Cell.Normal -> bunka.copy(subject = "$i. ${bunka.subject}")
                         is Cell.ST -> bunka.copy(subject = "$i. ${bunka.subject}")
-                        else -> Cell.Header(title = "$i.")
+                        Cell.Empty -> bunka
                     }
                 }
             }
@@ -102,9 +101,18 @@ suspend fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair
             ?.editCells { cell ->
                 if (cell is Cell.Data) cell.copy(klass = "") else cell
             }
-            ?.map { it.filterIsInstance<Cell.NonHeader>() /*cast*/ }
-            ?.filtrovatDen(true, nastaveni.mojeSkupiny).also(::println)
-            ?.mapNotNull { hodina -> hodina.firstOrNull() }.also(::println)
+            ?.filtrovatDen(true, nastaveni.mojeSkupiny)
+            ?.mapNotNull { hodina -> hodina.firstOrNull() }
+            ?.mapNotNull { bunka ->
+                when (bunka) {
+                    is Cell.Absent -> bunka
+                    is Cell.DayOff -> bunka
+                    is Cell.Removed -> null
+                    is Cell.Normal -> bunka
+                    is Cell.ST -> bunka
+                    Cell.Empty -> null
+                }
+            }
             ?.ifEmpty {
                 listOf(
                     Cell.Header("Žádné hodiny!"),
