@@ -51,8 +51,8 @@ import kotlin.time.Duration.Companion.minutes
 fun RozvrhNavigation(
     stahnoutVse: () -> Unit,
     navigator: Navigator,
-    najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (List<Timetable.Room>?) -> Unit) -> Unit,
+    najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
     result: Result<out TimetableData>?,
     vybratRozvrh: (Timetable) -> Unit,
     currentlyDownloading: Boolean,
@@ -84,8 +84,8 @@ private fun ActionScope.Actions(
     stahnoutVse: () -> Unit,
     result: Result<out TimetableData>?,
     vybratRozvrh: (Timetable) -> Unit,
-    najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (List<Timetable.Room>?) -> Unit) -> Unit,
+    najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
 ) {
     var nacitame by remember { mutableStateOf(false) }
     var podrobnostiNacitani by remember { mutableStateOf("Načítání...") }
@@ -206,9 +206,6 @@ private fun ActionScope.Actions(
                     if (ucebna) najdiMiVolnouTridu(
                         stalost, denIndex, hodinaIndexy, filtry,
                         {
-                            podrobnostiNacitani = it
-                        },
-                        {
                             if (it == null) {
                                 podrobnostiNacitani = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
                                 return@najdiMiVolnouTridu
@@ -220,9 +217,6 @@ private fun ActionScope.Actions(
                     )
                     else najdiMiVolnehoUcitele(
                         stalost, denIndex, hodinaIndexy, filtry,
-                        {
-                            podrobnostiNacitani = it
-                        },
                         {
                             if (it == null) {
                                 podrobnostiNacitani = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"

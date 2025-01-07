@@ -60,8 +60,8 @@ import kotlin.time.Duration.Companion.minutes
 @Composable
 fun RozvrhEditorNavigation(
     navigator: Navigator,
-    findFreeClassroom: (Int, List<Int>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
-    findFreeTeacher: (Int, List<Int>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    findFreeClassroom: (Int, List<Int>, (List<Timetable.Room>?) -> Unit) -> Unit,
+    findFreeTeacher: (Int, List<Int>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
     lessons: List<ClosedRange<LocalTime>>,
     selectTimetable: (Timetable) -> Unit,
     remove: () -> Unit,
@@ -120,8 +120,8 @@ fun RozvrhEditorNavigation(
 private fun ActionScope.Actions(
     lessons: List<ClosedRange<LocalTime>>,
     chooseTimetable: (Timetable) -> Unit,
-    findFreeClassroom: (Int, List<Int>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
-    findFreeTeacher: (Int, List<Int>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    findFreeClassroom: (Int, List<Int>, (List<Timetable.Room>?) -> Unit) -> Unit,
+    findFreeTeacher: (Int, List<Int>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
     remove: () -> Unit,
     loaded: Boolean,
     changes: List<Change>,
@@ -265,8 +265,8 @@ data class FindMeSettings(
 fun findMe(
     hodiny: List<ClosedRange<LocalTime>>,
     chooseTimetable: (Timetable) -> Unit,
-    najdiMiVolnouTridu: (Int, List<Int>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (Int, List<Int>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    najdiMiVolnouTridu: (Int, List<Int>, (List<Timetable.Room>?) -> Unit) -> Unit,
+    najdiMiVolnehoUcitele: (Int, List<Int>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
 ) {
     globalDialogManager.showMaterial(
         state = FindMeSettings(
@@ -294,9 +294,6 @@ fun findMe(
                     if (customState.findRoom) najdiMiVolnouTridu(
                         customState.dayIndex, customState.lessonIndices,
                         {
-                            loading.customState = it
-                        },
-                        {
                             if (it == null) {
                                 loading.customState = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
                                 return@najdiMiVolnouTridu
@@ -307,9 +304,6 @@ fun findMe(
                     )
                     else najdiMiVolnehoUcitele(
                         customState.dayIndex, customState.lessonIndices,
-                        {
-                            loading.customState = it
-                        },
                         {
                             if (it == null) {
                                 loading.customState = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"

@@ -46,8 +46,8 @@ import kotlin.time.Duration.Companion.minutes
 @Composable
 fun RozvrhManualNavigation(
     navigator: Navigator,
-    najdiMiVolnouTridu: (Int, List<Int>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (Int, List<Int>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    najdiMiVolnouTridu: (Int, List<Int>, (List<Timetable.Room>?) -> Unit) -> Unit,
+    najdiMiVolnehoUcitele: (Int, List<Int>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
     hodiny: List<ClosedRange<LocalTime>>,
     vybratRozvrh: (Timetable) -> Unit,
     remove: () -> Unit,
@@ -85,8 +85,8 @@ fun RozvrhManualNavigation(
 private fun ActionScope.Actions(
     hodiny: List<ClosedRange<LocalTime>>,
     vybratRozvrh: (Timetable) -> Unit,
-    najdiMiVolnouTridu: (Int, List<Int>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (Int, List<Int>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    najdiMiVolnouTridu: (Int, List<Int>, (List<Timetable.Room>?) -> Unit) -> Unit,
+    najdiMiVolnehoUcitele: (Int, List<Int>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
     remove: () -> Unit,
     loaded: Boolean,
 ) {
@@ -183,9 +183,6 @@ private fun ActionScope.Actions(
                     if (ucebna) najdiMiVolnouTridu(
                         denIndex, hodinaIndexy,
                         {
-                            podrobnostiNacitani = it
-                        },
-                        {
                             if (it == null) {
                                 podrobnostiNacitani = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
                                 return@najdiMiVolnouTridu
@@ -197,9 +194,6 @@ private fun ActionScope.Actions(
                     )
                     else najdiMiVolnehoUcitele(
                         denIndex, hodinaIndexy,
-                        {
-                            podrobnostiNacitani = it
-                        },
                         {
                             if (it == null) {
                                 podrobnostiNacitani = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
