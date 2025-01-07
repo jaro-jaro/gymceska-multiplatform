@@ -121,16 +121,15 @@ object TvorbaRozvrhu {
                             }
 
                             if (data is CellData.Normal && data.hasAbsent == true) {
-                                val bef = data.absentInfoText?.substringBefore(" | ", "") ?: ""
-                                listOf(
-                                    baseCell,
+                                data.absentInfoText?.split("<br/>")?.map { info ->
+                                    val bef = data.absentInfoText.substringBefore(" | ", "")
                                     Cell.Absent(
                                         reason = bef.substringBefore(" (", "Absc"),
-                                        reasonText = data.absentInfoText?.substringAfter(" | ", "") ?: "",
+                                        reasonText = data.absentInfoText.substringAfter(" | ", ""),
                                         group = bef.substringInParentheses(),
                                         klass = klass,
                                     )
-                                )
+                                }.orEmpty() + listOf(baseCell)
                             } else listOf(baseCell)
                         }
                         ?.distinct()
