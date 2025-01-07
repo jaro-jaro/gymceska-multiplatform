@@ -122,10 +122,10 @@ object TvorbaRozvrhu {
 
                             if (data is CellData.Normal && data.hasAbsent == true) {
                                 data.absentInfoText?.split("<br/>")?.map { info ->
-                                    val bef = data.absentInfoText.substringBefore(" | ", "")
+                                    val bef = info.substringBefore(" | ", "")
                                     Cell.Absent(
                                         reason = bef.substringBefore(" (", "Absc"),
-                                        reasonText = data.absentInfoText.substringAfter(" | ", ""),
+                                        reasonText = info.substringAfter(" | ", ""),
                                         group = bef.substringInParentheses(),
                                         klass = klass,
                                     )
