@@ -29,6 +29,7 @@ import cz.jaro.gymceska.rozvrh.hodiny
 import cz.jaro.gymceska.rozvrh.manual.LocalTimetableSource
 import cz.jaro.gymceska.rozvrh.manual.editCells
 import cz.jaro.gymceska.rozvrh.manual.editCellsIndexed
+import cz.jaro.gymceska.rozvrh.najdiMiVolnouTridu
 import cz.jaro.gymceska.rozvrh.timetable
 import cz.jaro.gymceska.rozvrh.upravitTabulku
 import cz.jaro.gymceska.topHeaders
@@ -244,59 +245,24 @@ class RozvrhEditorViewModel(
     fun najdiMivolnouTridu(
         den: Int,
         hodiny: List<Int>,
-        progress: (String) -> Unit,
         onComplete: (List<Timetable.Room>?) -> Unit,
     ) {
         viewModelScope.launch {
-            val plneTridy = tridy.value.flatMap { trida ->
-                progress("Prohledávám třídu\n${trida.zkratka}")
-                getTimetable(trida).value.let { result ->
-                    if (result !is Uspech) {
-                        onComplete(null)
-                        return@launch
-                    }
-                    result.timetable
-                }.justTimetable()[den].slice(hodiny).flatMap { hodina ->
-                    hodina.map { bunka ->
-                        bunka.roomLike
-                    }
-                }
-            }
-            progress("Už to skoro je")
-
-            val vysledek = mistnosti.value.filter { it.zkratka !in plneTridy }.toMutableList()
-
-            onComplete(vysledek)
+            najdiMiVolnouTridu(den, hodiny, tridy.value, mistnosti.value) {
+                getTimetable(it)
+            }.collect(onComplete)
         }
     }
 
     fun najdiMiVolnehoUcitele(
         den: Int,
         hodiny: List<Int>,
-        progress: (String) -> Unit,
         onComplete: (List<Timetable.Teacher>?) -> Unit,
     ) {
         viewModelScope.launch {
-            val zaneprazdneniUcitele = tridy.value.drop(1).flatMap { trida ->
-                progress("Prohledávám třídu\n${trida.zkratka}")
-                getTimetable(trida).value.let { result ->
-                    if (result !is Uspech) {
-                        onComplete(null)
-                        return@launch
-                    }
-                    result.timetable
-                }.drop(1)[den].drop(1).slice(hodiny).flatMap { hodina ->
-                    hodina.map { bunka ->
-                        bunka.teacherLike
-                    }
-                }
-            }
-            progress("Už to skoro je")
-
-            val vysledek =
-                vyucujici.value.drop(1).filter { it.zkratka !in zaneprazdneniUcitele && it.zkratka in vyucujici2.value }.toMutableList()
-
-            onComplete(vysledek)
+            cz.jaro.gymceska.rozvrh.najdiMiVolnehoUcitele(den, hodiny, tridy.value, vyucujici.value) {
+                getTimetable(it)
+            }.collect(onComplete)
         }
     }
 

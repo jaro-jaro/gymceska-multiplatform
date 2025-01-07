@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.OnlineTimetableSource
+import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route.Rozvrh
 import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.TimetableData
@@ -23,11 +24,12 @@ import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.unaryPlus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.datetime.LocalTime
 import kotlin.js.JsName
 import kotlin.jvm.JvmName
@@ -107,11 +109,11 @@ class RozvrhViewModel(
     val hodiny = flow {
         emit(
             timetableSource.getTimetable(
-            klass = settings.value.mojeTrida,
-            type = TimetableType.ThisWeek,
-        ).value.timetable?.topHeaders()?.map {
-            it.subtitle.split(" - ").map(::toLocalTime).toRange()
-        } ?: emptyList())
+                klass = settings.value.mojeTrida,
+                type = TimetableType.ThisWeek,
+            ).value.timetable?.topHeaders()?.map {
+                it.subtitle.split(" - ").map(::toLocalTime).toRange()
+            } ?: emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), emptyList())
 
     val vjec = combineStates(
@@ -275,36 +277,12 @@ class RozvrhViewModel(
         den: Int,
         hodiny: List<Int>,
         filtry: List<FiltrNajdiMi>,
-        progress: (String) -> Unit,
         onComplete: (List<Room>?) -> Unit,
     ) {
         viewModelScope.launch {
-            val plneTridy = tridy.value.drop(1).flatMap { trida ->
-                progress("Prohledávám třídu\n${trida.zkratka}")
-                timetableSource.getTimetable(trida, stalost).value.let { result ->
-                    if (result !is Uspech) {
-                        onComplete(null)
-                        return@launch
-                    }
-                    result.timetable
-                }.drop(1)[den].drop(1).slice(hodiny).flatMap { hodina ->
-                    hodina.map { bunka ->
-                        bunka.roomLike
-                    }
-                }
-            }
-            progress("Už to skoro je")
-
-            val vysledek = mistnosti.value.drop(1).filter { it.zkratka !in plneTridy }.toMutableList()
-
-            if (FiltrNajdiMi.JenOdemcene in filtry) vysledek.retainAll {
-                it.zkratka in odemkleMistnosti.value
-            }
-            if (FiltrNajdiMi.JenCele in filtry) vysledek.retainAll {
-                it.zkratka in velkeMistnosti.value
-            }
-
-            onComplete(vysledek)
+            najdiMiVolnouTridu(den, hodiny, tridy.value, mistnosti.value, filtry, odemkleMistnosti.value, velkeMistnosti.value, {
+                timetableSource.getTimetable(it, stalost)
+            }).collect(onComplete)
         }
     }
 
@@ -313,36 +291,92 @@ class RozvrhViewModel(
         den: Int,
         hodiny: List<Int>,
         filtry: List<FiltrNajdiMi>,
-        progress: (String) -> Unit,
         onComplete: (List<Teacher>?) -> Unit,
     ) {
         viewModelScope.launch {
-            val zaneprazdneniUcitele = tridy.value.drop(1).flatMap { trida ->
-                progress("Prohledávám třídu\n${trida.zkratka}")
-                timetableSource.getTimetable(trida, stalost).value.let { result ->
-                    if (result !is Uspech) {
-                        onComplete(null)
-                        return@launch
-                    }
-                    result.timetable
-                }.drop(1)[den].drop(1).slice(hodiny).flatMap { hodina ->
-                    hodina.map { bunka ->
-                        bunka.teacherLike
-                    }
+            najdiMiVolnehoUcitele(den, hodiny, tridy.value, vyucujici.value, timetableSource.getTeachers(settings.value.mojeTrida), filtry, odemkleMistnosti.value, velkeMistnosti.value) {
+                timetableSource.getTimetable(it, stalost)
+            }.collect(onComplete)
+        }
+    }
+}
+
+suspend fun najdiMiVolnehoUcitele(
+    day: Int,
+    lessons: List<Int>,
+    classes: List<Class>,
+    teachers: List<Teacher>,
+    myTeachers: Sequence<String> = emptySequence(),
+    filters: List<FiltrNajdiMi> = emptyList(),
+    zaneprazdneniUcitele: List<String> = emptyList(),
+    vyucujici2: List<String> = emptyList(),
+    getTimetable: (Class) -> StateFlow<Result<out TimetableData>>,
+) = supervisorScope {
+    combineStates(this, classes.drop(1).map { trida ->
+        getTimetable(trida).mapState(this) { result ->
+            if (result !is Uspech) {
+                return@mapState null
+            }
+            result.timetable.drop(1)[day].drop(1).slice(lessons).flatMap { hodina ->
+                hodina.map { bunka ->
+                    bunka.teacherLike
                 }
             }
-            progress("Už to skoro je")
-
-            val vysledek =
-                vyucujici.value.drop(1).filter { it.zkratka !in zaneprazdneniUcitele && it.zkratka in vyucujici2.value }.toMutableList()
-
-            val ucitele = timetableSource.getTeachers(settings.first().mojeTrida)
-            if (FiltrNajdiMi.JenSvi in filtry) vysledek.retainAll {
-                it.zkratka in ucitele
-            }
-
-            onComplete(vysledek)
         }
+    }) {
+        if (it.any { it == null }) null
+        else it.filterNotNull().flatten()
+    }.mapState(this) { occupiedTeachers ->
+        if (occupiedTeachers == null) return@mapState null
+
+        val result = teachers.drop(1).filter { it.zkratka !in zaneprazdneniUcitele && it.zkratka in vyucujici2 }.toMutableList()
+
+        if (FiltrNajdiMi.JenSvi in filters) result.retainAll {
+            it.zkratka in myTeachers
+        }
+
+        result
+    }
+}
+
+
+suspend fun najdiMiVolnouTridu(
+    day: Int,
+    lessons: List<Int>,
+    classes: List<Class>,
+    rooms: List<Room>,
+    filters: List<FiltrNajdiMi> = emptyList(),
+    odemkleMistnosti: List<String> = emptyList(),
+    velkeMistnosti: List<String> = emptyList(),
+    getTimetable: (Class) -> StateFlow<Result<out TimetableData>>,
+) = supervisorScope {
+    combineStates(this, classes.drop(1).map { trida ->
+        getTimetable(trida).mapState(this) { result ->
+            if (result !is Uspech) {
+                return@mapState null
+            }
+            result.timetable.drop(1)[day].drop(1).slice(lessons).flatMap { hodina ->
+                hodina.map { bunka ->
+                    bunka.roomLike
+                }
+            }
+        }
+    }) {
+        if (it.any { it == null }) null
+        else it.filterNotNull().flatten()
+    }.mapState(this) { occupiedRooms ->
+        if (occupiedRooms == null) return@mapState null
+
+        val result = rooms.drop(1).filter { it.zkratka !in occupiedRooms }.toMutableList()
+
+        if (FiltrNajdiMi.JenOdemcene in filters) result.retainAll {
+            it.zkratka in odemkleMistnosti
+        }
+        if (FiltrNajdiMi.JenCele in filters) result.retainAll {
+            it.zkratka in velkeMistnosti
+        }
+
+        result
     }
 }
 
