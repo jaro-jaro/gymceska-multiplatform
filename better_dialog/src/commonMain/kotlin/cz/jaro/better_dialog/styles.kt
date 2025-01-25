@@ -16,7 +16,7 @@ fun <D> AlertDialogManager.showMaterial(
     onDismissed: (() -> Unit)? = null,
     icon: @Composable (AlertDialogState<D, AlertDialogStyle.Material<D>>.() -> Unit)? = null,
     title: @Composable (AlertDialogState<D, AlertDialogStyle.Material<D>>.() -> Unit)? = null,
-    content: @Composable (AlertDialogStateInColumnScope<D, AlertDialogStyle.Material<D>>.() -> Unit)? = null,
+    content: @Composable (AlertDialogState<D, AlertDialogStyle.Material<D>>.() -> Unit)? = null,
     properties: DialogProperties = DialogProperties(),
 ) = show(
     AlertDialogStyle.Material(
@@ -31,7 +31,7 @@ fun AlertDialogManager.showMaterial(
     onDismissed: (() -> Unit)? = null,
     icon: @Composable (AlertDialogState<Nothing?, AlertDialogStyle.Material<Nothing?>>.() -> Unit)? = null,
     title: @Composable (AlertDialogState<Nothing?, AlertDialogStyle.Material<Nothing?>>.() -> Unit)? = null,
-    content: @Composable (AlertDialogStateInColumnScope<Nothing?, AlertDialogStyle.Material<Nothing?>>.() -> Unit)? = null,
+    content: @Composable (AlertDialogState<Nothing?, AlertDialogStyle.Material<Nothing?>>.() -> Unit)? = null,
     properties: DialogProperties = DialogProperties(),
 ) = showMaterial(null, confirmButton, modifier, dismissButton, onDismissed, icon, title, content, properties)
 

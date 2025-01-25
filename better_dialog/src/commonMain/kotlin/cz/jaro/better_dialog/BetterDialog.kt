@@ -1,22 +1,13 @@
 package cz.jaro.better_dialog
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-
-interface AlertDialogStateInColumnScope<D, S : AlertDialogStyle<D>> : AlertDialogState<D, S>, ColumnScope
-
-private fun <D, S : AlertDialogStyle<D>> AlertDialogStateInColumnScope(columnScope: ColumnScope, state: AlertDialogState<D, S>) =
-    object : AlertDialogStateInColumnScope<D, S>, AlertDialogState<D, S> by state, ColumnScope by columnScope {}
 
 /**
- * Version: 1.2.6
+ * Version: 1.2.7
  */
 @Composable
 fun AlertDialog(
@@ -133,13 +124,7 @@ private fun <D> ShowMaterialDialog(
         { it(state) }
     },
     text = style.content?.let {
-        {
-            Column(
-                Modifier.fillMaxWidth()
-            ) {
-                it(AlertDialogStateInColumnScope(this, state))
-            }
-        }
+        { it(state) }
     },
     properties = style.properties
 )

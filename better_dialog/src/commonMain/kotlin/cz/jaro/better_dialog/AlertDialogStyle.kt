@@ -14,7 +14,7 @@ sealed interface AlertDialogStyle<D> {
         val onDismissed: (() -> Unit)? = null,
         val icon: @Composable (AlertDialogState<D, Material<D>>.() -> Unit)? = null,
         val title: @Composable (AlertDialogState<D, Material<D>>.() -> Unit)? = null,
-        val content: @Composable (AlertDialogStateInColumnScope<D, Material<D>>.() -> Unit)? = null,
+        val content: @Composable (AlertDialogState<D, Material<D>>.() -> Unit)? = null,
         val properties: DialogProperties = DialogProperties(),
     ) : AlertDialogStyle<D>
 
