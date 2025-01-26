@@ -6,15 +6,14 @@ import cz.jaro.gymceska.FirebaseClassListSource.Companion.toJson
 import cz.jaro.gymceska.LessonForEdit
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Navigator
-import cz.jaro.gymceska.Result
+import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.SettingsFlow
+import cz.jaro.gymceska.Success
 import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.TimetableDataForEdit
 import cz.jaro.gymceska.Timetables
-import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.WeekForEdit
-import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.combineStates
 import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.mapState
@@ -30,8 +29,9 @@ import cz.jaro.gymceska.rozvrh.hodiny
 import cz.jaro.gymceska.rozvrh.manual.LocalTimetableSource
 import cz.jaro.gymceska.rozvrh.manual.editCells
 import cz.jaro.gymceska.rozvrh.manual.editCellsIndexed
-import cz.jaro.gymceska.rozvrh.timetable
-import cz.jaro.gymceska.rozvrh.upravitTabulku
+import cz.jaro.gymceska.Result
+import cz.jaro.gymceska.editTimetable
+import cz.jaro.gymceska.timetable
 import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.today
 import io.github.vinceglb.filekit.core.FileKit
@@ -158,12 +158,12 @@ class RozvrhEditorViewModel(
     val zoom = settings.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::zoom)
     val alwaysTwoRowCells = settings.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::alwaysTwoRowCells)
 
-    private fun getTimetable(klass: Timetable.Class, showChanges: Boolean = isShowingChanges.value) =
-        if (showChanges) getEditedTimetable(klass).mapState(viewModelScope) { it?.let(::Uspech) ?: ZadnaData() }
+    private fun getTimetable(klass: Timetable.Class, showChanges: Boolean = isShowingChanges.value): StateFlow<Result<TimetableDataForEdit>> =
+        if (showChanges) getEditedTimetable(klass).mapState(viewModelScope) { it?.let(::Success) ?: Offline() }
         else getSavedTimetable(klass)
 
     private fun getSavedTimetable(klass: Timetable.Class) =
-        savedTimetableSource.getTimetable(klass).upravitTabulku(viewModelScope) { it.toDataForEdit(klass.zkratka) }
+        savedTimetableSource.getTimetable(klass).editTimetable(viewModelScope) { it.toDataForEdit(klass.zkratka) }
 
     private fun getEditedTimetable(klass: Timetable.Class) =
         editedTimetableSource.getTimetable(klass).mapState(viewModelScope) { it?.toTimetableDataForEdit(hodiny.value, klass.zkratka) }
@@ -174,7 +174,7 @@ class RozvrhEditorViewModel(
         if (timetable == null) null
         else getTimetable2(timetable, false).let { oldData ->
             oldData.timetable?.let { old ->
-                if (isShowingChanges) getTimetable2(timetable, true).upravitTabulku {
+                if (isShowingChanges) getTimetable2(timetable, true).editTimetable {
                     it.mark(old)
                 }
                 else oldData
@@ -189,7 +189,7 @@ class RozvrhEditorViewModel(
         getKlass: (Timetable.Class) -> StateFlow<Result<TimetableDataForEdit>> = { getTimetable(it, showChanges) },
     ): Result<TimetableDataForEdit> =
         when (timetable) {
-            is Timetable.Class -> getKlass(timetable).value.upravitTabulku {
+            is Timetable.Class -> getKlass(timetable).value.editTimetable {
                 it.editCells { cell ->
                     when (cell) {
                         is Cell.Edit -> cell.copy(klass = "")
@@ -206,7 +206,7 @@ class RozvrhEditorViewModel(
                 target = timetable,
                 classListSource = classListSource,
                 getTimetable = getKlass,
-            ).value.upravitTabulku { week ->
+            ).value.editTimetable { week ->
                 week.editCellsIndexed { address, cell ->
                     when (cell) {
                         is Cell.Header -> cell
@@ -229,7 +229,7 @@ class RozvrhEditorViewModel(
                 target = timetable,
                 classListSource = classListSource,
                 getTimetable = getKlass,
-            ).value.upravitTabulku { week ->
+            ).value.editTimetable { week ->
                 week.editCellsIndexed { address, cell ->
                     when (cell) {
                         is Cell.Header -> cell
@@ -313,7 +313,7 @@ class RozvrhEditorViewModel(
         val conflicts = findConflicts { requestedTimetable ->
             getTimetable2(requestedTimetable) { klass ->
                 when (klass) {
-                    timetable.value -> edited.mapState(viewModelScope) { it?.days?.let(::Uspech) ?: ZadnaData() }
+                    timetable.value -> edited.mapState(viewModelScope) { it?.days?.let(::Success) ?: Offline() }
                     else -> getTimetable(klass)
                 }
             }.timetable?.justTimetable()

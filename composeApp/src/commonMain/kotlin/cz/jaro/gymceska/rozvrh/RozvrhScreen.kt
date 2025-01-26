@@ -75,12 +75,13 @@ import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
 import cz.jaro.better_dialog.AlertDialogManager
 import cz.jaro.better_dialog.showMaterial
+import cz.jaro.gymceska.Downloading
 import cz.jaro.gymceska.Navigator
+import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.Success
 import cz.jaro.gymceska.TimetableData
-import cz.jaro.gymceska.Uspech
-import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.viewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalTime
@@ -151,7 +152,7 @@ fun RozvrhContent(
     zmenitStalost: (TimetableType) -> Unit,
     stahnoutVse: () -> Unit,
     navigator: Navigator,
-    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     tridy: List<Timetable.Class>,
     mistnosti: List<Timetable.Room>,
     vyucujici: List<Timetable.Teacher>,
@@ -195,7 +196,7 @@ fun RozvrhContent(
 
         if (result == null || vjec == null || mujRozvrh == null) LinearProgressIndicator(Modifier.fillMaxWidth())
         else when (result) {
-            is Uspech -> CompositionLocalProvider(LocalCellZoom provides zoom) {
+            is Success -> CompositionLocalProvider(LocalCellZoom provides zoom) {
                 Tabulka(
                     vjec = vjec,
                     tabulka = result.timetable,
@@ -215,7 +216,8 @@ fun RozvrhContent(
             }
 
             is Error -> Text("Omlouváme se, ale došlo k chybě při stahování rozvrhu. Zkuste to znovu.")
-            is ZadnaData -> Text("Jste offline a nemáte stažená žádná data z dřívějška.")
+            is Downloading -> Text("Stahování rozvrhů...")
+            is Offline -> Text("Jste offline a nemáte stažená žádná data z dřívějška.")
         }
     }
 }
@@ -437,8 +439,8 @@ private fun MenuVybiratka(
         }
     }
     Column(Modifier.verticalScroll(rememberScrollState())) {
-        repeat(seznamy.maxOf { it.size - 1 }) { i ->
-            val vjeci = seznamy.map { it.getOrNull(i + 1) }
+        repeat(seznamy.maxOf { it.size }) { i ->
+            val vjeci = seznamy.map { it.getOrNull(i) }
             Row(
                 Modifier.height(IntrinsicSize.Max)
             ) {

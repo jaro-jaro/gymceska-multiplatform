@@ -10,6 +10,7 @@ import cz.jaro.gymceska.Route.Rozvrh
 import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.combineStates
+import cz.jaro.gymceska.editTimetable
 import cz.jaro.gymceska.flattenMergeStates
 import cz.jaro.gymceska.getTeachers
 import cz.jaro.gymceska.mapState
@@ -18,6 +19,7 @@ import cz.jaro.gymceska.rozvrh.Timetable.DenVjec
 import cz.jaro.gymceska.rozvrh.Timetable.HodinaVjec
 import cz.jaro.gymceska.rozvrh.Timetable.Room
 import cz.jaro.gymceska.rozvrh.Timetable.Teacher
+import cz.jaro.gymceska.timetable
 import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.unaryPlus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -235,7 +237,7 @@ class RozvrhViewModel(
             is Class -> timetableSource.getTimetable(
                 klass = vjec,
                 type = stalost,
-            ).upravitTabulku(viewModelScope) {
+            ).editTimetable(viewModelScope) {
                 it.editCells { cell ->
                     if (cell is Cell.Data) cell.copy(klass = "") else cell
                 }.filtrovatTabulku(
@@ -251,7 +253,7 @@ class RozvrhViewModel(
                 target = vjec,
                 classListSource = classListSource,
                 getTimetable = { timetableSource.getTimetable(it, stalost) },
-            ).upravitTabulku(viewModelScope) { week ->
+            ).editTimetable(viewModelScope) { week ->
                 week.editCells { cell ->
                     if (cell is Cell.Normal) when (vjec) {
                         is Teacher -> cell.copy(teacher = "")
@@ -269,7 +271,11 @@ class RozvrhViewModel(
                 target = vjec,
                 classListSource = classListSource,
                 getTimetable = { timetableSource.getTimetable(it, stalost) },
-            )
+            ).editTimetable(viewModelScope) { week ->
+                week.editCells { cell ->
+                    if (cell is Cell.Data) cell.copy(klass = "") else cell
+                }
+            }
         }
     }.flattenMergeStates(coroutineScope = viewModelScope)
 

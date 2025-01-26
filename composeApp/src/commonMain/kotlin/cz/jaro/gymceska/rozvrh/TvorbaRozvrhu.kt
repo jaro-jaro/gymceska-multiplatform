@@ -5,14 +5,13 @@ import cz.jaro.gymceska.ClassListSource
 import cz.jaro.gymceska.Day
 import cz.jaro.gymceska.Lesson
 import cz.jaro.gymceska.Result
+import cz.jaro.gymceska.Success
 import cz.jaro.gymceska.TimetableData
-import cz.jaro.gymceska.Uspech
-import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.combineStates
 import cz.jaro.gymceska.cornerHeader
 import cz.jaro.gymceska.justTimetable
-import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.startHeaders
+import cz.jaro.gymceska.successOrElse
 import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.today
 import kotlinx.coroutines.CoroutineScope
@@ -185,7 +184,7 @@ object TvorbaRozvrhu {
 
         return combineStates(coroutineScope, classes.map { getTimetable(it) }) { results ->
 
-            val timetables: List<TimetableData> = results.map { it.timetable }.allNotNullOrNull() ?: return@combineStates ZadnaData()
+            val timetables: List<TimetableData> = results.successOrElse { return@combineStates it }
 
             val novaTabulka = emptyTyden(target)
 
@@ -238,7 +237,7 @@ object TvorbaRozvrhu {
                 }
             }
 
-            Uspech(novaTabulka)
+            Success(novaTabulka)
         }
     }
 
@@ -249,14 +248,14 @@ object TvorbaRozvrhu {
         target: Timetable,
         classListSource: ClassListSource,
         getTimetable: (klass: Timetable.Class) -> StateFlow<Result<out TimetableData>>,
-    ): StateFlow<Result<out TimetableData>> {
+    ): StateFlow<Result<TimetableData>> {
         require(target is Timetable.DenVjec || target is Timetable.HodinaVjec)
 
         val classes = classListSource.classes.value
 
         return combineStates(coroutineScope, classes.map { getTimetable(it) }) { results ->
 
-            val timetables = results.map { it.timetable }.allNotNullOrNull() ?: return@combineStates ZadnaData()
+            val timetables = results.successOrElse { return@combineStates it }
 
             val novaTabulka = emptyTyden(target, classes.count())
 
@@ -292,7 +291,7 @@ object TvorbaRozvrhu {
                 }
             }
 
-            Uspech(novaTabulka)
+            Success(novaTabulka)
         }
     }
 
@@ -374,17 +373,6 @@ object TvorbaRozvrhu {
 //private fun <E> MutableList<E>.takeInPlace(n: Int) = retainAll(take(n))
 
 fun <E> List<E>.singleOrGet(index: Int) = singleOrNull() ?: get(index)
-
-val <T> Result<T>.timetable get() = if (this is Uspech) timetable else null
-
-fun <T, U> Result<T>.upravitTabulku(edit: (T) -> U) = when (this) {
-    is Uspech -> Uspech(timetable = edit(this.timetable))
-    is ZadnaData -> ZadnaData()
-}
-
-fun <T, U> StateFlow<Result<T>>.upravitTabulku(coroutineScope: CoroutineScope, edit: (T) -> U) = mapState(coroutineScope) { result ->
-    result.upravitTabulku(edit)
-}
 
 fun TimetableData.filtrovatTabulku(
     mujRozvrh: Boolean = false,

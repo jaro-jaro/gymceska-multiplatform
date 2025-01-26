@@ -35,12 +35,17 @@ import cz.jaro.better_dialog.AlertDialogState
 import cz.jaro.better_dialog.AlertDialogStyle
 import cz.jaro.better_dialog.createMaterial
 import cz.jaro.better_dialog.showMaterial
+import cz.jaro.better_dialog.showSimple
 import cz.jaro.gymceska.ActionScope
+import cz.jaro.gymceska.Downloading
 import cz.jaro.gymceska.Navigation
 import cz.jaro.gymceska.Navigator
+import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.Success
 import cz.jaro.gymceska.TimetableData
+import cz.jaro.gymceska.timetable
 import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.time
 import cz.jaro.gymceska.ukoly.today
@@ -59,7 +64,7 @@ import kotlin.time.Duration.Companion.minutes
 fun RozvrhNavigation(
     stahnoutVse: () -> Unit,
     navigator: Navigator,
-    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     result: Result<out TimetableData>?,
     vybratRozvrh: (Timetable) -> Unit,
     currentlyDownloading: Boolean,
@@ -91,7 +96,7 @@ private fun ActionScope.Actions(
     stahnoutVse: () -> Unit,
     result: Result<out TimetableData>?,
     vybratRozvrh: (Timetable) -> Unit,
-    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
 ) {
     Action(
         onClick = stahnoutVse,
@@ -114,7 +119,7 @@ lateinit var state: MutableState<FindMeSettings>
 fun findMeSettigs(
     result: Result<out TimetableData>?,
     chooseTimetable: (Timetable) -> Unit,
-    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     coroutineScope: CoroutineScope,
 ): AlertDialogState<Nothing?, AlertDialogStyle.Material<Nothing?>> {
     if (!::state.isInitialized) state = mutableStateOf(FindMeSettings(
@@ -152,17 +157,27 @@ fun findMeSettigs(
 
                     val result = findMeResult(state, chooseTimetable)
 
-                    // Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd
                     coroutineScope.launch {
                         findMe(state).collect {
-                            if (it == null) {
-                                loading.customState = "Stahování rozvrhů"
-                                loading.show()
-                                result.hide()
-                            } else {
-                                result.show()
-                                result.customState = it
-                                loading.hide()
+                            when (it) {
+                                is Downloading -> {
+                                    loading.customState = "Stahování rozvrhů"
+                                    loading.show()
+                                    result.hide()
+                                }
+                                is Offline -> {
+                                    AlertDialogManager.Global.showSimple(
+                                        confirmButtonText = "Ok",
+                                        contentText = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
+                                    )
+                                    loading.hide()
+                                    result.hide()
+                                }
+                                is Success -> {
+                                    result.show()
+                                    result.customState = it.timetable
+                                    loading.hide()
+                                }
                             }
                         }
                     }

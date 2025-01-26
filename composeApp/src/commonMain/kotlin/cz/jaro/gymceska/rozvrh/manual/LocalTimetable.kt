@@ -6,10 +6,10 @@ import com.russhwolf.settings.coroutines.getStringOrNullStateFlow
 import com.russhwolf.settings.set
 import cz.jaro.gymceska.ClassListSource
 import cz.jaro.gymceska.FirebaseClassListSource.Companion.fromJson
+import cz.jaro.gymceska.Offline
+import cz.jaro.gymceska.Success
 import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.Timetables
-import cz.jaro.gymceska.Uspech
-import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.filterNotNullState
 import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.mapState
@@ -69,8 +69,8 @@ class LocalTimetableSource(
     fun getTimetable(klass: Timetable.Class) =
         timetables.mapState(scope) {
             it?.timetables?.let { timetables ->
-                timetables[klass.zkratka]?.let(::Uspech)
-            } ?: ZadnaData()
+                timetables[klass.zkratka]?.let(::Success)
+            } ?: Offline()
         }
 
     val type = timetables.mapState(scope, SharingStarted.Eagerly) { it?.type }
