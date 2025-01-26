@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Refresh
@@ -64,8 +65,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cz.jaro.better_dialog.AlertDialogManager
 import cz.jaro.better_dialog.AlertDialogStyle
-import cz.jaro.better_dialog.globalDialogManager
+import cz.jaro.better_dialog.show
 import cz.jaro.better_dialog.showMaterial
 import cz.jaro.better_dialog.showSimple
 import cz.jaro.gymceska.BuildKonfig
@@ -109,6 +111,7 @@ fun Nastaveni(
         skupiny = skupiny,
         stahnoutVse = viewModel::stahnoutVse,
         resetRemoteConfig = viewModel::resetRemoteConfig,
+        deleteDownloadedTimetables = viewModel::deleteDownloadedTimetables,
     )
 }
 
@@ -122,6 +125,7 @@ fun NastaveniContent(
     skupiny: Sequence<String>?,
     stahnoutVse: (TimetableType, (Float) -> Unit, (Boolean) -> Unit) -> Unit,
     resetRemoteConfig: () -> Unit,
+    deleteDownloadedTimetables: () -> Unit,
 ) = Surface {
     NastaveniNavigation(
         navigateBack = navigateBack,
@@ -142,7 +146,7 @@ fun NastaveniContent(
             ViewSettings(nastaveni, upravitNastaveni)
             if (areWidgetsSupported()) WidgetSettings(nastaveni, upravitNastaveni)
             MyClassAndGroupsSettings(nastaveni, tridy, upravitNastaveni, skupiny)
-            DownloadAndRefresh(stahnoutVse, resetRemoteConfig, navigator)
+            DownloadAndRefresh(stahnoutVse, resetRemoteConfig, deleteDownloadedTimetables, navigator)
             VersionAndLinks()
             SimulateCrash()
         }
@@ -444,13 +448,14 @@ private fun MyClassAndGroupsSettings(
 private fun DownloadAndRefresh(
     stahnoutVse: (TimetableType, (Float) -> Unit, (Boolean) -> Unit) -> Unit,
     resetRemoteConfig: () -> Unit,
+    deleteDownloadedTimetables: () -> Unit,
     navigator: Navigator,
 ) {
     val downloadAllDialog = AlertDialogStyle.Material<TimetableType>(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val nacitame = globalDialogManager.showMaterial(
+                    val nacitame = AlertDialogManager.Global.showMaterial(
                         state = 0F,
                         confirmButton = {},
                         title = {
@@ -467,7 +472,7 @@ private fun DownloadAndRefresh(
                         customState,
                         { nacitame.customState = it },
                         {
-                            if (it) nacitame.hide() else globalDialogManager.showSimple(
+                            if (it) nacitame.hide() else AlertDialogManager.Global.showSimple(
                                 confirmButtonText = "Ok",
                                 titleText = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd",
                             )
@@ -493,7 +498,7 @@ private fun DownloadAndRefresh(
 
     TextButton(
         onClick = {
-            globalDialogManager.show(downloadAllDialog, TimetableType.defaultToday())
+            AlertDialogManager.Global.show(downloadAllDialog, TimetableType.defaultToday())
         },
         contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
     ) {
@@ -514,14 +519,20 @@ private fun DownloadAndRefresh(
     }
 
     TextButton(
-        onClick = {
-            resetRemoteConfig()
-        },
+        onClick = resetRemoteConfig,
         contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
     ) {
         Icon(Icons.Default.Refresh, null, Modifier.size(ButtonDefaults.IconSize))
         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         Text("Obnovit seznamy")
+    }
+    TextButton(
+        onClick = deleteDownloadedTimetables,
+        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+    ) {
+        Icon(Icons.Default.Delete, null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        Text("Odstranit stažené rozvrhy")
     }
 }
 

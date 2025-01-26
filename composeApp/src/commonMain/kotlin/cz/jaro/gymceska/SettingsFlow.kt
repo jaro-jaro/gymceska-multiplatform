@@ -9,6 +9,7 @@ import cz.jaro.gymceska.FirebaseClassListSource.Companion.fromJson
 import cz.jaro.gymceska.rozvrh.Timetable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
@@ -16,7 +17,7 @@ import kotlinx.serialization.json.Json
 
 fun SettingsFlow(classListSource: ClassListSource, settings: ObservableSettings) = SettingsFlow(settings, classListSource.classes)
 
-@OptIn(ExperimentalSettingsApi::class)
+@OptIn(ExperimentalForInheritanceCoroutinesApi::class, ExperimentalSettingsApi::class)
 class SettingsFlow private constructor(
     private val settings: ObservableSettings,
     classes: StateFlow<List<Timetable.Class>>,

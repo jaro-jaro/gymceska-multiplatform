@@ -124,6 +124,12 @@ class OnlineTimetableSource(
     }
 
     val classListSource = FirebaseClassListSource(this, firebase)
+
+    fun deleteDownloadedTimetables() {
+        settings.keys.filter { it.startsWith("rozvrh2-_") }.forEach { key ->
+            settings.remove(key)
+        }
+    }
 }
 
 expect suspend fun getTimetableDocument(link: String): Document
@@ -163,14 +169,14 @@ class FirebaseClassListSource(
         remoteConfig.get<String>("vyucujici").fromJson<List<Timetable.Teacher>>()
     }.stateIn(scope, SharingStarted.Eagerly, listOf())
     val vyucujici2 = configActive.map {
-        remoteConfig.get<String>("vyucujici2").fromJson<List<String>>()
-    }.stateIn(scope, SharingStarted.Eagerly, listOf())
+        remoteConfig.get<String>("vyucujici2").fromJson<Set<String>>()
+    }.stateIn(scope, SharingStarted.Eagerly, setOf())
     val odemkleMistnosti = configActive.map {
-        remoteConfig.get<String>("odemkleMistnosti").fromJson<List<String>>()
-    }.stateIn(scope, SharingStarted.Eagerly, listOf())
+        remoteConfig.get<String>("odemkleMistnosti").fromJson<Set<String>>()
+    }.stateIn(scope, SharingStarted.Eagerly, setOf())
     val velkeMistnosti = configActive.map {
-        remoteConfig.get<String>("velkeMistnosti").fromJson<List<String>>()
-    }.stateIn(scope, SharingStarted.Eagerly, listOf())
+        remoteConfig.get<String>("velkeMistnosti").fromJson<Set<String>>()
+    }.stateIn(scope, SharingStarted.Eagerly, setOf())
 
     companion object {
         val json = Json {
@@ -200,10 +206,10 @@ fun OnlineTimetableSource.getGroups(klass: Timetable.Class): Sequence<String> {
         .sorted()
 }
 
-fun OnlineTimetableSource.getTeachers(trida: Timetable.Class): Sequence<String> {
+fun OnlineTimetableSource.getTeachers(trida: Timetable.Class): Set<String> {
     val result = getTimetable(trida, TimetableType.Permanent).value
 
-    if (result !is Uspech) return emptySequence()
+    if (result !is Uspech) return emptySet()
 
     return result.timetable
         .asSequence()
@@ -211,6 +217,5 @@ fun OnlineTimetableSource.getTeachers(trida: Timetable.Class): Sequence<String> 
         .flatten()
         .map { it.teacherLike }
         .filter { it.isNotEmpty() }
-        .distinct()
-        .sorted()
+        .toSet()
 }

@@ -80,8 +80,7 @@ fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair<LocalDa
         if (result !is Uspech) return@let listOf(Cell.Header("Žádná data!"))
 
         result
-            .timetable
-            .justTimetable()
+            .timetable.justTimetable()
             .getOrNull(cisloDne - 1)
             ?.asSequence().also { println(it?.toList()) }
             ?.mapIndexed { i, hodina -> i to hodina }.also { println(it?.toList()) }

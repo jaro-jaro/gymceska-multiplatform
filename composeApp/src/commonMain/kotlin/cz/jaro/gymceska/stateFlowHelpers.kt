@@ -1,6 +1,8 @@
 package cz.jaro.gymceska
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.DEFAULT_CONCURRENCY
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -78,6 +80,7 @@ fun <T1, T2, T3, T4, R> combineStates(
 ): StateFlow<R> = combine(flow, flow2, flow3, flow4, transform)
     .stateIn(coroutineScope, sharingStarted, transform(flow.value, flow2.value, flow3.value, flow4.value))
 
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 fun <T> StateFlow<StateFlow<T>>.flattenMergeStates(
     coroutineScope: CoroutineScope,
     sharingStarted: SharingStarted = SharingStarted.Eagerly,

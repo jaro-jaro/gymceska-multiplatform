@@ -6,11 +6,9 @@ import androidx.lifecycle.viewModelScope
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.OnlineTimetableSource
-import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route.Rozvrh
 import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.TimetableData
-import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.combineStates
 import cz.jaro.gymceska.flattenMergeStates
 import cz.jaro.gymceska.getTeachers
@@ -24,12 +22,10 @@ import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.unaryPlus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.supervisorScope
 import kotlinx.datetime.LocalTime
 import kotlin.js.JsName
 import kotlin.jvm.JvmName
@@ -65,7 +61,10 @@ class RozvrhViewModel(
                     else -> error("Invalid type")
                 },
                 stalost = TimetableType.entries.find { it.name.first() in modifikatory },
-                mujRozvrh = mapOf('M' to true, 'C' to false).entries.find { it.key in modifikatory }?.value,
+                mujRozvrh = mapOf(
+                    'M' to true,
+                    'C' to false
+                ).entries.find { it.key in modifikatory }?.value,
             )
         }
     }
@@ -213,11 +212,19 @@ class RozvrhViewModel(
         vjec == nastaveni.mojeTrida
     }
 
-    val zoom = settings.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::zoom)
+    val zoom = settings.mapState(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5.seconds),
+        Nastaveni::zoom
+    )
 
     val currentlyDownloading = timetableSource.currentlyDownloading
 
-    val alwaysTwoRowCells = settings.mapState(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), Nastaveni::alwaysTwoRowCells)
+    val alwaysTwoRowCells = settings.mapState(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5.seconds),
+        Nastaveni::alwaysTwoRowCells
+    )
 
     val result = combineStates(
         viewModelScope,
@@ -272,113 +279,21 @@ class RozvrhViewModel(
         }
     }
 
-    fun najdiMivolnouTridu(
-        stalost: TimetableType,
-        den: Int,
-        hodiny: List<Int>,
-        filtry: List<FiltrNajdiMi>,
-        onComplete: (List<Room>?) -> Unit,
+    fun findMe(
+        settings: FindMeSettings,
+    ) = findMe(
+        settings = settings, coroutineScope = viewModelScope,
+        classes = tridy.value, rooms = mistnosti.value, teachers = vyucujici.value,
+        unlockedRooms = odemkleMistnosti.value, wholeRooms = velkeMistnosti.value,
+        myTeachers = getMyTeachers(), nonTrainers = vyucujici2.value,
     ) {
-        viewModelScope.launch {
-            najdiMiVolnouTridu(den, hodiny, tridy.value, mistnosti.value, filtry, odemkleMistnosti.value, velkeMistnosti.value, {
-                timetableSource.getTimetable(it, stalost)
-            }).collect(onComplete)
-        }
+        timetableSource.getTimetable(it, settings.type)
     }
 
-    fun najdiMiVolnehoUcitele(
-        stalost: TimetableType,
-        den: Int,
-        hodiny: List<Int>,
-        filtry: List<FiltrNajdiMi>,
-        onComplete: (List<Teacher>?) -> Unit,
-    ) {
-        viewModelScope.launch {
-            najdiMiVolnehoUcitele(den, hodiny, tridy.value, vyucujici.value, timetableSource.getTeachers(settings.value.mojeTrida), filtry, odemkleMistnosti.value, velkeMistnosti.value) {
-                timetableSource.getTimetable(it, stalost)
-            }.collect(onComplete)
-        }
-    }
+    private fun getMyTeachers() =
+        timetableSource.getTeachers(settings.value.mojeTrida)
 }
 
-suspend fun najdiMiVolnehoUcitele(
-    day: Int,
-    lessons: List<Int>,
-    classes: List<Class>,
-    teachers: List<Teacher>,
-    myTeachers: Sequence<String> = emptySequence(),
-    filters: List<FiltrNajdiMi> = emptyList(),
-    zaneprazdneniUcitele: List<String> = emptyList(),
-    vyucujici2: List<String> = emptyList(),
-    getTimetable: (Class) -> StateFlow<Result<out TimetableData>>,
-) = supervisorScope {
-    combineStates(this, classes.drop(1).map { trida ->
-        getTimetable(trida).mapState(this) { result ->
-            if (result !is Uspech) {
-                return@mapState null
-            }
-            result.timetable.drop(1)[day].drop(1).slice(lessons).flatMap { hodina ->
-                hodina.map { bunka ->
-                    bunka.teacherLike
-                }
-            }
-        }
-    }) {
-        if (it.any { it == null }) null
-        else it.filterNotNull().flatten()
-    }.mapState(this) { occupiedTeachers ->
-        if (occupiedTeachers == null) return@mapState null
-
-        val result = teachers.drop(1).filter { it.zkratka !in zaneprazdneniUcitele && it.zkratka in vyucujici2 }.toMutableList()
-
-        if (FiltrNajdiMi.JenSvi in filters) result.retainAll {
-            it.zkratka in myTeachers
-        }
-
-        result
-    }
-}
-
-
-suspend fun najdiMiVolnouTridu(
-    day: Int,
-    lessons: List<Int>,
-    classes: List<Class>,
-    rooms: List<Room>,
-    filters: List<FiltrNajdiMi> = emptyList(),
-    odemkleMistnosti: List<String> = emptyList(),
-    velkeMistnosti: List<String> = emptyList(),
-    getTimetable: (Class) -> StateFlow<Result<out TimetableData>>,
-) = supervisorScope {
-    combineStates(this, classes.drop(1).map { trida ->
-        getTimetable(trida).mapState(this) { result ->
-            if (result !is Uspech) {
-                return@mapState null
-            }
-            result.timetable.drop(1)[day].drop(1).slice(lessons).flatMap { hodina ->
-                hodina.map { bunka ->
-                    bunka.roomLike
-                }
-            }
-        }
-    }) {
-        if (it.any { it == null }) null
-        else it.filterNotNull().flatten()
-    }.mapState(this) { occupiedRooms ->
-        if (occupiedRooms == null) return@mapState null
-
-        val result = rooms.drop(1).filter { it.zkratka !in occupiedRooms }.toMutableList()
-
-        if (FiltrNajdiMi.JenOdemcene in filters) result.retainAll {
-            it.zkratka in odemkleMistnosti
-        }
-        if (FiltrNajdiMi.JenCele in filters) result.retainAll {
-            it.zkratka in velkeMistnosti
-        }
-
-        result
-    }
-}
 
 fun TimetableData.editCells(
     editCell: (Cell) -> Cell,

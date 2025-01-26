@@ -73,7 +73,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
-import cz.jaro.better_dialog.globalDialogManager
+import cz.jaro.better_dialog.AlertDialogManager
 import cz.jaro.better_dialog.showMaterial
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
@@ -82,6 +82,7 @@ import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.viewModel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalTime
 import org.koin.core.Koin
 
@@ -125,8 +126,7 @@ fun Rozvrh(
         zmenitStalost = viewModel::zmenitStalost,
         stahnoutVse = viewModel.stahnoutVse,
         navigator = navigator,
-        najdiMiVolnouTridu = viewModel::najdiMivolnouTridu,
-        najdiMiVolnehoUcitele = viewModel::najdiMiVolnehoUcitele,
+        findMe = viewModel::findMe,
         tridy = tridy,
         mistnosti = mistnosti,
         vyucujici = vyucujici,
@@ -151,8 +151,7 @@ fun RozvrhContent(
     zmenitStalost: (TimetableType) -> Unit,
     stahnoutVse: () -> Unit,
     navigator: Navigator,
-    najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (List<Timetable.Room>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
     tridy: List<Timetable.Class>,
     mistnosti: List<Timetable.Room>,
     vyucujici: List<Timetable.Teacher>,
@@ -168,8 +167,7 @@ fun RozvrhContent(
 ) = RozvrhNavigation(
     stahnoutVse = stahnoutVse,
     navigator = navigator,
-    najdiMiVolnouTridu = najdiMiVolnouTridu,
-    najdiMiVolnehoUcitele = najdiMiVolnehoUcitele,
+    findMe = findMe,
     result = result,
     vybratRozvrh = vybratRozvrh,
     currentlyDownloading = currentlyDownloading,
@@ -470,7 +468,7 @@ private fun MenuVybiratka(
 @Composable
 private fun NapovedaKMistostem(mistnosti: List<Timetable.Room>) = if (mistnosti.any { it.napoveda != null }) IconButton(
     onClick = {
-        globalDialogManager.showMaterial(
+        AlertDialogManager.Global.showMaterial(
             confirmButton = { TextButton(::hide) { Text("OK") } },
             title = { Text("Nápověda k místnostem") },
             content = {

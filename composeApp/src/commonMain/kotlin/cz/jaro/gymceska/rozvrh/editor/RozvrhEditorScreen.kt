@@ -34,7 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cz.jaro.better_dialog.globalDialogManager
+import cz.jaro.better_dialog.AlertDialogManager
 import cz.jaro.better_dialog.showMaterial
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Result
@@ -44,6 +44,8 @@ import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.rozvrh.Cell
+import cz.jaro.gymceska.rozvrh.FindMeResult
+import cz.jaro.gymceska.rozvrh.FindMeSettings
 import cz.jaro.gymceska.rozvrh.LocalCellZoom
 import cz.jaro.gymceska.rozvrh.Seznamy
 import cz.jaro.gymceska.rozvrh.Tabulka
@@ -51,6 +53,7 @@ import cz.jaro.gymceska.rozvrh.Timetable
 import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.rozvrh.Vybiratko
 import cz.jaro.gymceska.viewModel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalTime
 import org.koin.core.Koin
 
@@ -89,8 +92,7 @@ fun RozvrhEditor(
         timetable = realVjec,
         selectTimetable = viewModel::vybratRozvrh,
         navigator = navigator,
-        findFreeClassroom = viewModel::najdiMivolnouTridu,
-        findFreeTeacher = viewModel::najdiMiVolnehoUcitele,
+        findMe = viewModel::findMe,
         classes = tridy,
         rooms = mistnosti,
         teachers = vyucujici,
@@ -141,8 +143,7 @@ fun RozvrhEditorContent(
     memory: Address?,
     remember: (Address?) -> Unit,
     navigator: Navigator,
-    findFreeClassroom: (Int, List<Int>, (List<Timetable.Room>?) -> Unit) -> Unit,
-    findFreeTeacher: (Int, List<Int>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
     isShowingChanges: Boolean,
     move: (LessonAddress) -> Unit,
     switch: (CellAddress) -> Unit,
@@ -151,14 +152,14 @@ fun RozvrhEditorContent(
     findRoom: (CellAddress) -> List<String>,
     editRoom: (CellAddress, String) -> Unit,
 ) = RozvrhEditorNavigation(
-    navigator, findFreeClassroom, findFreeTeacher, hodiny, selectTimetable, reset, loaded, changes,
+    navigator, findMe, hodiny, selectTimetable, reset, loaded, changes,
     findConflicts, download, upload, changeView, isShowingChanges, rooms, teachers, memory, { remember(null) },
 ) { paddingValues ->
 
     fun vysledkyDialog(
         results: List<String>,
         address: Address,
-    ) = globalDialogManager.showMaterial(
+    ) = AlertDialogManager.Global.showMaterial(
         confirmButton = { TextButton(::hide) { Text("OK") } },
         content = {
             LazyColumn {
@@ -189,7 +190,7 @@ fun RozvrhEditorContent(
     fun vysledkyDialog2(
         results: List<String>,
         address: LessonAddress,
-    ) = globalDialogManager.showMaterial(
+    ) = AlertDialogManager.Global.showMaterial(
         confirmButton = { TextButton(::hide) { Text("OK") } },
         content = {
             LazyColumn {
@@ -230,7 +231,7 @@ fun RozvrhEditorContent(
         }
         if (loaded && result != null && timetable != null) when (result) {
             is Uspech -> CompositionLocalProvider(LocalCellZoom provides zoom) {
-                fun editCell(address: CellAddress, cell: Cell.DataForEdit<out Address>) = globalDialogManager.showMaterial(
+                fun editCell(address: CellAddress, cell: Cell.DataForEdit<out Address>) = AlertDialogManager.Global.showMaterial(
                     confirmButton = { TextButton(::hide) { Text("Zrušit") } },
                     content = {
                         require(memory != address)
@@ -326,7 +327,7 @@ fun RozvrhEditorContent(
                         if (timetable !is Timetable.Class) return@Tabulka
                         if (address !is CellAddress) return@Tabulka
                         val cell = result.timetable[address]
-                        globalDialogManager.showMaterial(
+                        AlertDialogManager.Global.showMaterial(
                             state = cell.room,
                             confirmButton = {
                                 TextButton(

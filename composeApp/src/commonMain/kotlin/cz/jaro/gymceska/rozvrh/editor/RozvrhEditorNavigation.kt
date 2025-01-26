@@ -31,26 +31,34 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.window.DialogProperties
-import cz.jaro.better_dialog.globalDialogManager
+import cz.jaro.better_dialog.AlertDialogManager
+import cz.jaro.better_dialog.AlertDialogState
+import cz.jaro.better_dialog.AlertDialogStyle
 import cz.jaro.better_dialog.showMaterial
 import cz.jaro.gymceska.ActionScope
 import cz.jaro.gymceska.Navigation
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.rozvrh.FindMeResult
+import cz.jaro.gymceska.rozvrh.FindMeSettings
 import cz.jaro.gymceska.rozvrh.Seznamy
 import cz.jaro.gymceska.rozvrh.Timetable
 import cz.jaro.gymceska.rozvrh.Vybiratko
 import cz.jaro.gymceska.rozvrh.dny
+import cz.jaro.gymceska.rozvrh.replaceLast
 import cz.jaro.gymceska.ukoly.time
 import cz.jaro.gymceska.ukoly.today
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock.System
-import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
@@ -60,8 +68,7 @@ import kotlin.time.Duration.Companion.minutes
 @Composable
 fun RozvrhEditorNavigation(
     navigator: Navigator,
-    findFreeClassroom: (Int, List<Int>, (List<Timetable.Room>?) -> Unit) -> Unit,
-    findFreeTeacher: (Int, List<Int>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
     lessons: List<ClosedRange<LocalTime>>,
     selectTimetable: (Timetable) -> Unit,
     remove: () -> Unit,
@@ -81,7 +88,7 @@ fun RozvrhEditorNavigation(
     title = "Editor",
     actions = {
         Actions(
-            lessons, selectTimetable, findFreeClassroom, findFreeTeacher, remove, loaded,
+            lessons, selectTimetable, findMe, remove, loaded,
             changes, findConflicts, download, upload, changeView, isShowingChanges, rooms, teachers
         )
     },
@@ -120,8 +127,7 @@ fun RozvrhEditorNavigation(
 private fun ActionScope.Actions(
     lessons: List<ClosedRange<LocalTime>>,
     chooseTimetable: (Timetable) -> Unit,
-    findFreeClassroom: (Int, List<Int>, (List<Timetable.Room>?) -> Unit) -> Unit,
-    findFreeTeacher: (Int, List<Int>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
     remove: () -> Unit,
     loaded: Boolean,
     changes: List<Change>,
@@ -175,9 +181,10 @@ private fun ActionScope.Actions(
         title = if (isShowingChanges) "Skrýt změny" else "Zobrazit změny",
     )
 
+    val coroutineScope = rememberCoroutineScope()
     Action(
         onClick = {
-            findMe(lessons, chooseTimetable, findFreeClassroom, findFreeTeacher)
+            findMeSettings(lessons, chooseTimetable, findMe, coroutineScope)
         },
         icon = Icons.Default.Search,
         title = "Najdi mi",
@@ -199,7 +206,7 @@ private fun showConflicts(
     teachers: List<Timetable.Teacher>,
     selectTimetable: (Timetable) -> Unit,
     conflicts: List<String>,
-) = globalDialogManager.showMaterial(
+) = AlertDialogManager.Global.showMaterial(
     confirmButton = { TextButton(::hide) { Text("OK") } },
     content = {
         LazyColumn {
@@ -250,154 +257,132 @@ private fun showChanges(
     clipboardManager.setText(AnnotatedString(export))
 }
 
-private operator fun DayOfWeek.plus(i: Int): DayOfWeek {
-    require(i in -6..6) { "i must be in -6..6, got $i" }
-    return DayOfWeek(isoDayNumber = (isoDayNumber + i + 7 - 1) % 7 + 1)
-}
-
-data class FindMeSettings(
-    val findRoom: Boolean,
-    val dayIndex: Int,
-    val lessonIndices: List<Int>,
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
-fun findMe(
+fun findMeSettings(
     hodiny: List<ClosedRange<LocalTime>>,
     chooseTimetable: (Timetable) -> Unit,
-    najdiMiVolnouTridu: (Int, List<Int>, (List<Timetable.Room>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (Int, List<Int>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
-) {
-    globalDialogManager.showMaterial(
-        state = FindMeSettings(
-            findRoom = false,
-            dayIndex = today().dayOfWeek.isoDayNumber
-                .let { if (time() > LocalTime(15, 45)) it + 1 else it }
-                .let { if (it > 5) 1 else it } - 1,
-            lessonIndices = listOf(
-                hodiny.indexOfFirst {
-                    (System.now() - 10.minutes).toLocalDateTime(TimeZone.currentSystemDefault()).time < it.start
-                }.coerceAtLeast(0)
-            ),
+    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    coroutineScope: CoroutineScope,
+) = AlertDialogManager.Global.showMaterial(
+    state = FindMeSettings(
+        findRoom = false,
+        dayIndex = today().dayOfWeek.isoDayNumber
+            .let { if (time() > LocalTime(15, 45)) it + 1 else it }
+            .let { if (it > 5) 1 else it } - 1,
+        lessonIndices = listOf(
+            hodiny.indexOfFirst {
+                (System.now() - 10.minutes).toLocalDateTime(TimeZone.currentSystemDefault()).time < it.start
+            }.coerceAtLeast(0)
         ),
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val loading = globalDialogManager.showMaterial(
-                        state = "Hledám...",
-                        confirmButton = {},
-                        title = { Text(customState) },
-                        content = { CircularProgressIndicator() },
-                    )
-                    hide()
+    ),
+    confirmButton = {
+        TextButton(
+            onClick = {
+                hide()
+                val loading = AlertDialogManager.Global.showMaterial(
+                    state = "Hledám...",
+                    confirmButton = {},
+                    title = { Text(customState) },
+                    content = { CircularProgressIndicator() },
+                )
 
-                    if (customState.findRoom) najdiMiVolnouTridu(
-                        customState.dayIndex, customState.lessonIndices,
-                        {
-                            if (it == null) {
-                                loading.customState = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
-                                return@najdiMiVolnouTridu
+                var result: AlertDialogState<FindMeResult, AlertDialogStyle.Material<FindMeResult>>? =
+                    null
+
+                // Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd
+                coroutineScope.launch {
+                    findMe(customState).collect {
+                        if (it == null) loading.customState = "Stahování rozvrhů"
+                        else {
+                            if (result == null) {
+                                result = findMeResult(customState, chooseTimetable)
+                                loading.hide()
                             }
-                            findMeResult(customState, chooseTimetable, classes = it)
-                            loading.hide()
+                            result.customState = it
                         }
-                    )
-                    else najdiMiVolnehoUcitele(
-                        customState.dayIndex, customState.lessonIndices,
-                        {
-                            if (it == null) {
-                                loading.customState = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
-                                return@najdiMiVolnehoUcitele
-                            }
-                            findMeResult(customState, chooseTimetable, teachers = it)
-                            loading.hide()
-                        }
-                    )
+                    }
                 }
-            ) {
-                Text(text = "Vyhledat")
             }
-        },
-        dismissButton = { TextButton(::hide) { Text("Zrušit") } },
-        title = { Text("Najdi mi") },
-        content = {
-            var customState by ::customState
-            Column(
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                Vybiratko(
-                    seznam = listOf("volnou učebnu", "volného učitele"),
-                    index = if (customState.findRoom) 0 else 1,
-                    onClick = { i, _ ->
-                        customState = customState.copy(findRoom = i == 0)
-                    },
-                    label = "Najdi mi",
-                    zaskrtavatko = { false },
-                )
-                Vybiratko(
-                    seznam = Seznamy.dny4Pad,
-                    index = customState.dayIndex,
-                    onClick = { i, _ ->
-                        customState = customState.copy(dayIndex = i)
-                    },
-                    zaskrtavatko = { false },
-                )
-                Vybiratko(
-                    value = "${customState.lessonIndices.joinToString(" a ") { "$it." }} hodinu",
-                    seznam = Seznamy.hodiny4Pad,
-                    onClick = { i, _ ->
-                        customState = customState.copy(
-                            lessonIndices = if (i in customState.lessonIndices) customState.lessonIndices - i
-                            else /*if (i !in customState.lessonIndices)*/ customState.lessonIndices + i
-                        )
-                    },
-                    zaskrtavatko = {
-                        Seznamy.hodiny4Pad.indexOf(it) in customState.lessonIndices
-                    },
-                    zavirat = false
-                )
-            }
-        },
-        properties = DialogProperties(
-            dismissOnClickOutside = false,
-            dismissOnBackPress = false,
-        )
+        ) {
+            Text(text = "Vyhledat")
+        }
+    },
+    dismissButton = { TextButton(::hide) { Text("Zrušit") } },
+    title = { Text("Najdi mi") },
+    content = {
+        var customState by ::customState
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Vybiratko(
+                seznam = listOf("volnou učebnu", "volného učitele"),
+                index = if (customState.findRoom) 0 else 1,
+                onClick = { i, _ ->
+                    customState = customState.copy(findRoom = i == 0)
+                },
+                label = "Najdi mi",
+                zaskrtavatko = { false },
+            )
+            Vybiratko(
+                seznam = Seznamy.dny4Pad,
+                index = customState.dayIndex,
+                onClick = { i, _ ->
+                    customState = customState.copy(dayIndex = i)
+                },
+                zaskrtavatko = { false },
+            )
+            Vybiratko(
+                value = "${customState.lessonIndices.joinToString(" a ") { "$it." }} hodinu",
+                seznam = Seznamy.hodiny4Pad,
+                onClick = { i, _ ->
+                    customState = customState.copy(
+                        lessonIndices = if (i in customState.lessonIndices) customState.lessonIndices - i
+                        else /*if (i !in customState.lessonIndices)*/ customState.lessonIndices + i
+                    )
+                },
+                zaskrtavatko = {
+                    Seznamy.hodiny4Pad.indexOf(it) in customState.lessonIndices
+                },
+                zavirat = false
+            )
+        }
+    },
+    properties = DialogProperties(
+        dismissOnClickOutside = false,
+        dismissOnBackPress = false,
     )
-}
+)
 
 fun findMeResult(
     settings: FindMeSettings,
     chooseTimetable: (Timetable) -> Unit,
-    classes: List<Timetable.Room> = emptyList(),
-    teachers: List<Timetable.Teacher> = emptyList(),
-) {
-    globalDialogManager.showMaterial(
-        confirmButton = { TextButton(::hide) { Text("OK") } },
-        title = {
-            Text(text = "Najdi mi ${if (settings.findRoom) "volnou učebnu" else "volného učitele"}")
-        },
-        content = {
-            LazyColumn {
-                if (settings.findRoom) item {
-                    Text("Na škole jsou ${Seznamy.dny4Pad[settings.dayIndex]} ${settings.lessonIndices.joinToString(" a ") { "$it." }} hodinu volné tyto učebny:")
-                }
-                if (settings.findRoom) items(classes.toList()) {
-                    Text("${it.nazev}, to je${it.napoveda}", Modifier.clickable {
-                        hide()
-                        chooseTimetable(it)
-                    })
-                }
-                if (!settings.findRoom) item {
-                    Text("Na škole jsou ${Seznamy.dny4Pad[settings.dayIndex]} ${settings.lessonIndices.joinToString(" a ") { "$it." }} hodinu volní tito učitelé:")
-                }
-                if (!settings.findRoom) items(teachers.toList()) {
-                    Text(it.nazev, Modifier.clickable {
-                        hide()
-                        chooseTimetable(it)
-                    })
-                }
+) = AlertDialogManager.Global.showMaterial(
+    state = FindMeResult(),
+    confirmButton = { TextButton(::hide) { Text("OK") } },
+    title = {
+        Text(text = "Najdi mi ${if (settings.findRoom) "volnou učebnu" else "volného učitele"}")
+    },
+    content = {
+        LazyColumn {
+            if (settings.findRoom) item {
+                Text("Na škole jsou ${Seznamy.dny4Pad[settings.dayIndex]} ${settings.lessonIndices.joinToString { "$it." }.replaceLast(", ", " a ")} hodinu volné tyto učebny:")
+            }
+            if (settings.findRoom) items(customState.rooms.toList()) {
+                Text("${it.nazev}, to je${it.napoveda}", Modifier.clickable {
+                    hide()
+                    chooseTimetable(it)
+                })
+            }
+            if (!settings.findRoom) item {
+                Text("Na škole jsou ${Seznamy.dny4Pad[settings.dayIndex]} ${settings.lessonIndices.joinToString { "$it." }.replaceLast(", ", " a ")} hodinu volní tito učitelé:")
+            }
+            if (!settings.findRoom) items(customState.teachers.toList()) {
+                Text(it.nazev, Modifier.clickable {
+                    hide()
+                    chooseTimetable(it)
+                })
             }
         }
-    )
-}
+    }
+)

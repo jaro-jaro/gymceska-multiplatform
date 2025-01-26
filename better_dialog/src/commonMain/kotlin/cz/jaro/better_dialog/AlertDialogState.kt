@@ -2,6 +2,7 @@ package cz.jaro.better_dialog
 
 interface AlertDialogState<D, S : AlertDialogStyle<D>> {
     fun hide()
+    fun show()
     val isShown: Boolean
     var style: S
     var customState: D

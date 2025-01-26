@@ -390,7 +390,8 @@ fun TimetableData.filtrovatTabulku(
     mujRozvrh: Boolean = false,
     mojeSkupiny: Set<String> = emptySet(),
 ): TimetableData =
-    listOf(listOf(listOf(cornerHeader())) + topHeaders().map { listOf(it) }) + startHeaders().zip(justTimetable()) { h, day ->
+    listOf(listOf(listOf(cornerHeader())) + this.topHeaders()
+        .map { listOf(it) }) + startHeaders().zip(this.justTimetable()) { h, day ->
         listOf(listOf(h)) + day.filtrovatDen(mujRozvrh, mojeSkupiny)
     }
 

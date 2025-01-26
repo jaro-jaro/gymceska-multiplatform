@@ -70,4 +70,8 @@ class NastaveniViewModel(
             onlineTimetableSource.classListSource.resetLists()
         }
     }
+
+    fun deleteDownloadedTimetables() {
+        onlineTimetableSource.deleteDownloadedTimetables()
+    }
 }

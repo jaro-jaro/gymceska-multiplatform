@@ -1,6 +1,5 @@
 package cz.jaro.better_dialog
 
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -30,7 +29,6 @@ sealed interface AlertDialogStyle<D> {
         val properties: DialogProperties = DialogProperties(),
     ) : AlertDialogStyle<Nothing?>
 
-    @ExperimentalMaterial3Api
     data class Basic<D>(
         val modifier: Modifier = Modifier,
         val onDismissed: (() -> Unit)? = null,

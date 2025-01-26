@@ -19,6 +19,7 @@ import cz.jaro.gymceska.combineStates
 import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.rozvrh.Cell
+import cz.jaro.gymceska.rozvrh.FindMeSettings
 import cz.jaro.gymceska.rozvrh.Seznamy
 import cz.jaro.gymceska.rozvrh.Timetable
 import cz.jaro.gymceska.rozvrh.TimetableType
@@ -29,7 +30,6 @@ import cz.jaro.gymceska.rozvrh.hodiny
 import cz.jaro.gymceska.rozvrh.manual.LocalTimetableSource
 import cz.jaro.gymceska.rozvrh.manual.editCells
 import cz.jaro.gymceska.rozvrh.manual.editCellsIndexed
-import cz.jaro.gymceska.rozvrh.najdiMiVolnouTridu
 import cz.jaro.gymceska.rozvrh.timetable
 import cz.jaro.gymceska.rozvrh.upravitTabulku
 import cz.jaro.gymceska.topHeaders
@@ -242,29 +242,13 @@ class RozvrhEditorViewModel(
             }
         }
 
-    fun najdiMivolnouTridu(
-        den: Int,
-        hodiny: List<Int>,
-        onComplete: (List<Timetable.Room>?) -> Unit,
-    ) {
-        viewModelScope.launch {
-            najdiMiVolnouTridu(den, hodiny, tridy.value, mistnosti.value) {
-                getTimetable(it)
-            }.collect(onComplete)
-        }
-    }
-
-    fun najdiMiVolnehoUcitele(
-        den: Int,
-        hodiny: List<Int>,
-        onComplete: (List<Timetable.Teacher>?) -> Unit,
-    ) {
-        viewModelScope.launch {
-            cz.jaro.gymceska.rozvrh.najdiMiVolnehoUcitele(den, hodiny, tridy.value, vyucujici.value) {
-                getTimetable(it)
-            }.collect(onComplete)
-        }
-    }
+    fun findMe(
+        settings: FindMeSettings,
+    ) = cz.jaro.gymceska.rozvrh.findMe(
+        settings = settings, coroutineScope = viewModelScope,
+        classes = tridy.value, rooms = mistnosti.value, teachers = vyucujici.value,
+        nonTrainers = vyucujici2.value, getTimetable = ::getTimetable,
+    )
 
     fun loadFile() {
         removeTimetable()

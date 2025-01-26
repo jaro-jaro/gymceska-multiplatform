@@ -26,12 +26,15 @@ import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.TimetableData
 import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.ZadnaData
+import cz.jaro.gymceska.rozvrh.FindMeResult
+import cz.jaro.gymceska.rozvrh.FindMeSettings
 import cz.jaro.gymceska.rozvrh.LocalCellZoom
 import cz.jaro.gymceska.rozvrh.Tabulka
 import cz.jaro.gymceska.rozvrh.Timetable
 import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.rozvrh.Vybiratko
 import cz.jaro.gymceska.viewModel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalTime
 import org.koin.core.Koin
 
@@ -67,8 +70,7 @@ fun RozvrhManual(
         vjec = realVjec,
         vybratRozvrh = viewModel::vybratRozvrh,
         navigator = navigator,
-        najdiMiVolnouTridu = viewModel::najdiMivolnouTridu,
-        najdiMiVolnehoUcitele = viewModel::najdiMiVolnehoUcitele,
+        findMe = viewModel::findMe,
         tridy = tridy,
         mistnosti = mistnosti,
         vyucujici = vyucujici,
@@ -87,8 +89,7 @@ fun RozvrhManualContent(
     vjec: Timetable?,
     vybratRozvrh: (Timetable) -> Unit,
     navigator: Navigator,
-    najdiMiVolnouTridu: (Int, List<Int>, (List<Timetable.Room>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (Int, List<Int>, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
     tridy: List<Timetable.Class>,
     mistnosti: List<Timetable.Room>,
     vyucujici: List<Timetable.Teacher>,
@@ -100,8 +101,7 @@ fun RozvrhManualContent(
     loaded: Boolean,
 ) = RozvrhManualNavigation(
     navigator = navigator,
-    najdiMiVolnouTridu = najdiMiVolnouTridu,
-    najdiMiVolnehoUcitele = najdiMiVolnehoUcitele,
+    findMe = findMe,
     hodiny = hodiny,
     vybratRozvrh = vybratRozvrh,
     remove = remove,
