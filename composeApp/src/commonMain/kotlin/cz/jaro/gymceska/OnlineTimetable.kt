@@ -86,7 +86,8 @@ class OnlineTimetableSource(
     ) { time, timetable ->
         if (isOnline() && shouldDownloadTimetable(type, time)) toDownload.value += klass to type
 
-        timetable?.fromJson<TimetableData>()?.let(::Uspech) ?: ZadnaData()
+        timetable?.fromJson<TimetableData>()?.let(::Success)
+            ?: if (isOnline()) Downloading() else Offline()
     }
 
     init {
@@ -193,7 +194,7 @@ class FirebaseClassListSource(
 fun OnlineTimetableSource.getGroups(klass: Timetable.Class): Sequence<String> {
     val result = getTimetable(klass, TimetableType.Permanent).value
 
-    if (result !is Uspech) return emptySequence()
+    if (result !is Success) return emptySequence()
 
     return result.timetable
         .asSequence()
@@ -209,7 +210,7 @@ fun OnlineTimetableSource.getGroups(klass: Timetable.Class): Sequence<String> {
 fun OnlineTimetableSource.getTeachers(trida: Timetable.Class): Set<String> {
     val result = getTimetable(trida, TimetableType.Permanent).value
 
-    if (result !is Uspech) return emptySet()
+    if (result !is Success) return emptySet()
 
     return result.timetable
         .asSequence()

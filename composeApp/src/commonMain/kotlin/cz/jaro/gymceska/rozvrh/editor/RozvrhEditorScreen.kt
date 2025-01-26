@@ -36,12 +36,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cz.jaro.better_dialog.AlertDialogManager
 import cz.jaro.better_dialog.showMaterial
+import cz.jaro.gymceska.Downloading
 import cz.jaro.gymceska.Navigator
+import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.Success
 import cz.jaro.gymceska.TimetableDataForEdit
-import cz.jaro.gymceska.Uspech
-import cz.jaro.gymceska.ZadnaData
 import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.rozvrh.Cell
 import cz.jaro.gymceska.rozvrh.FindMeResult
@@ -143,7 +144,7 @@ fun RozvrhEditorContent(
     memory: Address?,
     remember: (Address?) -> Unit,
     navigator: Navigator,
-    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     isShowingChanges: Boolean,
     move: (LessonAddress) -> Unit,
     switch: (CellAddress) -> Unit,
@@ -155,7 +156,6 @@ fun RozvrhEditorContent(
     navigator, findMe, hodiny, selectTimetable, reset, loaded, changes,
     findConflicts, download, upload, changeView, isShowingChanges, rooms, teachers, memory, { remember(null) },
 ) { paddingValues ->
-
     fun vysledkyDialog(
         results: List<String>,
         address: Address,
@@ -230,7 +230,7 @@ fun RozvrhEditorContent(
             }
         }
         if (loaded && result != null && timetable != null) when (result) {
-            is Uspech -> CompositionLocalProvider(LocalCellZoom provides zoom) {
+            is Success -> CompositionLocalProvider(LocalCellZoom provides zoom) {
                 fun editCell(address: CellAddress, cell: Cell.DataForEdit<out Address>) = AlertDialogManager.Global.showMaterial(
                     confirmButton = { TextButton(::hide) { Text("Zrušit") } },
                     content = {
@@ -401,7 +401,8 @@ fun RozvrhEditorContent(
             }
 
             is Error -> Text("Omlouváme se, ale došlo k chybě při načítání rozvrhu. Zkuste to znovu.")
-            is ZadnaData -> Text("Nemáte nahrané žádné rozvrhy")
+            is Offline -> Text("Nemáte nahrané žádné rozvrhy")
+            is Downloading -> Unit
         }
     }
 }

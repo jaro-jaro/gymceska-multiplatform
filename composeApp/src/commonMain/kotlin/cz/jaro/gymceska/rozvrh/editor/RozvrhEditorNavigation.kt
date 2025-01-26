@@ -39,13 +39,17 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.window.DialogProperties
 import cz.jaro.better_dialog.AlertDialogManager
-import cz.jaro.better_dialog.AlertDialogState
-import cz.jaro.better_dialog.AlertDialogStyle
+import cz.jaro.better_dialog.createMaterial
 import cz.jaro.better_dialog.showMaterial
+import cz.jaro.better_dialog.showSimple
 import cz.jaro.gymceska.ActionScope
+import cz.jaro.gymceska.Downloading
 import cz.jaro.gymceska.Navigation
 import cz.jaro.gymceska.Navigator
+import cz.jaro.gymceska.Offline
+import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.Success
 import cz.jaro.gymceska.rozvrh.FindMeResult
 import cz.jaro.gymceska.rozvrh.FindMeSettings
 import cz.jaro.gymceska.rozvrh.Seznamy
@@ -68,7 +72,7 @@ import kotlin.time.Duration.Companion.minutes
 @Composable
 fun RozvrhEditorNavigation(
     navigator: Navigator,
-    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     lessons: List<ClosedRange<LocalTime>>,
     selectTimetable: (Timetable) -> Unit,
     remove: () -> Unit,
@@ -127,7 +131,7 @@ fun RozvrhEditorNavigation(
 private fun ActionScope.Actions(
     lessons: List<ClosedRange<LocalTime>>,
     chooseTimetable: (Timetable) -> Unit,
-    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     remove: () -> Unit,
     loaded: Boolean,
     changes: List<Change>,
@@ -261,7 +265,7 @@ private fun showChanges(
 fun findMeSettings(
     hodiny: List<ClosedRange<LocalTime>>,
     chooseTimetable: (Timetable) -> Unit,
-    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     coroutineScope: CoroutineScope,
 ) = AlertDialogManager.Global.showMaterial(
     state = FindMeSettings(
@@ -286,19 +290,27 @@ fun findMeSettings(
                     content = { CircularProgressIndicator() },
                 )
 
-                var result: AlertDialogState<FindMeResult, AlertDialogStyle.Material<FindMeResult>>? =
-                    null
+                val result = findMeResult(customState, chooseTimetable)
 
-                // Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd
                 coroutineScope.launch {
                     findMe(customState).collect {
-                        if (it == null) loading.customState = "Stahování rozvrhů"
-                        else {
-                            if (result == null) {
-                                result = findMeResult(customState, chooseTimetable)
-                                loading.hide()
-                            }
-                            result.customState = it
+                        if (it is Downloading) {
+                            loading.customState = "Stahování rozvrhů"
+                            loading.show()
+                            result.hide()
+                        }
+                        else if (it is Offline) {
+                            AlertDialogManager.Global.showSimple(
+                                confirmButtonText = "Ok",
+                                contentText = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
+                            )
+                            loading.hide()
+                            result.hide()
+                        }
+                        else if (it is Success) {
+                            result.show()
+                            result.customState = it.timetable
+                            loading.hide()
                         }
                     }
                 }
@@ -357,7 +369,7 @@ fun findMeSettings(
 fun findMeResult(
     settings: FindMeSettings,
     chooseTimetable: (Timetable) -> Unit,
-) = AlertDialogManager.Global.showMaterial(
+) = AlertDialogManager.Global.createMaterial(
     state = FindMeResult(),
     confirmButton = { TextButton(::hide) { Text("OK") } },
     title = {

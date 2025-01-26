@@ -1,11 +1,14 @@
 package cz.jaro.gymceska.rozvrh
 
 import cz.jaro.gymceska.Result
+import cz.jaro.gymceska.Success
 import cz.jaro.gymceska.TimetableData
-import cz.jaro.gymceska.Uspech
+import cz.jaro.gymceska.changeType
 import cz.jaro.gymceska.combineStates
+import cz.jaro.gymceska.editTimetable
 import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.mapState
+import cz.jaro.gymceska.successOrElse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 
@@ -15,14 +18,14 @@ fun findMe(
     unlockedRooms: Set<String> = emptySet(), wholeRooms: Set<String> = emptySet(),
     myTeachers: Set<String> = emptySet(), nonTrainers: Set<String>,
     getTimetable: (Timetable.Class) -> StateFlow<Result<out TimetableData>>
-): StateFlow<FindMeResult?> =
+) =
     if (settings.findRoom)
         findMeFreeRoom(
             settings = settings, getTimetable = getTimetable,
             coroutineScope = coroutineScope, classes = classes, rooms = rooms,
             unlockedRooms = unlockedRooms, wholeRooms = wholeRooms,
         ).mapState(coroutineScope) {
-            it?.let {
+            it.editTimetable {
                 FindMeResult(rooms = it)
             }
         }
@@ -32,7 +35,7 @@ fun findMe(
             coroutineScope = coroutineScope, classes = classes, teachers = teachers,
             myTeachers = myTeachers, nonTrainers = nonTrainers,
         ).mapState(coroutineScope) {
-            it?.let {
+            it.editTimetable {
                 FindMeResult(teachers = it)
             }
         }
@@ -61,22 +64,20 @@ private fun findMeFreeTeacher(
 ) =
     combineStates(coroutineScope, classes.map { trida ->
         getTimetable(trida).mapState(coroutineScope) { result ->
-            if (result !is Uspech) {
-                return@mapState null
-            }
-            result.timetable.justTimetable()[settings.dayIndex]
-                .slice(settings.lessonIndices)
-                .flatMap { lesson ->
-                    lesson.map { cell ->
-                        cell.teacherLike
+            result.editTimetable {
+                it.justTimetable()[settings.dayIndex]
+                    .slice(settings.lessonIndices)
+                    .flatMap { lesson ->
+                        lesson.map { cell ->
+                            cell.teacherLike
+                        }
                     }
-                }
+            }
         }
     }) {
-        if (it.any { it == null }) null
-        else it.filterNotNull().flatten()
-    }.mapState(coroutineScope) { occupiedTeachers ->
-        if (occupiedTeachers == null) return@mapState null
+        val occupiedTeachers = it.successOrElse {
+            return@combineStates it.changeType()
+        }.flatten()
 
         val result = teachers
             .filter { it.zkratka !in occupiedTeachers && it.zkratka in nonTrainers }
@@ -86,7 +87,7 @@ private fun findMeFreeTeacher(
             it.zkratka in myTeachers
         }
 
-        result.toList()
+        Success(result.toList())
     }
 
 private fun findMeFreeRoom(
@@ -100,22 +101,20 @@ private fun findMeFreeRoom(
 ) =
     combineStates(coroutineScope, classes.map { klass ->
         getTimetable(klass).mapState(coroutineScope) { result ->
-            if (result !is Uspech) {
-                return@mapState null
-            }
-            result.timetable.justTimetable()[settings.dayIndex]
+            result.editTimetable {
+                it.justTimetable()[settings.dayIndex]
                 .slice(settings.lessonIndices)
                 .flatMap { lesson ->
                     lesson.map { cell ->
                         cell.roomLike
                     }
                 }
+            }
         }
     }) {
-        if (it.any { it == null }) null
-        else it.filterNotNull().flatten()
-    }.mapState(coroutineScope) { occupiedRooms ->
-        if (occupiedRooms == null) return@mapState null
+        val occupiedRooms = it.successOrElse {
+            return@combineStates it.changeType()
+        }.flatten()
 
         val result = rooms.filter { it.zkratka !in occupiedRooms }.toMutableList()
 
@@ -126,5 +125,5 @@ private fun findMeFreeRoom(
             it.zkratka in wholeRooms
         }
 
-        result.toList()
+        Success(result.toList())
     }

@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.OnlineTimetableSource
 import cz.jaro.gymceska.SettingsFlow
+import cz.jaro.gymceska.Success
 import cz.jaro.gymceska.Timetables
-import cz.jaro.gymceska.Uspech
 import cz.jaro.gymceska.getGroups
 import cz.jaro.gymceska.rozvrh.TimetableType
 import cz.jaro.gymceska.ukoly.today
@@ -42,7 +42,7 @@ class NastaveniViewModel(
             val vse = tridy.mapNotNull {
                 update(.5F + .5F * tridy.indexOf(it) / tridy.size)
                 val res = onlineTimetableSource.getTimetable(it, stalost).value
-                if (res !is Uspech) {
+                if (res !is Success) {
                     finish(false)
                     return@mapNotNull null
                 }

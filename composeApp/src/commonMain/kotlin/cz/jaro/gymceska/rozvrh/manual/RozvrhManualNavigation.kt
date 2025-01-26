@@ -1,6 +1,7 @@
 package cz.jaro.gymceska.rozvrh.manual
 
 import androidx.compose.foundation.layout.PaddingValues
+import cz.jaro.gymceska.Result
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -24,7 +25,7 @@ import kotlinx.datetime.LocalTime
 @Composable
 fun RozvrhManualNavigation(
     navigator: Navigator,
-    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     hodiny: List<ClosedRange<LocalTime>>,
     vybratRozvrh: (Timetable) -> Unit,
     remove: () -> Unit,
@@ -62,7 +63,7 @@ fun RozvrhManualNavigation(
 private fun ActionScope.Actions(
     hodiny: List<ClosedRange<LocalTime>>,
     vybratRozvrh: (Timetable) -> Unit,
-    findMe: (FindMeSettings) -> StateFlow<FindMeResult?>,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     remove: () -> Unit,
     loaded: Boolean,
 ) {

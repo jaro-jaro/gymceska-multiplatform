@@ -3,7 +3,7 @@ package cz.jaro.gymceska.widgets
 import cz.jaro.gymceska.OnlineTimetableSource
 import cz.jaro.gymceska.PrepnoutRozvrhWidget
 import cz.jaro.gymceska.SettingsFlow
-import cz.jaro.gymceska.Uspech
+import cz.jaro.gymceska.Success
 import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.rozvrh.Cell
 import cz.jaro.gymceska.rozvrh.TimetableType
@@ -44,7 +44,7 @@ private fun OnlineTimetableSource.zjistitKonecVyucovani(settings: SettingsFlow):
 
     val result = getTimetable(nastaveni.mojeTrida, TimetableType.ThisWeek).value
 
-    if (result !is Uspech) return LocalTime(0, 0)
+    if (result !is Success) return LocalTime(0, 0)
 
     val tabulka = result.timetable
 
@@ -77,7 +77,7 @@ fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair<LocalDa
     val stalost = if (cisloDne == 1 && !dnes) TimetableType.NextWeek else TimetableType.ThisWeek
 
     val hodiny = getTimetable(nastaveni.mojeTrida, stalost).value.let { result ->
-        if (result !is Uspech) return@let listOf(Cell.Header("Žádná data!"))
+        if (result !is Success) return@let listOf(Cell.Header("Žádná data!"))
 
         result
             .timetable.justTimetable()

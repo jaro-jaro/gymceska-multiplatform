@@ -7,6 +7,7 @@ import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.combineStates
+import cz.jaro.gymceska.editTimetable
 import cz.jaro.gymceska.flattenMergeStates
 import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.rozvrh.Cell
@@ -25,8 +26,7 @@ import cz.jaro.gymceska.rozvrh.dny
 import cz.jaro.gymceska.rozvrh.editCells
 import cz.jaro.gymceska.rozvrh.editor.CellAddress
 import cz.jaro.gymceska.rozvrh.hodiny
-import cz.jaro.gymceska.rozvrh.timetable
-import cz.jaro.gymceska.rozvrh.upravitTabulku
+import cz.jaro.gymceska.timetable
 import cz.jaro.gymceska.topHeaders
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -142,7 +142,7 @@ class RozvrhManualViewModel(
         else when (vjec) {
             is Class -> timetableSource.getTimetable(
                 klass = vjec,
-            ).upravitTabulku(viewModelScope) {
+            ).editTimetable(viewModelScope) {
                 it.editCells { cell ->
                     if (cell is Cell.Data) cell.copy(klass = "") else cell
                 }
@@ -155,7 +155,7 @@ class RozvrhManualViewModel(
                 target = vjec,
                 classListSource = classListSource,
                 getTimetable = { timetableSource.getTimetable(it) },
-            ).upravitTabulku(viewModelScope) { week ->
+            ).editTimetable(viewModelScope) { week ->
                 week.editCells { cell ->
                     if (cell is Cell.Normal) when (vjec) {
                         is Teacher -> cell.copy(teacher = "")
