@@ -62,7 +62,7 @@ val Seznamy.dny
         )
     }
 val Seznamy.hodiny
-    get() = (0..9).map { index ->
+    get() = (0..12).map { index ->
         Timetable.HodinaVjec(
             nazev = "$index. hodina",
             zkratka = "$index",

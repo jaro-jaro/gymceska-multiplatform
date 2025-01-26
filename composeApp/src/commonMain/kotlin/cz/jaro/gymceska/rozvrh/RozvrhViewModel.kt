@@ -13,6 +13,7 @@ import cz.jaro.gymceska.combineStates
 import cz.jaro.gymceska.editTimetable
 import cz.jaro.gymceska.flattenMergeStates
 import cz.jaro.gymceska.getTeachers
+import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.rozvrh.Timetable.Class
 import cz.jaro.gymceska.rozvrh.Timetable.DenVjec
@@ -243,7 +244,7 @@ class RozvrhViewModel(
                 }.filtrovatTabulku(
                     mujRozvrh = mujRozvrh && zobrazitMujRozvrh,
                     mojeSkupiny = nastaveni.mojeSkupiny,
-                )
+                ).cutTimetable()
             }
 
             is Teacher,
@@ -261,7 +262,7 @@ class RozvrhViewModel(
                         else -> cell
                     }
                     else cell
-                }
+                }.cutTimetable()
             }
 
             is DenVjec,
@@ -298,6 +299,14 @@ class RozvrhViewModel(
 
     private fun getMyTeachers() =
         timetableSource.getTeachers(settings.value.mojeTrida)
+}
+
+private fun TimetableData.cutTimetable(): TimetableData {
+    fun List<Cell>.isNotEmpty() = !all { it is Cell.Empty }
+
+    val maxIndex = justTimetable().maxOf { it.indexOfLast { it.isNotEmpty() } }
+    val cutIndex = listOf(6, 7, 8, 9, 12).first { maxIndex <= it }
+    return map { it.take(cutIndex + 2) }
 }
 
 

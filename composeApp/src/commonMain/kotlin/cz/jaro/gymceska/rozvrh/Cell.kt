@@ -257,6 +257,7 @@ fun Cell(
     classes: List<Timetable.Class>,
     rooms: List<Timetable.Room>,
     teachers: List<Timetable.Teacher>,
+    fullRowWidth: Int,
     openTimetable: (timetable: Timetable) -> Unit,
     forceOneColumnCells: Boolean = false,
     onSubjectClick: (() -> Unit)?,
@@ -284,7 +285,7 @@ fun Cell(
     ) {
         when {
             wholeRowCell -> BaseCell(
-                size = Size(10F, height),
+                size = Size(fullRowWidth.toFloat(), height),
                 center = cell.subjectLike,
                 centerStyle = TextStyle(
                     color = cell.subjectColor(),

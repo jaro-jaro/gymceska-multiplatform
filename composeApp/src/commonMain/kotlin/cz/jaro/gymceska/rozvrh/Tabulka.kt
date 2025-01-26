@@ -45,6 +45,7 @@ import cz.jaro.gymceska.theme.LocalIsDarkThemeUsed
 import cz.jaro.gymceska.theme.LocalIsDynamicThemeUsed
 import cz.jaro.gymceska.theme.LocalTheme
 import cz.jaro.gymceska.theme.Theme
+import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.nowFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
@@ -148,6 +149,7 @@ fun Tabulka(
                         teachers = vyucujici,
                         openTimetable = kliklNaNeco,
                         forceOneColumnCells = vjec is Timetable.HodinaVjec,
+                        fullRowWidth = tabulka.topHeaders().size,
                         onSubjectClick = {
                             subjectClick?.invoke(CellAddress(row, column, cellIndex))
                             if (cell.popupData != null) menuOpened = true
