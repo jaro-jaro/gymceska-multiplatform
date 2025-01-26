@@ -44,7 +44,7 @@ object TvorbaRozvrhu {
             .getElementById("main")!!
             .getElementsByClass("bk-timetable-hours").first()!!
             .getElementsByClass("bk-hour-wrapper")
-            .take(10)
+            .take(13)
             .map { hodina ->
                 val num = hodina.getElementsByClass("num").first()!!
                 val hour = hodina.getElementsByClass("hour").first()!!
@@ -72,7 +72,7 @@ object TvorbaRozvrhu {
             ) + timeTableRow
                 .getElementsByClass("bk-cell-wrapper").first()!!
                 .getElementsByClass("bk-timetable-cell")
-                .take(10)
+                .take(13)
                 .map { timetableCell ->
                     timetableCell.getElementsByClass("day-item").first()
                         ?.getElementsByClass("day-item-hover")
@@ -306,9 +306,9 @@ object TvorbaRozvrhu {
             else -> 5
         }
         val sirka = when (target) {
-            is Timetable.DenVjec -> 10
+            is Timetable.DenVjec -> 13
             is Timetable.HodinaVjec -> classCount
-            else -> 10
+            else -> 13
         }
 
         val newTable = MutableList(vyska + 1) { MutableList(sirka + 1) { mutableListOf<Cell>() } }

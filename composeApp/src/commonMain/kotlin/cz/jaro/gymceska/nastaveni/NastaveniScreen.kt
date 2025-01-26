@@ -387,10 +387,10 @@ private fun MyClassAndGroupsSettings(
     HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
     Vybiratko(
         value = nastaveni.mojeTrida.nazev,
-        seznam = remember { tridy.map { it.nazev }.drop(1) },
+        seznam = remember { tridy.map { it.nazev } },
         onClick = { i, _ ->
             upravitNastaveni { nastaveni ->
-                nastaveni.copy(mojeTrida = tridy[i + 1])
+                nastaveni.copy(mojeTrida = tridy[i])
             }
         },
         Modifier
