@@ -26,7 +26,7 @@ import kotlinx.datetime.LocalTime
 fun RozvrhManualNavigation(
     navigator: Navigator,
     findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
-    hodiny: List<ClosedRange<LocalTime>>,
+    hodiny: List<OpenEndRange<LocalTime>>,
     vybratRozvrh: (Timetable) -> Unit,
     remove: () -> Unit,
     loaded: Boolean,
@@ -61,7 +61,7 @@ fun RozvrhManualNavigation(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun ActionScope.Actions(
-    hodiny: List<ClosedRange<LocalTime>>,
+    hodiny: List<OpenEndRange<LocalTime>>,
     vybratRozvrh: (Timetable) -> Unit,
     findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     remove: () -> Unit,

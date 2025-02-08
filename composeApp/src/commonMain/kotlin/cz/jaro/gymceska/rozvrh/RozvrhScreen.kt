@@ -156,7 +156,7 @@ fun RozvrhContent(
     tridy: List<Timetable.Class>,
     mistnosti: List<Timetable.Room>,
     vyucujici: List<Timetable.Teacher>,
-    hodiny: List<ClosedRange<LocalTime>>,
+    hodiny: List<OpenEndRange<LocalTime>>,
     mujRozvrh: Boolean?,
     zmenitMujRozvrh: () -> Unit,
     zobrazitMujRozvrh: Boolean,

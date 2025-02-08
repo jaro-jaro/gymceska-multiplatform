@@ -138,7 +138,7 @@ fun RozvrhEditorContent(
     alwaysTwoRowCells: Boolean,
     load: () -> Unit,
     loaded: Boolean,
-    hodiny: List<ClosedRange<LocalTime>>,
+    hodiny: List<OpenEndRange<LocalTime>>,
     findConflicts: () -> List<String>,
     findConflictsAfterSwitch: (LessonAddress, LessonAddress) -> List<String>,
     memory: Address?,

@@ -94,7 +94,7 @@ fun RozvrhManualContent(
     tridy: List<Timetable.Class>,
     mistnosti: List<Timetable.Room>,
     vyucujici: List<Timetable.Teacher>,
-    hodiny: List<ClosedRange<LocalTime>>,
+    hodiny: List<OpenEndRange<LocalTime>>,
     zoom: Float,
     alwaysTwoRowCells: Boolean,
     remove: () -> Unit,

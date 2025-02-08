@@ -26,13 +26,14 @@ import cz.jaro.gymceska.rozvrh.dny
 import cz.jaro.gymceska.rozvrh.editCells
 import cz.jaro.gymceska.rozvrh.editor.CellAddress
 import cz.jaro.gymceska.rozvrh.hodiny
+import cz.jaro.gymceska.rozvrh.toLocalTime
+import cz.jaro.gymceska.rozvrh.toRange
 import cz.jaro.gymceska.timetable
 import cz.jaro.gymceska.topHeaders
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalTime
 import kotlin.reflect.KClass
 import kotlin.time.Duration.Companion.seconds
 
@@ -216,7 +217,3 @@ fun <T: Cell, U> List<List<List<T>>>.editCellsIndexed(
         }.filterNotNull()
     }
 }
-
-fun toLocalTime(it: String) = it.split(":").map(String::toInt).toLocalTime()
-fun List<LocalTime>.toRange() = this[0]..this[1]
-fun List<Int>.toLocalTime() = LocalTime(this[0], this[1])
