@@ -14,7 +14,7 @@ sealed interface CellData {
         val absentinfo: String? = null, // Pr
         @SerialName("InfoAbsentName")
         val infoAbsentName: String? = null, // předmět
-        val removedinfo: String? = null, //
+        val removedinfo: String? = null, // --
     ) : CellData
 
     @Serializable
@@ -27,7 +27,7 @@ sealed interface CellData {
         val theme: String? = null, // Téma hodiny
         val notice: String? = null, //
         val changeinfo: String? = null, // Důvod
-        // Přesun z dd.mm., H: Pr, Vyučující{, Mis}
+        // Přesun z dd.m., H: Pr, Vyučující{, Mis}
         // Suplování: Pr, Vyučující
         // Spojeno: Vyučující, Pr
         // Změna místnosti: Mis
@@ -41,9 +41,11 @@ sealed interface CellData {
     @SerialName("removed")
     data class Removed(
         override val subjecttext: String,
-        val removedinfo: String? = null, // Zrušeno (Pr, Vyučující)"
-        val absentinfo: String? = null, //
+        val removedinfo: String? = null,
+        // Zrušeno (Pr, Vyučující)"
+        // Přesun na dd.m., H. hod (Pr, Vyučující)"
+        val absentinfo: String? = null, // --
         @SerialName("InfoAbsentName")
-        val infoAbsentName: String? = null, //
+        val infoAbsentName: String? = null, // --
     ) : CellData
 }
