@@ -73,7 +73,7 @@ import kotlin.time.Duration.Companion.minutes
 fun RozvrhEditorNavigation(
     navigator: Navigator,
     findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
-    lessons: List<ClosedRange<LocalTime>>,
+    lessons: List<OpenEndRange<LocalTime>>,
     selectTimetable: (Timetable) -> Unit,
     remove: () -> Unit,
     loaded: Boolean,
@@ -129,7 +129,7 @@ fun RozvrhEditorNavigation(
 
 @Composable
 private fun ActionScope.Actions(
-    lessons: List<ClosedRange<LocalTime>>,
+    lessons: List<OpenEndRange<LocalTime>>,
     chooseTimetable: (Timetable) -> Unit,
     findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     remove: () -> Unit,
@@ -263,7 +263,7 @@ private fun showChanges(
 
 @OptIn(ExperimentalMaterial3Api::class)
 fun findMeSettings(
-    hodiny: List<ClosedRange<LocalTime>>,
+    hodiny: List<OpenEndRange<LocalTime>>,
     chooseTimetable: (Timetable) -> Unit,
     findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     coroutineScope: CoroutineScope,

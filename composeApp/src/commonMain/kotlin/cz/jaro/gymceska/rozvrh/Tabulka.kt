@@ -26,6 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollDispatcher
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -34,6 +38,8 @@ import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cz.jaro.gymceska.TimetableData
@@ -61,7 +67,7 @@ fun Tabulka(
     tridy: List<Timetable.Class>,
     mistnosti: List<Timetable.Room>,
     vyucujici: List<Timetable.Teacher>,
-    hodiny: List<ClosedRange<LocalTime>>,
+    hodiny: List<OpenEndRange<LocalTime>>,
     mujRozvrh: Boolean,
     horScrollState: ScrollState,
     verScrollState: ScrollState,
@@ -72,9 +78,20 @@ fun Tabulka(
 ) {
     if (tabulka.isEmpty()) return
 
+    val prestavky = if (hodiny.isEmpty()) emptyList() else
+        listOf(LocalTime(0, 0)..<hodiny.first().start) +
+                hodiny.take(tabulka.topHeaders().size).windowed(2) { pair ->
+                    pair[0].endExclusive..<pair[1].start
+                } +
+                listOf(hodiny.last().endExclusive..<LocalTime(23, 59, 59, 999_999_999))
+
     val now by nowFlow.collectAsStateWithLifecycle()
-    val currentDay = if (stalost == TimetableType.ThisWeek) now.dayOfWeek.isoDayNumber.takeIf { it in 1..5 }?.minus(1) else null
-    val currentLesson = if (stalost == TimetableType.ThisWeek) hodiny.indexOfFirst { it.contains(now.time) }.takeUnless { it == -1 } else null
+    val currentDay = if (stalost == TimetableType.ThisWeek)
+        now.dayOfWeek.isoDayNumber.takeIf { it in 1..5 }?.minus(1) else null
+    val currentLesson = if (stalost == TimetableType.ThisWeek)
+        hodiny.indexOfFirst { now.time in it }.takeUnless { it == -1 } else null
+    val currentBreak = if (stalost == TimetableType.ThisWeek)
+        prestavky.indexOfFirst { now.time in it }.takeUnless { it == -1 } else null
 
     val canAllowCellsSmallerThan1 = mujRozvrh || vjec !is Timetable.Class || alwaysTwoRowCells
     val maxByRow = tabulka.drop(1).map {
@@ -125,13 +142,38 @@ fun Tabulka(
             )
         },
         cellContent = { row, column, lesson ->
-            val highlight = when (vjec) {
+            val highlightLesson = when (vjec) {
                 is Timetable.Class, is Timetable.Room, is Timetable.Teacher -> currentDay == row && currentLesson == column
                 is Timetable.DenVjec -> vjec.index - 1 == currentDay && currentLesson == column
                 is Timetable.HodinaVjec -> vjec.index - 1 == currentLesson && currentDay == row
             }
+            val highlightBreakRight = when (vjec) {
+                is Timetable.Class, is Timetable.Room, is Timetable.Teacher -> currentDay == row && currentBreak == column + 1
+                is Timetable.DenVjec -> vjec.index - 1 == currentDay && currentBreak == column + 1
+                is Timetable.HodinaVjec -> false
+            }
+            val highlightBreakLeft = when (vjec) {
+                is Timetable.Class, is Timetable.Room, is Timetable.Teacher -> currentDay == row && currentBreak == column
+                is Timetable.DenVjec -> vjec.index - 1 == currentDay && currentBreak == column
+                is Timetable.HodinaVjec -> false
+            }
             Column(
-                if (highlight) Modifier.border(4.dp, MaterialTheme.colorScheme.tertiary) else Modifier,
+                if (highlightLesson || highlightBreakRight || highlightBreakLeft) Modifier.border(
+                    width = 4.dp,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    shape = when {
+                        highlightBreakRight -> PathShape { size, _, density ->
+                            moveTo(size.width, 0F)
+                            drawBreak(density, size)
+                        }
+
+                        highlightBreakLeft -> PathShape { size, _, density ->
+                            drawBreak(density, size)
+                        }
+
+                        else -> RectangleShape
+                    }
+                ) else Modifier,
             ) {
                 val baseHeight = rowHeight[row] / lesson.size
                 lesson.forEachIndexed { cellIndex, cell ->
@@ -154,7 +196,17 @@ fun Tabulka(
                             subjectClick?.invoke(CellAddress(row, column, cellIndex))
                             if (cell.popupData != null) menuOpened = true
                         }.takeIf { cell.popupData != null || subjectClick != null },
-                        onRoomLongClick = roomLongClick?.let { ({ roomLongClick.invoke(CellAddress(row, column, cellIndex)) }) },
+                        onRoomLongClick = roomLongClick?.let {
+                            ({
+                                roomLongClick.invoke(
+                                    CellAddress(
+                                        row,
+                                        column,
+                                        cellIndex
+                                    )
+                                )
+                            })
+                        },
                         icon = icon?.invoke(CellAddress(row, column, cellIndex)),
                     )
                     DropdownMenu(expanded = menuOpened, onDismissRequest = { menuOpened = false }) {
@@ -186,6 +238,18 @@ fun Tabulka(
         horScrollState = horScrollState,
         verScrollState = verScrollState
     )
+}
+
+private fun Path.drawBreak(
+    density: Density,
+    size: Size
+) {
+    val ctyri = with(density) { 4.dp.toPx() }
+    relativeLineTo(-ctyri, 0F)
+    relativeLineTo(0F, size.height)
+    relativeLineTo(ctyri * 2, 0F)
+    relativeLineTo(0F, -size.height)
+    relativeLineTo(-ctyri, 0F)
 }
 
 @Composable
@@ -276,15 +340,21 @@ private fun Modifier.doubleScrollable(
                         val scrollScope = object : ScrollScope {
                             override fun scrollBy(pixels: Float): Float {
                                 val consumedByPreScroll =
-                                    nestedScrollDispatcher.dispatchPreScroll(Offset(pixels, 0F), NestedScrollSource.SideEffect).x
+                                    nestedScrollDispatcher.dispatchPreScroll(
+                                        Offset(pixels, 0F),
+                                        NestedScrollSource.SideEffect
+                                    ).x
                                 val scrollAvailableAfterPreScroll = pixels - consumedByPreScroll
-                                val consumedBySelfScroll = this@scroll.scrollBy(scrollAvailableAfterPreScroll)
-                                val deltaAvailableAfterScroll = scrollAvailableAfterPreScroll - consumedBySelfScroll
-                                val consumedByPostScroll = nestedScrollDispatcher.dispatchPostScroll(
-                                    Offset(consumedBySelfScroll, 0F),
-                                    Offset(deltaAvailableAfterScroll, 0F),
-                                    NestedScrollSource.SideEffect
-                                ).x
+                                val consumedBySelfScroll =
+                                    this@scroll.scrollBy(scrollAvailableAfterPreScroll)
+                                val deltaAvailableAfterScroll =
+                                    scrollAvailableAfterPreScroll - consumedBySelfScroll
+                                val consumedByPostScroll =
+                                    nestedScrollDispatcher.dispatchPostScroll(
+                                        Offset(consumedBySelfScroll, 0F),
+                                        Offset(deltaAvailableAfterScroll, 0F),
+                                        NestedScrollSource.SideEffect
+                                    ).x
                                 return consumedByPreScroll + consumedBySelfScroll + consumedByPostScroll
                             }
                         }
@@ -299,15 +369,21 @@ private fun Modifier.doubleScrollable(
                         val scrollScope = object : ScrollScope {
                             override fun scrollBy(pixels: Float): Float {
                                 val consumedByPreScroll =
-                                    nestedScrollDispatcher.dispatchPreScroll(Offset(0F, pixels), NestedScrollSource.SideEffect).y
+                                    nestedScrollDispatcher.dispatchPreScroll(
+                                        Offset(0F, pixels),
+                                        NestedScrollSource.SideEffect
+                                    ).y
                                 val scrollAvailableAfterPreScroll = pixels - consumedByPreScroll
-                                val consumedBySelfScroll = this@scroll.scrollBy(scrollAvailableAfterPreScroll)
-                                val deltaAvailableAfterScroll = scrollAvailableAfterPreScroll - consumedBySelfScroll
-                                val consumedByPostScroll = nestedScrollDispatcher.dispatchPostScroll(
-                                    Offset(0F, consumedBySelfScroll),
-                                    Offset(0F, deltaAvailableAfterScroll),
-                                    NestedScrollSource.SideEffect
-                                ).y
+                                val consumedBySelfScroll =
+                                    this@scroll.scrollBy(scrollAvailableAfterPreScroll)
+                                val deltaAvailableAfterScroll =
+                                    scrollAvailableAfterPreScroll - consumedBySelfScroll
+                                val consumedByPostScroll =
+                                    nestedScrollDispatcher.dispatchPostScroll(
+                                        Offset(0F, consumedBySelfScroll),
+                                        Offset(0F, deltaAvailableAfterScroll),
+                                        NestedScrollSource.SideEffect
+                                    ).y
                                 return consumedByPreScroll + consumedBySelfScroll + consumedByPostScroll
                             }
                         }
@@ -348,3 +424,20 @@ fun Modifier.onPointerScrollEvent(onScroll: (PointerEvent) -> Unit) = pointerInp
 }
 
 fun Int.nula(): String = if ("$this".length == 1) "0$this" else "$this"
+
+fun PathShape(
+    generator: Path.(size: Size, layoutDirection: LayoutDirection, density: Density) -> Unit
+) = Shape { size: Size, layoutDirection: LayoutDirection, density: Density ->
+    Outline.Generic(path = Path().apply {
+        generator(size, layoutDirection, density)
+        close()
+    })
+}
+
+fun Shape(
+    createOutline: (size: Size, layoutDirection: LayoutDirection, density: Density) -> Outline
+) = object : Shape {
+    override fun createOutline(
+        size: Size, layoutDirection: LayoutDirection, density: Density
+    ) = createOutline(size, layoutDirection, density)
+}

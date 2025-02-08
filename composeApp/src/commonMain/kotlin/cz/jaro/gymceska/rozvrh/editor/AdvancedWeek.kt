@@ -219,10 +219,10 @@ fun AdvancedWeek.addEmptys(klass: String): WeekForEdit = mapLessonsIndexed { add
     }
 }
 
-fun AdvancedWeek.toTimetableDataForEdit(lessons: List<ClosedRange<LocalTime>>, klass: String) = addEmptys(klass).addHeaders(lessons)
-fun WeekForEdit.addHeaders(lessons: List<ClosedRange<LocalTime>>): TimetableDataForEdit =
+fun AdvancedWeek.toTimetableDataForEdit(lessons: List<OpenEndRange<LocalTime>>, klass: String) = addEmptys(klass).addHeaders(lessons)
+fun WeekForEdit.addHeaders(lessons: List<OpenEndRange<LocalTime>>): TimetableDataForEdit =
     listOf(listOf(listOf(Cell.Header())) + lessons.mapIndexed { i, time ->
-        listOf(Cell.Header("$i", "${time.start.hour}:${time.start.minute} - ${time.endInclusive.hour}:${time.endInclusive.minute}"))
+        listOf(Cell.Header("$i", "${time.start.hour}:${time.start.minute} - ${time.endExclusive.hour}:${time.endExclusive.minute}"))
     }) + zip(Seznamy.dny) { dayLessons, day ->
         listOf(listOf(Cell.Header(day.zkratka))) + dayLessons
     }

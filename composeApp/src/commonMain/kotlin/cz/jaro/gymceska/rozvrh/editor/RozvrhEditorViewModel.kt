@@ -7,6 +7,7 @@ import cz.jaro.gymceska.LessonForEdit
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Offline
+import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.SettingsFlow
 import cz.jaro.gymceska.Success
@@ -15,6 +16,7 @@ import cz.jaro.gymceska.TimetableDataForEdit
 import cz.jaro.gymceska.Timetables
 import cz.jaro.gymceska.WeekForEdit
 import cz.jaro.gymceska.combineStates
+import cz.jaro.gymceska.editTimetable
 import cz.jaro.gymceska.justTimetable
 import cz.jaro.gymceska.mapState
 import cz.jaro.gymceska.rozvrh.Cell
@@ -29,8 +31,8 @@ import cz.jaro.gymceska.rozvrh.hodiny
 import cz.jaro.gymceska.rozvrh.manual.LocalTimetableSource
 import cz.jaro.gymceska.rozvrh.manual.editCells
 import cz.jaro.gymceska.rozvrh.manual.editCellsIndexed
-import cz.jaro.gymceska.Result
-import cz.jaro.gymceska.editTimetable
+import cz.jaro.gymceska.rozvrh.toLocalTime
+import cz.jaro.gymceska.rozvrh.toRange
 import cz.jaro.gymceska.timetable
 import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.today
@@ -45,7 +47,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalTime
 import kotlin.reflect.KClass
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -536,10 +537,6 @@ private fun TimetableDataForEdit.mark(original: TimetableDataForEdit) = editLess
         if (empty != null && lesson.size > 1) lesson - empty else lesson
     }
 }
-
-fun toLocalTime(it: String) = it.split(":").map(String::toInt).toLocalTime()
-fun List<LocalTime>.toRange() = this[0]..this[1]
-fun List<Int>.toLocalTime() = LocalTime(this[0], this[1])
 
 fun <T, U> Timetables<T>.map(transform: (klass: String, T) -> U) = Timetables(
     type = type,

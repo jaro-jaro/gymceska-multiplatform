@@ -26,8 +26,6 @@ import cz.jaro.gymceska.ukoly.unaryPlus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
 import kotlin.js.JsName
@@ -108,15 +106,14 @@ class RozvrhViewModel(
     private val odemkleMistnosti = classListSource.odemkleMistnosti
     private val velkeMistnosti = classListSource.velkeMistnosti
 
-    val hodiny = flow {
-        emit(
-            timetableSource.getTimetable(
-                klass = settings.value.mojeTrida,
-                type = TimetableType.ThisWeek,
-            ).value.timetable?.topHeaders()?.map {
-                it.subtitle.split(" - ").map(::toLocalTime).toRange()
-            } ?: emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), emptyList())
+    val hodiny = timetableSource.getTimetable(
+        klass = settings.value.mojeTrida,
+        type = TimetableType.ThisWeek,
+    ).mapState(viewModelScope) {
+        it.timetable?.topHeaders()?.map {
+            it.subtitle.split(" - ").map(::toLocalTime).toRange()
+        } ?: emptyList()
+    }
 
     val vjec = combineStates(
         viewModelScope,
@@ -327,5 +324,5 @@ fun <T : Cell> List<List<T>>.editCells(
 }
 
 fun toLocalTime(it: String) = it.split(":").map(String::toInt).toLocalTime()
-fun List<LocalTime>.toRange() = this[0]..this[1]
+fun List<LocalTime>.toRange() = this[0]..<this[1]
 fun List<Int>.toLocalTime() = LocalTime(this[0], this[1])
