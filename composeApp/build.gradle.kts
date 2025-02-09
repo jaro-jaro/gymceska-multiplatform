@@ -93,6 +93,7 @@ kotlin {
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     compilerOptions {
         freeCompilerArgs.add("-Xcontext-receivers")
+        freeCompilerArgs.add("-Xwhen-guards")
     }
 }
 

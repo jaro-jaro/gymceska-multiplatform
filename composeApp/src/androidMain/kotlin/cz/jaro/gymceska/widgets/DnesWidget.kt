@@ -7,8 +7,15 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.font.createFontFamilyResolver
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.ColorFilter
@@ -17,11 +24,14 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
@@ -29,14 +39,15 @@ import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.ColumnScope
 import androidx.glance.layout.Row
-import androidx.glance.layout.Spacer
+import androidx.glance.layout.RowScope
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
-import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import cz.jaro.gymceska.MainActivity
@@ -53,24 +64,33 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 
 
-@Suppress("unused")
+@Suppress("unused", "CONTEXT_RECEIVERS_DEPRECATED")
+@SuppressLint("RestrictedApi")
 class DnesWidget : GlanceAppWidget() {
 
-    @SuppressLint("RestrictedApi")
+    override val sizeMode = SizeMode.Exact
+
+    private val bg = ColorProvider(R.color.background_color)
+    private val onBg = ColorProvider(R.color.on_background_color)
+    private val bgChange = ColorProvider(R.color.background_color_alt)
+    private val onBgChange = ColorProvider(R.color.on_background_color_alt)
+    private val bgAbsent = ColorProvider(R.color.background_color_alt2)
+    private val onBgAbsent = ColorProvider(R.color.on_background_color_alt2)
+
     @Composable
     fun Content(
         context: Context,
     ) = GlanceTheme {
         val prefs = currentState<Preferences>()
-        val bunky = Json.decodeFromString<List<Cell>>(prefs[stringPreferencesKey("hodiny")] ?: "[]")
+        val hodiny =
+            Json.decodeFromString<List<Cell.NonEdit>>(prefs[stringPreferencesKey("hodiny")] ?: "[]")
+                .ifEmpty {
+                    listOf(Cell.Header("Žádné hodiny!"))
+                }
+                .let {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) it else it.take(10)
+                }
         val den = prefs[stringPreferencesKey("den")] ?: "??. ??."
-
-        val bg = ColorProvider(R.color.background_color)
-        val onbg = ColorProvider(R.color.on_background_color)
-        val bg2 = ColorProvider(R.color.background_color_alt)
-        val onbg2 = ColorProvider(R.color.on_background_color_alt)
-        val bg3 = ColorProvider(R.color.background_color_alt2)
-        val onbg3 = ColorProvider(R.color.on_background_color_alt2)
 
         Column(
             GlanceModifier.fillMaxSize().clickable(actionStartActivity<MainActivity>()),
@@ -78,154 +98,185 @@ class DnesWidget : GlanceAppWidget() {
             horizontalAlignment = Alignment.Horizontal.CenterHorizontally
         ) {
 
-            bunky
-                .ifEmpty {
-                    listOf(Cell.Header("Žádné hodiny!"))
-                }
-                .let {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) it else it.take(10)
-                }
-                .let { hodiny ->
-                    Row(
-                        modifier = GlanceModifier
-                            .fillMaxWidth()
-                            .background(bg)
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.Vertical.CenterVertically
-                    ) {
-                        Text(den, GlanceModifier.defaultWeight(), style = TextStyle(color = onbg))
-                        Image(
-                            provider = ImageProvider(R.drawable.baseline_refresh_24),
-                            colorFilter = ColorFilter.tint(onbg),
-                            contentDescription = "Aktualizovat",
-                            modifier = GlanceModifier.clickable {
-                                updateAll(context)
-                            },
+            val (width, height) = determineCellLayout(
+                lessonCount = hodiny.count { it !is Cell.Empty && it !is Cell.Removed },
+                breakCount = hodiny.count { it is Cell.Empty || it is Cell.Removed },
+            )
+
+            val context = LocalContext.current
+            Row(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .background(bg)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (width > 1) Text(
+                    den,
+                    GlanceModifier.defaultWeight(),
+                    style = TextStyle(color = onBg)
+                )
+                Image(
+                    provider = ImageProvider(R.drawable.baseline_refresh_24),
+                    colorFilter = ColorFilter.tint(onBg),
+                    contentDescription = "Aktualizovat",
+                    modifier = GlanceModifier.clickable {
+                        updateAll(context)
+                    },
+                )
+            }
+
+            Column(
+                GlanceModifier.fillMaxSize(),
+            ) {
+                hodiny.forEach {
+                    when (it) {
+                        is Cell.Empty, is Cell.Removed -> it.DrawBreak()
+                        else -> it.DrawCell(
+                            width = width,
+                            height = height,
                         )
                     }
-
-                    Cara()
-
-                    hodiny
-                        .forEachIndexed { i, it ->
-                            with(it) {
-                                Column(
-                                    GlanceModifier
-                                        .clickable(actionStartActivity<MainActivity>())
-                                        .defaultWeight()
-                                        .fillMaxWidth()
-                                ) {
-                                    Box(
-                                        modifier = GlanceModifier
-                                            .clickable(actionStartActivity<MainActivity>())
-                                            .fillMaxWidth()
-                                            .defaultWeight()
-                                            .background(
-                                                when {
-                                                    it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
-                                                            || it is Cell.ST && it.groups.any { it.changeInfo != null } -> bg2
-                                                    it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> bg
-                                                    else /*it is Cell.Absent || it is Cell.DayOff*/ -> bg3
-                                                }
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Box(
-                                            contentAlignment = Alignment.TopStart,
-                                            modifier = GlanceModifier
-                                                .clickable(actionStartActivity<MainActivity>())
-                                                .fillMaxSize()
-                                        ) {
-                                            Text(
-                                                text = roomLike,
-                                                modifier = GlanceModifier
-                                                    .clickable(actionStartActivity<MainActivity>())
-                                                    .padding(all = 8.dp),
-                                                style = TextStyle(
-                                                    color = when {
-                                                        it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
-                                                                || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> onbg
-                                                        else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
-                                                    }
-                                                ),
-                                            )
-                                        }
-                                        Box(
-                                            contentAlignment = Alignment.TopEnd,
-                                            modifier = GlanceModifier
-                                                .clickable(actionStartActivity<MainActivity>())
-                                                .fillMaxSize()
-                                        ) {
-                                            Text(
-                                                text = classLike,
-                                                modifier = GlanceModifier
-                                                    .clickable(actionStartActivity<MainActivity>())
-                                                    .padding(all = 8.dp),
-                                                style = TextStyle(
-                                                    color = when {
-                                                        it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
-                                                                || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> onbg
-                                                        else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
-                                                    }
-                                                ),
-                                            )
-                                        }
-
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = GlanceModifier
-                                                .clickable(actionStartActivity<MainActivity>())
-                                                .fillMaxSize()
-                                        ) {
-                                            Text(text = "")
-                                            Spacer(GlanceModifier.defaultWeight())
-                                            Text(
-                                                text = subjectLike,
-                                                modifier = GlanceModifier
-                                                    .clickable(actionStartActivity<MainActivity>())
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 4.dp),
-                                                style = TextStyle(
-                                                    color = when {
-                                                        it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
-                                                                || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> onbg
-                                                        else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
-                                                    },
-                                                    textAlign = TextAlign.Center
-                                                ),
-                                            )
-                                            Spacer(GlanceModifier.defaultWeight())
-                                            Text(
-                                                text = teacherLike,
-                                                modifier = GlanceModifier
-                                                    .clickable(actionStartActivity<MainActivity>())
-                                                    .padding(bottom = 8.dp),
-                                                style = TextStyle(
-                                                    color = when {
-                                                        it is Cell.Normal && it.changeInfo != null || it is Cell.Removed
-                                                                || it is Cell.ST && it.groups.any { it.changeInfo != null } -> onbg2
-                                                        it is Cell.Normal || it is Cell.ST || it is Cell.Header || it is Cell.Empty -> onbg
-                                                        else /*it is Cell.Absent || it is Cell.DayOff*/ -> onbg3
-                                                    }
-                                                ),
-                                            )
-                                        }
-                                    }
-                                    if (i < hodiny.lastIndex)
-                                        Cara()
-                                }
-                            }
-                        }
                 }
+            }
+        }
+    }
+
+    context(ColumnScope)
+    @Composable
+    private fun Cell.DataOrEmpty.DrawBreak() = Column(
+        GlanceModifier
+            .clickable(actionStartActivity<MainActivity>())
+            .fillMaxWidth()
+    ) {
+        Cara()
+        Row(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .background(
+                    when (this@DrawBreak) {
+                        is Cell.Empty -> bg
+                        is Cell.Data -> bgChange
+                    }
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(
+                provider = ImageProvider(R.drawable.outline_emoji_food_beverage_24),
+                colorFilter = ColorFilter.tint(
+                    when (this@DrawBreak) {
+                        is Cell.Empty -> onBg
+                        is Cell.Data -> onBgChange
+                    }
+                ),
+                contentDescription = "Přestávka",
+            )
         }
     }
 
     @Composable
-    fun Cara() = Box(modifier = GlanceModifier.height(2.dp).fillMaxWidth().background(Color.Transparent)) {}
+    private fun determineCellLayout(
+        lessonCount: Int,
+        breakCount: Int,
+    ): Pair<Int, Int> {
+        val context = LocalContext.current
+        val fontFamilyResolver = createFontFamilyResolver(context)
+        val density = Density(context)
+        val layoutDirection = LayoutDirection.Ltr
+
+        val textMeasurer = remember(
+            fontFamilyResolver,
+            density,
+            layoutDirection
+        ) {
+            TextMeasurer(
+                defaultFontFamilyResolver = fontFamilyResolver,
+                defaultDensity = density,
+                defaultLayoutDirection = layoutDirection,
+            )
+        }
+
+        val letter = with(density) {
+            textMeasurer.measure("H").size.toSize().toDpSize()
+        }
+
+        val padding = 8.dp
+        val image = 24.dp
+        val cara = 2.dp
+        fun sizes(size: Dp) = List(3) { i ->
+            size * (1 + i) + padding * (2 + i)
+        }
+
+        val heights = sizes(letter.height)
+        val widths = sizes(letter.width * 4)
+
+        val size = LocalSize.current
+        val breakOrHeader = padding * 2 + image
+        val height = heights.indexOfLast {
+            (it + cara) * lessonCount <= size.height - (breakOrHeader + cara) * (breakCount + 1)
+        }.takeUnless { it == -1 }?.plus(1) ?: 1
+        val width = widths.indexOfLast { it <= size.width }
+            .takeUnless { it == -1 }?.plus(1) ?: 1
+        return width to height
+    }
+
+    context(ColumnScope)
+    @Composable
+    private fun Cell.NonEdit.DrawCell(
+        width: Int,
+        height: Int,
+    ) = Column(
+        GlanceModifier
+            .clickable(actionStartActivity<MainActivity>())
+            .defaultWeight()
+            .fillMaxWidth()
+    ) {
+        Cara()
+        Column(
+            GlanceModifier
+                .padding(4.dp)
+                .clickable(actionStartActivity<MainActivity>())
+                .defaultWeight()
+                .fillMaxWidth()
+                .background(
+                    when (this@DrawCell) {
+                        is Cell.Normal if changeInfo != null -> bgChange
+                        is Cell.ST if groups.any { it.changeInfo != null } -> bgChange
+                        is Cell.Removed -> bgChange
+                        is Cell.Normal, is Cell.ST, is Cell.Header, is Cell.Empty -> bg
+                        is Cell.Absent, is Cell.DayOff -> bgAbsent
+                    }
+                )
+        ) {
+            when (width) {
+                1 -> when (height) {
+                    1 -> Cell11()
+                    2 -> Cell12()
+                    3 -> Cell13()
+                }
+
+                2 -> when (height) {
+                    1 -> Cell21()
+                    2 -> Cell22()
+                    3 -> Cell33and23()
+                }
+
+                3 -> when (height) {
+                    1 -> Cell31()
+                    2 -> Cell32()
+                    3 -> Cell33and23()
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun Cara() = Box(
+        GlanceModifier.height(2.dp).fillMaxWidth().background(Color.Transparent)
+    ) {}
 
     companion object {
 
@@ -258,7 +309,11 @@ class DnesWidget : GlanceAppWidget() {
                 } else super.onReceive(context, intent)
             }
 
-            override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+            override fun onUpdate(
+                context: Context,
+                appWidgetManager: AppWidgetManager,
+                appWidgetIds: IntArray
+            ) {
                 super.onUpdate(context, appWidgetManager, appWidgetIds)
 
                 CoroutineScope(Dispatchers.IO).launch {
@@ -269,7 +324,8 @@ class DnesWidget : GlanceAppWidget() {
 
                         updateAppWidgetState(context, id) { prefs ->
                             prefs[stringPreferencesKey("hodiny")] = Json.encodeToString(hodiny)
-                            prefs[stringPreferencesKey("den")] = den.run { "$dayOfMonth. $monthNumber." }
+                            prefs[stringPreferencesKey("den")] =
+                                den.run { "$dayOfMonth. $monthNumber." }
                         }
                         glanceAppWidget.update(context, id)
                     }
@@ -278,7 +334,174 @@ class DnesWidget : GlanceAppWidget() {
         }
     }
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
+    override suspend fun provideGlance(context: Context, id: GlanceId) =
         provideContent { Content(context) }
+
+    context(RowScope)
+    @Composable
+    fun Cell.NonEdit.DrawText(
+        text: String,
+        alignment: Alignment,
+        bold: Boolean = false,
+    ) = Box(
+        GlanceModifier
+            .defaultWeight()
+            .padding(4.dp),
+        contentAlignment = alignment,
+    ) {
+        Text(
+            text = text,
+            modifier = GlanceModifier
+                .clickable(actionStartActivity<MainActivity>()),
+            style = TextStyle(
+                fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
+                color = when (this) {
+                    is Cell.Normal if changeInfo != null -> onBgChange
+                    is Cell.ST if groups.any { it.changeInfo != null } -> onBgChange
+                    is Cell.Removed -> onBgChange
+                    is Cell.Normal, is Cell.ST, is Cell.Header, is Cell.Empty -> onBg
+                    is Cell.Absent, is Cell.DayOff -> onBgAbsent
+                },
+            ),
+        )
+    }
+
+    context(ColumnScope)
+    @Composable
+    fun Cell.NonEdit.Cell33and23() {
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            DrawText(roomLike, Alignment.TopStart)
+            DrawText(classLike, Alignment.TopEnd)
+        }
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DrawText(subjectLike, Alignment.Center, bold = true)
+        }
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            DrawText(teacherLike, Alignment.BottomCenter)
+        }
+    }
+
+    context(ColumnScope)
+    @Composable
+    fun Cell.NonEdit.Cell13() {
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            DrawText(roomLike, Alignment.TopCenter)
+        }
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DrawText(subjectLike, Alignment.Center, bold = true)
+        }
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            DrawText(teacherLike, Alignment.BottomCenter)
+        }
+    }
+
+    context(ColumnScope)
+    @Composable
+    fun Cell.NonEdit.Cell32() {
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            DrawText(roomLike, Alignment.TopStart)
+            DrawText(classLike, Alignment.TopEnd)
+        }
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            DrawText("", Alignment.BottomStart)
+            DrawText(subjectLike, Alignment.BottomCenter, bold = true)
+            DrawText(teacherLike, Alignment.BottomEnd)
+        }
+    }
+
+    context(ColumnScope)
+    @Composable
+    fun Cell.NonEdit.Cell22() {
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            DrawText(roomLike, Alignment.TopStart)
+            DrawText(classLike, Alignment.TopEnd)
+        }
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            DrawText(subjectLike, Alignment.BottomStart, bold = true)
+            DrawText(teacherLike, Alignment.BottomEnd)
+        }
+    }
+
+    context(ColumnScope)
+    @Composable
+    fun Cell.NonEdit.Cell12() {
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            DrawText(roomLike, Alignment.TopCenter)
+        }
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            DrawText(subjectLike, Alignment.BottomCenter, bold = true)
+        }
+    }
+
+    context(ColumnScope)
+    @Composable
+    fun Cell.NonEdit.Cell31() {
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DrawText(roomLike, Alignment.BottomStart)
+            DrawText(subjectLike, Alignment.BottomCenter, bold = true)
+            DrawText(teacherLike, Alignment.BottomEnd)
+        }
+    }
+
+    context(ColumnScope)
+    @Composable
+    fun Cell.NonEdit.Cell21() {
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DrawText(roomLike, Alignment.BottomStart)
+            DrawText(subjectLike, Alignment.BottomEnd, bold = true)
+        }
+    }
+
+    context(ColumnScope)
+    @Composable
+    fun Cell.NonEdit.Cell11() {
+        Row(
+            GlanceModifier.defaultWeight().fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DrawText(subjectLike, Alignment.Center, bold = true)
+        }
     }
 }
