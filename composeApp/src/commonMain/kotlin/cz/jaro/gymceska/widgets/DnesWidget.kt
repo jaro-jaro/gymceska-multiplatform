@@ -67,7 +67,7 @@ private fun OnlineTimetableSource.zjistitKonecVyucovani(settings: SettingsFlow):
     return tabulka.first()[hodina].first().teacherLike.split(" - ")[1].let(::toLocalTime)
 }
 
-fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair<LocalDate, List<Cell>> {
+fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair<LocalDate, List<Cell.NonEdit>> {
     val nastaveni = settings.value
     val dnes = rozvrhZobrazitNaDnesek(settings)
 
@@ -82,40 +82,15 @@ fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair<LocalDa
         result
             .timetable.justTimetable()
             .getOrNull(cisloDne - 1)
-            ?.asSequence().also { println(it?.toList()) }
-            ?.mapIndexed { i, hodina -> i to hodina }.also { println(it?.toList()) }
-            ?.map { (i, hodina) ->
-                hodina.map { bunka ->
-                    when (bunka) {
-                        is Cell.Absent -> bunka.copy(reason = "$i. ${bunka.reason}")
-                        is Cell.DayOff -> bunka
-                        is Cell.Removed -> bunka.copy(subject = "$i. ${bunka.subject}")
-                        is Cell.Normal -> bunka.copy(subject = "$i. ${bunka.subject}")
-                        is Cell.ST -> bunka.copy(subject = "$i. ${bunka.subject}")
-                        Cell.Empty -> bunka
-                    }
-                }
-            }
-            ?.toList()
             ?.editCells { cell ->
                 if (cell is Cell.Data) cell.copy(klass = "") else cell
             }
             ?.filtrovatDen(true, nastaveni.mojeSkupiny)
             ?.mapNotNull { hodina -> hodina.firstOrNull() }
-            ?.mapNotNull { bunka ->
-                when (bunka) {
-                    is Cell.Absent -> bunka
-                    is Cell.DayOff -> bunka
-                    is Cell.Removed -> null
-                    is Cell.Normal -> bunka
-                    is Cell.ST -> bunka
-                    Cell.Empty -> null
-                }
-            }
+            ?.dropWhile { it is Cell.Empty }
+            ?.dropLastWhile { it is Cell.Empty }
             ?.ifEmpty {
-                listOf(
-                    Cell.Header("Žádné hodiny!"),
-                )
+                listOf(Cell.Header("Žádné hodiny!"))
             }
             ?: listOf(Cell.Header("Víkend"))
     }

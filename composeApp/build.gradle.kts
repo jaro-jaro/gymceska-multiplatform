@@ -14,8 +14,8 @@ plugins {
     alias(libs.plugins.buildkonfig)
 }
 
-val appVersionCode = 116
-val appVersionName = "2.6.0-pre.1"
+val appVersionCode = 117
+val appVersionName = "2.6.0-pre.2"
 
 kotlin {
     js(IR) {
@@ -93,6 +93,7 @@ kotlin {
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     compilerOptions {
         freeCompilerArgs.add("-Xcontext-receivers")
+        freeCompilerArgs.add("-Xwhen-guards")
     }
 }
 
