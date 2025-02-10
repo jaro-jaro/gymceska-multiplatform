@@ -15,8 +15,10 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
@@ -91,14 +93,14 @@ class DnesWidget : GlanceAppWidget() {
     ) = GlanceTheme {
         val prefs = currentState<Preferences>()
         val hodiny =
-            Json.decodeFromString<List<Cell.NonEdit>>(prefs[stringPreferencesKey("hodiny")] ?: "[]")
+            Json.decodeFromString<List<Cell.NonEdit>>(prefs[hodinyKey] ?: "[]")
                 .ifEmpty {
                     listOf(Cell.Header("Žádné hodiny!"))
                 }
                 .let {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) it else it.take(10)
                 }
-        val den = prefs[stringPreferencesKey("den")] ?: "??. ??."
+        val den = prefs[denKey] ?: "??. ??."
 
         Column(
             GlanceModifier.fillMaxSize().clickable(actionStartActivity<MainActivity>()),
@@ -190,6 +192,7 @@ class DnesWidget : GlanceAppWidget() {
         lessonCount: Int,
         breakCount: Int,
     ): Pair<Int, Int> {
+        val scale = currentState<Preferences>()[scaleKey] ?: 1F
         val context = LocalContext.current
         val fontFamilyResolver = createFontFamilyResolver(context)
         val density = Density(context)
@@ -208,7 +211,10 @@ class DnesWidget : GlanceAppWidget() {
         }
 
         val letter = with(density) {
-            textMeasurer.measure("H").size.toSize().toDpSize()
+            textMeasurer.measure(
+                text = "H",
+                style = androidx.compose.ui.text.TextStyle(fontSize = 14.sp * scale)
+            ).size.toSize().toDpSize()
         }
 
         fun sizes(textSize: Dp, outerPadding: Dp) = List(3) { i ->
@@ -291,6 +297,10 @@ class DnesWidget : GlanceAppWidget() {
 
         const val EXTRA_KEY_WIDGET_IDS = "providerwidgetids"
 
+        val hodinyKey = stringPreferencesKey("hodiny")
+        val denKey = stringPreferencesKey("den")
+        val scaleKey = floatPreferencesKey("scale")
+
         fun updateAll(context: Context) {
             context.sendBroadcast(Intent().apply {
                 action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
@@ -332,9 +342,9 @@ class DnesWidget : GlanceAppWidget() {
                         val id = GlanceAppWidgetManager(context).getGlanceIdBy(it)
 
                         updateAppWidgetState(context, id) { prefs ->
-                            prefs[stringPreferencesKey("hodiny")] = Json.encodeToString(hodiny)
-                            prefs[stringPreferencesKey("den")] =
-                                den.run { "$dayOfMonth. $monthNumber." }
+                            prefs[hodinyKey] = Json.encodeToString(hodiny)
+                            prefs[denKey] = den.run { "$dayOfMonth. $monthNumber." }
+                            prefs[scaleKey] = settings.value.widgetTextScale
                         }
                         glanceAppWidget.update(context, id)
                     }
@@ -358,6 +368,7 @@ class DnesWidget : GlanceAppWidget() {
             .padding(innerPadding / 2),
         contentAlignment = alignment,
     ) {
+        val scale = currentState<Preferences>()[scaleKey] ?: 1F
         Text(
             text = text,
             modifier = GlanceModifier
@@ -372,6 +383,7 @@ class DnesWidget : GlanceAppWidget() {
                     is Cell.Absent, is Cell.DayOff -> onBgAbsent
                 },
                 textAlign = TextAlign.Center,
+                fontSize = 14.sp * scale
             ),
         )
     }

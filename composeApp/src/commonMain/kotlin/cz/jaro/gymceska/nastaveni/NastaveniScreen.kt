@@ -324,7 +324,7 @@ private fun WidgetSettings(
             onValueChange = {},
             Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(vertical = 8.dp)
                 .onKeyEvent {
                     if (it.key == Key.Enter) {
                         dialog = true
@@ -364,7 +364,7 @@ private fun WidgetSettings(
             },
             Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(vertical = 8.dp),
             label = {
                 Text("Počet hodin")
             },
@@ -374,6 +374,21 @@ private fun WidgetSettings(
             ),
         )
     }
+    var sliderValue by remember { mutableStateOf(nastaveni.widgetTextScale) }
+    Text(text = "Velikost textu widgetu: ${(sliderValue * 100).roundToInt()} %")
+    Slider(
+        value = sliderValue,
+        onValueChange = {
+            sliderValue = it
+        },
+        valueRange = 0.5F..1.5F,
+        steps = 19,
+        onValueChangeFinished = {
+            upravitNastaveni { nastaveni ->
+                nastaveni.copy(widgetTextScale = sliderValue)
+            }
+        }
+    )
 }
 
 @Composable
