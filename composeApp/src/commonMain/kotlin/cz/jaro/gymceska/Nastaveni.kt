@@ -13,6 +13,7 @@ data class Nastaveni(
     val mojeSkupiny: Set<String> = emptySet(),
     val dynamicColors: Boolean = true,
     val prepnoutRozvrhWidget: PrepnoutRozvrhWidget = PrepnoutRozvrhWidget.OPulnoci,
+    val widgetTextScale: Float = 1F,
     val defaultMujRozvrh: Boolean = false,
     val zoom: Float = 1F,
     val alwaysTwoRowCells: Boolean = false,
