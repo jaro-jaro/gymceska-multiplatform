@@ -67,6 +67,9 @@ sealed interface Cell {
     sealed interface Data : DataOrEmpty, HasClass
 
     @Serializable
+    sealed interface WithoutText : NonHeader
+
+    @Serializable
     sealed interface HasClass : Cell {
         val klass: String get() = ""
     }
@@ -185,7 +188,7 @@ sealed interface Cell {
         val subject: String = "",
         val teacherName: String = "",
         override val klass: String = "",
-    ) : Abnormal {
+    ) : Abnormal, WithoutText {
         override fun ColorScheme.backgroundColor() = errorContainer
         override val classLike get() = klass
         override val popupData
@@ -230,7 +233,7 @@ sealed interface Cell {
 
     @Serializable
     @SerialName("Empty")
-    data object Empty : DataOrEmpty
+    data object Empty : DataOrEmpty, WithoutText
 
     @Serializable
     @SerialName("EmptyForEdit")
@@ -238,7 +241,7 @@ sealed interface Cell {
         override val klass: String,
         override val address: LessonAddress,
         override val isEdited: Boolean = false,
-    ) : DataForEdit<LessonAddress>, ForEdit
+    ) : DataForEdit<LessonAddress>, ForEdit, WithoutText
 }
 
 @Composable
@@ -278,6 +281,7 @@ fun Cell(
 
     val twoRowCell = height * LocalCellZoom.current < .7F
     val wholeRowCell = cell.isWholeDay && !forceOneColumnCells
+    val isEmpty = cell is Cell.WithoutText
 
     Surface(
         color = cell.backgroundColor(),
@@ -291,6 +295,12 @@ fun Cell(
                     color = cell.subjectColor(),
                     fontWeight = FontWeight.Bold,
                 ),
+            )
+
+            isEmpty -> BaseCell(
+                size = Size(1F, height),
+                center = "",
+                onCenterClick = onSubjectClick,
             )
 
             !twoRowCell -> BaseCell(
@@ -430,7 +440,7 @@ fun BaseCell(
                 }
             }
         }
-        if (center != null) Box(
+        if (isCenter) Box(
             Modifier
                 .size(cellWidth, cellHeight / rows)
                 .padding(1.dp)
