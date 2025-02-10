@@ -48,6 +48,7 @@ import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import cz.jaro.gymceska.MainActivity
@@ -76,6 +77,13 @@ class DnesWidget : GlanceAppWidget() {
     private val onBgChange = ColorProvider(R.color.on_background_color_alt)
     private val bgAbsent = ColorProvider(R.color.background_color_alt2)
     private val onBgAbsent = ColorProvider(R.color.on_background_color_alt2)
+
+    private val basePadding = 4.dp
+    private val innerPadding = basePadding
+    private val outerVerticalPadding = basePadding
+    private val outerHorizontalPadding = basePadding * 2
+    private val image = 24.dp
+    private val separatorHeight = basePadding
 
     @Composable
     fun Content(
@@ -108,7 +116,7 @@ class DnesWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .fillMaxWidth()
                     .background(bg)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = outerHorizontalPadding, vertical = outerVerticalPadding),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -150,7 +158,7 @@ class DnesWidget : GlanceAppWidget() {
             .clickable(actionStartActivity<MainActivity>())
             .fillMaxWidth()
     ) {
-        Cara()
+        Separator()
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
@@ -160,7 +168,7 @@ class DnesWidget : GlanceAppWidget() {
                         is Cell.Data -> bgChange
                     }
                 )
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = outerHorizontalPadding, vertical = outerVerticalPadding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -203,20 +211,18 @@ class DnesWidget : GlanceAppWidget() {
             textMeasurer.measure("H").size.toSize().toDpSize()
         }
 
-        val padding = 8.dp
-        val image = 24.dp
-        val cara = 2.dp
-        fun sizes(size: Dp) = List(3) { i ->
-            size * (1 + i) + padding * (2 + i)
+        fun sizes(textSize: Dp, outerPadding: Dp) = List(3) { i ->
+            textSize * (1 + i) + innerPadding * i + outerPadding * 2 + separatorHeight
         }
 
-        val heights = sizes(letter.height)
-        val widths = sizes(letter.width * 4)
+        val heights = sizes(letter.height, outerVerticalPadding)
+        val widths = sizes(letter.width * 4, outerHorizontalPadding)
 
         val size = LocalSize.current
-        val breakOrHeader = padding * 2 + image
+        val breakOrHeader = outerVerticalPadding * 2 + image + separatorHeight
+        val breakAndHeaderCount = breakCount + 1
         val height = heights.indexOfLast {
-            (it + cara) * lessonCount <= size.height - (breakOrHeader + cara) * (breakCount + 1)
+            it * lessonCount + breakOrHeader * breakAndHeaderCount - separatorHeight <= size.height
         }.takeUnless { it == -1 }?.plus(1) ?: 1
         val width = widths.indexOfLast { it <= size.width }
             .takeUnless { it == -1 }?.plus(1) ?: 1
@@ -234,10 +240,13 @@ class DnesWidget : GlanceAppWidget() {
             .defaultWeight()
             .fillMaxWidth()
     ) {
-        Cara()
+        Separator()
         Column(
             GlanceModifier
-                .padding(4.dp)
+                .padding(
+                    horizontal = outerHorizontalPadding - innerPadding / 2,
+                    vertical = outerVerticalPadding - innerPadding / 2,
+                )
                 .clickable(actionStartActivity<MainActivity>())
                 .defaultWeight()
                 .fillMaxWidth()
@@ -274,8 +283,8 @@ class DnesWidget : GlanceAppWidget() {
     }
 
     @Composable
-    fun Cara() = Box(
-        GlanceModifier.height(2.dp).fillMaxWidth().background(Color.Transparent)
+    fun Separator() = Box(
+        GlanceModifier.height(separatorHeight).fillMaxWidth().background(Color.Transparent)
     ) {}
 
     companion object {
@@ -346,7 +355,7 @@ class DnesWidget : GlanceAppWidget() {
     ) = Box(
         GlanceModifier
             .defaultWeight()
-            .padding(4.dp),
+            .padding(innerPadding / 2),
         contentAlignment = alignment,
     ) {
         Text(
@@ -362,6 +371,7 @@ class DnesWidget : GlanceAppWidget() {
                     is Cell.Normal, is Cell.ST, is Cell.Header, is Cell.Empty -> onBg
                     is Cell.Absent, is Cell.DayOff -> onBgAbsent
                 },
+                textAlign = TextAlign.Center,
             ),
         )
     }
