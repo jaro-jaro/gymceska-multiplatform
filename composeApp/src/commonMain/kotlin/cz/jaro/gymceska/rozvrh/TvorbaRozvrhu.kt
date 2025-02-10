@@ -187,14 +187,17 @@ object TvorbaRozvrhu {
                 klass = klass,
             ).toLesson()
 
-            is CellData.Removed -> data.removedinfo?.split(")") ?.map { part ->
-                Cell.Removed(
-                    reasonText = part.substringBefore(" ("),
-                    subject = part.substringIn("(", ", "),
-                    teacherName = part.substringAfter(", ", ""),
-                    klass = klass,
-                )
-            } ?: lesson(Cell.Empty)
+            is CellData.Removed -> data.removedinfo
+                ?.removeSuffix(")")
+                ?.split(")")
+                ?.map { part ->
+                    Cell.Removed(
+                        reasonText = part.substringBefore(" ("),
+                        subject = part.substringIn("(", ", "),
+                        teacherName = part.substringAfterLast(", ", ""),
+                        klass = klass,
+                    )
+                } ?: lesson(Cell.Empty)
         }
 
         return if (data is CellData.Normal && data.hasAbsent == true) {
