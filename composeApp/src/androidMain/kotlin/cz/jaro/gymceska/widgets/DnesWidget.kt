@@ -92,7 +92,7 @@ class DnesWidget : GlanceAppWidget() {
         context: Context,
     ) = GlanceTheme {
         val prefs = currentState<Preferences>()
-        val hodiny =
+        val lessons =
             Json.decodeFromString<List<Cell.NonEdit>>(prefs[hodinyKey] ?: "[]")
                 .ifEmpty {
                     listOf(Cell.Header("Žádné hodiny!"))
@@ -109,8 +109,8 @@ class DnesWidget : GlanceAppWidget() {
         ) {
 
             val (width, height) = determineCellLayout(
-                lessonCount = hodiny.count { it !is Cell.Empty && it !is Cell.Removed },
-                breakCount = hodiny.count { it is Cell.Empty || it is Cell.Removed },
+                lessonCount = lessons.count { it !is Cell.Empty && it !is Cell.Removed },
+                breakCount = lessons.count { it is Cell.Empty || it is Cell.Removed },
             )
 
             val context = LocalContext.current
@@ -140,14 +140,9 @@ class DnesWidget : GlanceAppWidget() {
             Column(
                 GlanceModifier.fillMaxSize(),
             ) {
-                hodiny.forEach {
-                    when (it) {
-                        is Cell.Empty, is Cell.Removed -> it.DrawBreak()
-                        else -> it.DrawCell(
-                            width = width,
-                            height = height,
-                        )
-                    }
+                val firstLesson = lessons.indexOfFirst { it !is Cell.WithoutText }
+                lessons.forEachIndexed { i, cell ->
+                    DrawCell(cell, i, firstLesson, width, height)
                 }
             }
         }
@@ -155,7 +150,30 @@ class DnesWidget : GlanceAppWidget() {
 
     context(ColumnScope)
     @Composable
-    private fun Cell.DataOrEmpty.DrawBreak() = Column(
+    private fun DrawCell(
+        cell: Cell.NonEdit,
+        i: Int,
+        firstLesson: Int,
+        width: Int,
+        height: Int
+    ) {
+        when (cell) {
+            is Cell.Empty, is Cell.Removed -> cell.DrawBreak(
+                isSleeping = i < firstLesson,
+            )
+
+            else -> cell.DrawCell(
+                width = width,
+                height = height,
+            )
+        }
+    }
+
+    context(ColumnScope)
+    @Composable
+    private fun Cell.DataOrEmpty.DrawBreak(
+        isSleeping: Boolean,
+    ) = Column(
         GlanceModifier
             .clickable(actionStartActivity<MainActivity>())
             .fillMaxWidth()
@@ -175,7 +193,9 @@ class DnesWidget : GlanceAppWidget() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                provider = ImageProvider(R.drawable.outline_emoji_food_beverage_24),
+                provider = ImageProvider(
+                    if (isSleeping) R.drawable.outline_hotel_24 else R.drawable.outline_emoji_food_beverage_24
+                ),
                 colorFilter = ColorFilter.tint(
                     when (this@DrawBreak) {
                         is Cell.Empty -> onBg
@@ -227,8 +247,9 @@ class DnesWidget : GlanceAppWidget() {
         val size = LocalSize.current
         val breakOrHeader = outerVerticalPadding * 2 + image + separatorHeight
         val breakAndHeaderCount = breakCount + 1
+        val breaksAndHeaders = breakOrHeader * breakAndHeaderCount
         val height = heights.indexOfLast {
-            it * lessonCount + breakOrHeader * breakAndHeaderCount - separatorHeight <= size.height
+            it * lessonCount + breaksAndHeaders - separatorHeight <= size.height
         }.takeUnless { it == -1 }?.plus(1) ?: 1
         val width = widths.indexOfLast { it <= size.width }
             .takeUnless { it == -1 }?.plus(1) ?: 1
