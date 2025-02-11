@@ -86,8 +86,7 @@ fun OnlineTimetableSource.rozvrhWidgetData(settings: SettingsFlow): Pair<LocalDa
                 if (cell is Cell.Data) cell.copy(klass = "") else cell
             }
             ?.filtrovatDen(true, nastaveni.mojeSkupiny)
-            ?.mapNotNull { hodina -> hodina.firstOrNull() }
-            ?.dropWhile { it is Cell.Empty }
+            ?.mapNotNull { lesson -> lesson.firstOrNull() }
             ?.dropLastWhile { it is Cell.Empty }
             ?.ifEmpty {
                 listOf(Cell.Header("Žádné hodiny!"))
