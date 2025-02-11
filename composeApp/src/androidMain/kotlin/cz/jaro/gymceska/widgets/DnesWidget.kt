@@ -86,6 +86,7 @@ class DnesWidget : GlanceAppWidget() {
     private val outerHorizontalPadding = basePadding * 2
     private val image = 24.dp
     private val separatorHeight = basePadding
+    private val mainSeparatorHeight = basePadding * 3
 
     @Composable
     fun Content(
@@ -98,7 +99,7 @@ class DnesWidget : GlanceAppWidget() {
                     listOf(Cell.Header("Žádné hodiny!"))
                 }
                 .let {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) it else it.take(10)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) it else it.take(9)
                 }
         val den = prefs[denKey] ?: "??. ??."
 
@@ -141,8 +142,12 @@ class DnesWidget : GlanceAppWidget() {
                 GlanceModifier.fillMaxSize(),
             ) {
                 val firstLesson = lessons.indexOfFirst { it !is Cell.WithoutText }
-                lessons.forEachIndexed { i, cell ->
+                lessons.take(MAIN_BREAK_INDEX).forEachIndexed { i, cell ->
                     DrawCell(cell, i, firstLesson, width, height)
+                }
+                Separator(isMainBreakCompliment = true)
+                lessons.drop(MAIN_BREAK_INDEX).forEachIndexed { i, cell ->
+                    DrawCell(cell, i + MAIN_BREAK_INDEX, firstLesson, width, height)
                 }
             }
         }
@@ -248,8 +253,11 @@ class DnesWidget : GlanceAppWidget() {
         val breakOrHeader = outerVerticalPadding * 2 + image + separatorHeight
         val breakAndHeaderCount = breakCount + 1
         val breaksAndHeaders = breakOrHeader * breakAndHeaderCount
+        val mainBreak = if (lessonCount + breakCount > MAIN_BREAK_INDEX)
+            mainSeparatorHeight - separatorHeight
+        else 0.dp
         val height = heights.indexOfLast {
-            it * lessonCount + breaksAndHeaders - separatorHeight <= size.height
+            it * lessonCount + breaksAndHeaders + mainBreak - separatorHeight <= size.height
         }.takeUnless { it == -1 }?.plus(1) ?: 1
         val width = widths.indexOfLast { it <= size.width }
             .takeUnless { it == -1 }?.plus(1) ?: 1
@@ -310,11 +318,16 @@ class DnesWidget : GlanceAppWidget() {
     }
 
     @Composable
-    fun Separator() = Box(
-        GlanceModifier.height(separatorHeight).fillMaxWidth().background(Color.Transparent)
+    fun Separator(isMainBreakCompliment: Boolean = false) = Box(
+        GlanceModifier
+            .height(if (isMainBreakCompliment) mainSeparatorHeight - separatorHeight else separatorHeight)
+            .fillMaxWidth()
+            .background(Color.Transparent)
     ) {}
 
     companion object {
+
+        private const val MAIN_BREAK_INDEX = 4 // v pořadí 4. vyučovací hodina dne
 
         const val EXTRA_KEY_WIDGET_IDS = "providerwidgetids"
 
