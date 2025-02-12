@@ -1,0 +1,153 @@
+package cz.jaro.gymceska.rozvrh.manual
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cz.jaro.gymceska.Downloading
+import cz.jaro.gymceska.Navigator
+import cz.jaro.gymceska.Offline
+import cz.jaro.gymceska.Result
+import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.Success
+import cz.jaro.gymceska.TimetableData
+import cz.jaro.gymceska.rozvrh.FindMeResult
+import cz.jaro.gymceska.rozvrh.FindMeSettings
+import cz.jaro.gymceska.rozvrh.LocalCellZoom
+import cz.jaro.gymceska.rozvrh.Tabulka
+import cz.jaro.gymceska.rozvrh.Timetable
+import cz.jaro.gymceska.rozvrh.TimetableType
+import cz.jaro.gymceska.rozvrh.Vybiratko
+import cz.jaro.gymceska.viewModel
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.datetime.LocalTime
+import org.koin.core.Koin
+
+@Composable
+fun RozvrhManual(
+    args: Route.RozvrhManual,
+    navigator: Navigator,
+    koin: Koin,
+) {
+    val viewModel = koin.viewModel<RozvrhManualViewModel>(
+        RozvrhManualViewModel.Parameters(
+            arg = args.vjec,
+        )
+    )
+
+    LaunchedEffect(Unit) {
+        viewModel.navigator = navigator
+    }
+
+    val tabulka by viewModel.result.collectAsStateWithLifecycle()
+    val realVjec by viewModel.vjec.collectAsStateWithLifecycle()
+
+    val tridy by viewModel.tridy.collectAsStateWithLifecycle()
+    val loaded by viewModel.loaded.collectAsStateWithLifecycle()
+    val mistnosti by viewModel.mistnosti.collectAsStateWithLifecycle()
+    val vyucujici by viewModel.vyucujici.collectAsStateWithLifecycle()
+    val hodiny by viewModel.hodiny.collectAsStateWithLifecycle()
+    val zoom by viewModel.zoom.collectAsStateWithLifecycle()
+    val alwaysTwoRowCells by viewModel.alwaysTwoRowCells.collectAsStateWithLifecycle()
+
+    RozvrhManualContent(
+        result = tabulka,
+        vjec = realVjec,
+        vybratRozvrh = viewModel::vybratRozvrh,
+        navigator = navigator,
+        findMe = viewModel::findMe,
+        tridy = tridy,
+        mistnosti = mistnosti,
+        vyucujici = vyucujici,
+        hodiny = hodiny,
+        zoom = zoom,
+        alwaysTwoRowCells = alwaysTwoRowCells,
+        remove = viewModel::removeTimetable,
+        load = viewModel::loadFile,
+        loaded = loaded,
+    )
+}
+
+@Composable
+fun RozvrhManualContent(
+    result: Result<out TimetableData>?,
+    vjec: Timetable?,
+    vybratRozvrh: (Timetable) -> Unit,
+    navigator: Navigator,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
+    tridy: List<Timetable.Class>,
+    mistnosti: List<Timetable.Room>,
+    vyucujici: List<Timetable.Teacher>,
+    hodiny: List<OpenEndRange<LocalTime>>,
+    zoom: Float,
+    alwaysTwoRowCells: Boolean,
+    remove: () -> Unit,
+    load: () -> Unit,
+    loaded: Boolean,
+) = RozvrhManualNavigation(
+    navigator = navigator,
+    findMe = findMe,
+    hodiny = hodiny,
+    vybratRozvrh = vybratRozvrh,
+    remove = remove,
+    loaded = loaded,
+) { paddingValues ->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+    ) {
+        if (loaded) Vybiratko(vjec, false, {}, null, vybratRozvrh, tridy, mistnosti, vyucujici)
+        else {
+            TextButton(
+                onClick = load,
+                Modifier.padding(all = 8.dp),
+                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding
+            ) {
+                Icon(Icons.Default.Upload, null, Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text("Nahrát rozvrh")
+            }
+        }
+        if (loaded && result != null && vjec != null) when (result) {
+            is Success -> CompositionLocalProvider(LocalCellZoom provides zoom) {
+                Tabulka(
+                    vjec = vjec,
+                    tabulka = result.timetable,
+                    kliklNaNeco = { vjec ->
+                        vybratRozvrh(vjec)
+                    },
+                    tridy = tridy,
+                    mistnosti = mistnosti,
+                    vyucujici = vyucujici,
+                    mujRozvrh = false,
+                    hodiny = hodiny,
+                    horScrollState = rememberScrollState(),
+                    verScrollState = rememberScrollState(),
+                    alwaysTwoRowCells = alwaysTwoRowCells,
+                    stalost = TimetableType.Permanent,
+                )
+            }
+
+            is Error -> Text("Omlouváme se, ale došlo k chybě při načítání rozvrhu. Zkuste to znovu.")
+            is Offline -> Text("Nemáte nahrané žádné rozvrhy")
+            is Downloading -> Unit
+        }
+    }
+}

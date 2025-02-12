@@ -1,16 +1,25 @@
 package cz.jaro.gymceska.rozvrh
 
 import com.fleeksoft.ksoup.nodes.Document
-import cz.jaro.gymceska.Offline
-import cz.jaro.gymceska.OfflineRuzneCasti
-import cz.jaro.gymceska.Online
-import cz.jaro.gymceska.Repository
+import com.fleeksoft.ksoup.nodes.Element
+import cz.jaro.gymceska.ClassListSource
+import cz.jaro.gymceska.Day
+import cz.jaro.gymceska.Lesson
 import cz.jaro.gymceska.Result
-import cz.jaro.gymceska.Uspech
+import cz.jaro.gymceska.Success
+import cz.jaro.gymceska.TimetableData
+import cz.jaro.gymceska.Week
+import cz.jaro.gymceska.combineStates
+import cz.jaro.gymceska.cornerHeader
+import cz.jaro.gymceska.justTimetable
+import cz.jaro.gymceska.startHeaders
+import cz.jaro.gymceska.successOrElse
+import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.today
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
@@ -19,282 +28,322 @@ import kotlinx.serialization.json.Json
 
 object TvorbaRozvrhu {
 
+    private fun <T : Cell> T.toLesson() = listOf(this)
+    private fun <T : Cell> lesson(it: T) = it.toLesson()
+    private fun <T : Cell> List<T>.toLessons() = map(::lesson)
+
+    private fun constructTimetable(
+        cornerHeader: Cell.Header,
+        topHeaders: List<Cell.Header>,
+        startHeaders: List<Cell.Header>,
+        data: Week,
+    ): TimetableData = listOf(
+        listOf(lesson(cornerHeader)) + topHeaders.toLessons()
+    ) + startHeaders.zip(data).map { (header, day) ->
+        listOf(lesson(header)) + day
+    }
+
     private val dny = listOf("Po", "Út", "St", "Čt", "Pá", "So", "Ne", "Rden", "Pi")
+
     fun createTimetableForClass(
         type: TimetableType,
         doc: Document,
         klass: String,
-    ): Week = listOf(
-        listOf(
-            listOf(
-                Cell.Header(
-                    title = weekParity(type),
-                )
+    ) = constructTimetable(
+        cornerHeader = Cell.Header(
+            title = weekParity(type),
+        ),
+        topHeaders = doc
+            .timetableBody()
+            .hourWrapper()
+            .take(13)
+            .map(::processHeader),
+        startHeaders = dny.take(5).mapIndexed { i, day ->
+            Cell.Header(
+                title = day,
+                subtitle = date(type, i),
             )
-        ) + doc
-            .body()
-            .getElementsByClass("bk-timetable-body").first()!!
-            .getElementById("main")!!
-            .getElementsByClass("bk-timetable-hours").first()!!
-            .getElementsByClass("bk-hour-wrapper")
-            .take(10)
-            .map { hodina ->
-                val num = hodina.getElementsByClass("num").first()!!
-                val hour = hodina.getElementsByClass("hour").first()!!
+        },
+        data = doc
+            .timetableBody()
+            .getElementsByClass("bk-timetable-row")
+            .map { timeTableRow ->
+                processTimetableRow(timeTableRow, klass)
+            }
+    )
 
-                listOf(
-                    Cell.Header(
-                        title = num.text(),
-                        subtitle = hour.text(),
+    private fun processHeader(lesson: Element): Cell.Header {
+        val num = lesson.getElementsByClass("num").first()!!
+        val hour = lesson.getElementsByClass("hour").first()!!
+
+        return Cell.Header(
+            title = num.text(),
+            subtitle = hour.text(),
+        )
+    }
+
+    private fun processTimetableRow(
+        timeTableRow: Element,
+        klass: String
+    ): Day = timeTableRow
+        .getElementsByClass("bk-cell-wrapper").first()!!
+        .getElementsByClass("bk-timetable-cell")
+        .take(13)
+        .map { timetableCell ->
+            processLesson(timetableCell, klass)
+        }
+
+    private fun processLesson(
+        timetableCell: Element,
+        klass: String
+    ): Lesson = timetableCell.getElementsByClass("day-item").first()
+        ?.getElementsByClass("day-item-hover")
+        ?.flatMap { dayItemHover ->
+            processCell(dayItemHover, klass)
+        }
+        ?.distinct()
+        ?.mergeTrainings(klass)
+        ?.ifEmpty {
+            lesson(Cell.Empty)
+        }
+        ?: timetableCell.getElementsByClass("day-item-volno").first()
+            ?.getElementsByClass("day-off")?.first()
+            ?.let {
+                lesson(
+                    Cell.DayOff(
+                        reasonText = it.text(),
+                        klass = klass,
                     )
                 )
             }
-    ) + doc
-        .body()
+        ?: lesson(Cell.Empty)
+
+    private fun List<Cell.DataOrEmpty>.mergeTrainings(
+        klass: String
+    ): List<Cell.DataOrEmpty> {
+        val st = filterIsInstance<Cell.Normal>()
+            .filter { it.subject == "ST" }
+            .ifEmpty { null }
+            ?.let { sts ->
+                Cell.ST(
+                    klass = klass,
+                    groups = sts.map {
+                        Cell.ST.STGroup(
+                            changeInfo = it.changeInfo,
+                            group = it.group,
+                            theme = it.theme,
+                            teacher = it.teacher,
+                            teacherName = it.teacherName,
+                        )
+                    }.distinct(),
+                )
+            }
+        return if (st != null)
+            filterIsInstance<Cell.Normal>()
+                .filter { it.subject != "ST" } + filter { it !is Cell.Normal } + st
+        else this
+    }
+
+    private fun processCell(
+        dayItemHover: Element,
+        klass: String
+    ): List<Cell.DataOrEmpty> {
+        val data = dayItemHover.attr("data-detail")
+            .let<String, CellData>(Json::decodeFromString)
+        val baseCells = when (data) {
+            is CellData.Normal -> dayItemHover.getElementsByClass("day-flex")
+                .first()?.let { dayFlex ->
+                    Cell.Normal(
+                        room = dayFlex
+                            .getElementsByClass("top").first()!!
+                            .getElementsByClass("right").first()
+                            ?.text()
+                            ?: "",
+                        subject = dayFlex
+                            .getElementsByClass("middle").first()!!
+                            .text(),
+                        teacher = dayFlex
+                            .getElementsByClass("bottom").first()!!
+                            .text(),
+                        group = dayFlex
+                            .getElementsByClass("top").first()!!
+                            .getElementsByClass("left").first()
+                            ?.text()
+                            ?: "",
+                        klass = klass,
+                        changeInfo = data.changeinfo?.takeUnless { it.isBlank() },
+                        subjectName = data.subjecttext.substringBefore(
+                            " | ",
+                            ""
+                        ),
+                        teacherName = data.teacher ?: "",
+                        theme = data.theme ?: "",
+                    ).toLesson()
+                } ?: lesson(Cell.Empty)
+
+            is CellData.Absent -> Cell.Absent(
+                reason = data.absentinfo ?: "",
+                reasonText = data.infoAbsentName ?: "",
+                klass = klass,
+            ).toLesson()
+
+            is CellData.Removed -> data.removedinfo
+                ?.removeSuffix(")")
+                ?.split(")")
+                ?.map { part ->
+                    Cell.Removed(
+                        reasonText = part.substringBefore(" ("),
+                        subject = part.substringIn("(", ", "),
+                        teacherName = part.substringAfterLast(", ", ""),
+                        klass = klass,
+                    )
+                } ?: lesson(Cell.Empty)
+        }
+
+        return if (data is CellData.Normal && data.hasAbsent == true) {
+            data.absentInfoText?.split("<br/>")?.map { info ->
+                val bef = info.substringBefore(" | ", "")
+                Cell.Absent(
+                    reason = bef.substringBefore(" (", "Absc"),
+                    reasonText = info.substringAfter(" | ", ""),
+                    group = bef.substringInParentheses(),
+                    klass = klass,
+                )
+            }.orEmpty() + baseCells
+        } else baseCells
+    }
+
+    private fun Element.hourWrapper() =
+        getElementsByClass("bk-timetable-hours").first()!!
+            .getElementsByClass("bk-hour-wrapper")
+
+    private fun Document.timetableBody() = body()
         .getElementsByClass("bk-timetable-body").first()!!
         .getElementById("main")!!
-        .getElementsByClass("bk-timetable-row")
-        .mapIndexed { i, timeTableRow ->
-            listOf(
-                listOf(
-                    Cell.Header(
-                        title = dny[i],
-                        subtitle = date(type, i),
-                    )
-                )
-            ) + timeTableRow
-                .getElementsByClass("bk-cell-wrapper").first()!!
-                .getElementsByClass("bk-timetable-cell")
-                .take(10)
-                .map { timetableCell ->
-                    timetableCell.getElementsByClass("day-item").first()
-                        ?.getElementsByClass("day-item-hover")
-                        ?.flatMap { dayItemHover ->
-                            val data = dayItemHover.attr("data-detail").let<String, CellData>(Json::decodeFromString)
-                            val baseCell = when (data) {
-                                is CellData.Normal -> dayItemHover.getElementsByClass("day-flex").first()?.let { dayFlex ->
-                                    Cell.Normal(
-                                        room = dayFlex
-                                            .getElementsByClass("top").first()!!
-                                            .getElementsByClass("right").first()
-                                            ?.text()
-                                            ?: "",
-                                        subject = dayFlex
-                                            .getElementsByClass("middle").first()!!
-                                            .text(),
-                                        teacher = dayFlex
-                                            .getElementsByClass("bottom").first()!!
-                                            .text(),
-                                        group = dayFlex
-                                            .getElementsByClass("top").first()!!
-                                            .getElementsByClass("left").first()
-                                            ?.text()
-                                            ?: "",
-                                        klass = klass,
-                                        changeInfo = data.changeinfo?.takeUnless { it.isBlank() },
-                                        subjectName = data.subjecttext.substringBefore(" | ", ""),
-                                        teacherName = data.teacher ?: "",
-                                        theme = data.theme ?: "",
-                                    )
-                                } ?: Cell.Empty
 
-                                is CellData.Absent -> Cell.Absent(
-                                    reason = data.absentinfo ?: "",
-                                    reasonText = data.infoAbsentName ?: "",
-                                    klass = klass,
-                                )
-
-                                is CellData.Removed -> Cell.Removed(
-                                    reasonText = data.removedinfo?.substringBefore(" (") ?: "",
-                                    subject = data.removedinfo?.substringInParentheses()?.substringBefore(", ", "") ?: "",
-                                    teacherName = data.removedinfo?.substringInParentheses()?.substringAfter(", ", "") ?: "",
-                                    klass = klass,
-                                )
-                            }
-
-                            if (data is CellData.Normal && data.hasAbsent == true) {
-                                val bef = data.absentInfoText?.substringBefore(" | ", "") ?: ""
-                                listOf(
-                                    baseCell,
-                                    Cell.Absent(
-                                        reason = bef.substringBefore(" (", "Absc"),
-                                        reasonText = data.absentInfoText?.substringAfter(" | ", "") ?: "",
-                                        group = bef.substringInParentheses(),
-                                        klass = klass,
-                                    )
-                                )
-                            } else listOf(baseCell)
-                        }
-                        ?.distinct()
-                        ?.let { cells ->
-                            val st = cells.filterIsInstance<Cell.Normal>()
-                                .filter { it.subject == "ST" }
-                                .ifEmpty { null }
-                                ?.let { sts ->
-                                    Cell.ST(
-                                        klass = klass,
-                                        groups = sts.map {
-                                            Cell.ST.STGroup(
-                                                changeInfo = it.changeInfo,
-                                                group = it.group,
-                                                theme = it.theme,
-                                                teacher = it.teacher,
-                                                teacherName = it.teacherName,
-                                            )
-                                        }.distinct(),
-                                    )
-                                }
-                            if (st != null)
-                                cells.filterIsInstance<Cell.Normal>()
-                                    .filter { it.subject != "ST" } + cells.filter { it !is Cell.Normal } + st
-                            else cells
-                        }
-                        ?.ifEmpty {
-                            listOf(Cell.Empty)
-                        }
-                        ?: timetableCell.getElementsByClass("day-item-volno").first()
-                            ?.getElementsByClass("day-off")?.first()
-                            ?.let {
-                                listOf(
-                                    Cell.DayOff(
-                                        reasonText = it.text(),
-                                        klass = klass,
-                                    )
-                                )
-                            }
-                        ?: listOf(Cell.Empty)
-                }
-        }
-
-    suspend fun createTimetableForTeacherOrRoom(
+    fun createTimetableForTeacherOrRoom(
+        coroutineScope: CoroutineScope,
         target: Timetable,
-        type: TimetableType,
-        repo: Repository,
-    ): Result {
+        classListSource: ClassListSource,
+        getTimetable: (klass: Timetable.Class) -> StateFlow<Result<out TimetableData>>,
+    ): StateFlow<Result<TimetableData>> {
         require(target is Timetable.Room || target is Timetable.Teacher)
 
-        val seznamNazvu = repo.tridy.value.drop(1)
+        val classes = classListSource.classes.value
 
-        val novaTabulka = emptyTyden(target)
+        return combineStates(coroutineScope, classes.map { getTimetable(it) }) { results ->
 
-        val nejstarsi = seznamNazvu.fold(null as LocalDateTime?) { zatimNejstarsi, trida ->
+            val timetables: List<TimetableData> = results.successOrElse { return@combineStates it }
 
-            val result = repo.ziskatRozvrh(trida, type)
+            val novaTabulka = emptyTyden(target)
 
-            if (result !is Uspech) return result
-
-            result.rozvrh.forEachIndexed trida@{ i, den ->
-                den.forEachIndexed den@{ j, hodina ->
-                    if (i == 0 || j == 0) {
-                        novaTabulka[i][j] = mutableListOf(hodina.single())
-                        return@den
-                    }
-                    hodina.forEach hodina@{ bunka ->
-                        if (bunka is Cell.Empty) {
-                            return@hodina
+            timetables.forEach { timetable ->
+                timetable.forEachIndexed trida@{ i, den ->
+                    den.forEachIndexed den@{ j, hodina ->
+                        if (i == 0 || j == 0) {
+                            novaTabulka[i][j] = mutableListOf(hodina.single())
+                            return@den
                         }
-                        if (bunka is Cell.ST && target is Timetable.Teacher) {
-                            val group = bunka.groups.find {
-                                it.teacher == target.zkratka
-                            } ?: return@hodina
-                            novaTabulka[i][j] += Cell.Normal(
-                                changeInfo = group.changeInfo,
-                                subjectName = bunka.subjectName,
-                                subject = bunka.subject,
-                                teacher = group.teacher,
-                                teacherName = group.teacherName,
-                                klass = bunka.klass,
-                                group = group.group,
-                                theme = group.theme,
-                            )
-                            return@hodina
-                        }
-                        val zajimavaVec = when (target) {
-                            is Timetable.Teacher -> bunka.teacherLike
-                            is Timetable.Room -> bunka.roomLike
-                            else -> throw IllegalArgumentException()
-                        }
-                        if (zajimavaVec == target.zkratka) {
-                            novaTabulka[i][j] += bunka
+                        hodina.forEach hodina@{ bunka ->
+                            if (bunka is Cell.Empty) {
+                                return@hodina
+                            }
+                            if (bunka is Cell.ST && target is Timetable.Teacher) {
+                                val group = bunka.groups.find {
+                                    it.teacher == target.zkratka
+                                } ?: return@hodina
+                                novaTabulka[i][j] += Cell.Normal(
+                                    changeInfo = group.changeInfo,
+                                    subjectName = bunka.subjectName,
+                                    subject = bunka.subject,
+                                    teacher = group.teacher,
+                                    teacherName = group.teacherName,
+                                    klass = bunka.klass,
+                                    group = group.group,
+                                    theme = group.theme,
+                                )
+                                return@hodina
+                            }
+                            val zajimavaVec = when (target) {
+                                is Timetable.Teacher -> bunka.teacherLike
+                                is Timetable.Room -> bunka.roomLike
+                                else -> throw IllegalArgumentException()
+                            }
+                            if (zajimavaVec == target.zkratka) {
+                                novaTabulka[i][j] += bunka
+                            }
                         }
                     }
                 }
             }
 
-            if (result.zdroj !is Offline) zatimNejstarsi
-            else if (zatimNejstarsi == null || result.zdroj.ziskano < zatimNejstarsi) result.zdroj.ziskano
-            else zatimNejstarsi
-        }
-        novaTabulka.forEachIndexed { i, den ->
-            if (den.getOrNull(1)?.singleOrNull() is Cell.DayOff) return@forEachIndexed
-            den.forEachIndexed { j, hodina ->
-                hodina.ifEmpty {
-                    novaTabulka[i][j] += Cell.Empty
+            novaTabulka.forEachIndexed { i, den ->
+                if (den.getOrNull(1)?.singleOrNull() is Cell.DayOff) return@forEachIndexed
+                den.forEachIndexed { j, hodina ->
+                    hodina.ifEmpty {
+                        novaTabulka[i][j] += Cell.Empty
+                    }
                 }
             }
+
+            Success(novaTabulka)
         }
-        novaTabulka[0][0][0] = Cell.Header(title = weekParity(type))
-        return if (nejstarsi == null) Uspech(novaTabulka, Online)
-        else Uspech(novaTabulka, OfflineRuzneCasti(nejstarsi))
     }
 
-    suspend fun createTimetableForDayOrLesson(
+    fun createTimetableForDayOrLesson(
+        coroutineScope: CoroutineScope,
         target: Timetable,
-        type: TimetableType,
-        repo: Repository,
-    ): Result {
+        classListSource: ClassListSource,
+        getTimetable: (klass: Timetable.Class) -> StateFlow<Result<out TimetableData>>,
+    ): StateFlow<Result<TimetableData>> {
         require(target is Timetable.DenVjec || target is Timetable.HodinaVjec)
 
-        val seznamNazvu = repo.tridy.value.drop(1)
+        val classes = classListSource.classes.value
 
-        val novaTabulka = emptyTyden(target, seznamNazvu.count())
+        return combineStates(coroutineScope, classes.map { getTimetable(it) }) { results ->
 
-        val nejstarsi = seznamNazvu.fold(null as LocalDateTime?) { zatimNejstarsi, trida ->
+            val timetables = results.successOrElse { return@combineStates it }
 
-            val result = repo.ziskatRozvrh(trida, type)
+            val novaTabulka = emptyTyden(target, classes.count())
 
-            if (result !is Uspech) return result
 
-            val rozvrhTridy = result.rozvrh
+            if (target is Timetable.DenVjec)
+                timetables.withIndex().zip(classes) { (i, timetable), klass ->
+                    novaTabulka[i + 1][0] = mutableListOf(Cell.Header(title = klass.zkratka))
+                    timetable[target.index].drop(1).forEachIndexed den@{ j, hodina ->
+                        novaTabulka[0][j + 1] = timetable[0][j + 1].toMutableList()
+                        hodina.forEach hodina@{ bunka ->
+                            novaTabulka[i + 1][j + 1] += bunka
+                        }
+                    }
+                }
 
-            if (target is Timetable.DenVjec) {
-                novaTabulka[seznamNazvu.indexOf(trida) + 1][0] = mutableListOf(Cell.Header(title = trida.zkratka))
-                rozvrhTridy[target.index].drop(1).forEachIndexed den@{ j, hodina ->
-                    novaTabulka[0][j + 1] = rozvrhTridy[0][j + 1].toMutableList()
-                    hodina.forEach hodina@{ bunka ->
-                        novaTabulka[seznamNazvu.indexOf(trida) + 1][j + 1] += bunka
+            if (target is Timetable.HodinaVjec)
+                timetables.withIndex().zip(classes) { (j, timetable), klass ->
+                    novaTabulka[0][j + 1] = mutableListOf(Cell.Header(title = klass.zkratka))
+                    timetable.drop(1).forEachIndexed klass@{ i, den ->
+                        novaTabulka[i + 1][0] = timetable[i + 1][0].toMutableList()
+                        den.drop(1).singleOrGet(target.index - 1).forEach hodina@{ bunka ->
+                            novaTabulka[i + 1][j + 1] += bunka
+                        }
+                    }
+                }
+
+            novaTabulka.forEachIndexed { i, den ->
+                if (den.getOrNull(1)?.singleOrNull() is Cell.DayOff) return@forEachIndexed
+                den.forEachIndexed { j, hodina ->
+                    hodina.ifEmpty {
+                        novaTabulka[i][j] += Cell.Empty
                     }
                 }
             }
 
-            if (target is Timetable.HodinaVjec) {
-                novaTabulka[0][seznamNazvu.indexOf(trida) + 1] = mutableListOf(Cell.Header(title = trida.zkratka))
-                rozvrhTridy.drop(1).forEachIndexed trida@{ i, den ->
-                    novaTabulka[i + 1][0] = rozvrhTridy[i + 1][0].toMutableList()
-                    den.drop(1).singleOrGet(target.index - 1).forEach hodina@{ bunka ->
-                        novaTabulka[i + 1][seznamNazvu.indexOf(trida) + 1] += bunka
-                    }
-                }
-            }
-
-            if (result.zdroj !is Offline) zatimNejstarsi
-            else if (zatimNejstarsi == null || result.zdroj.ziskano < zatimNejstarsi) result.zdroj.ziskano
-            else zatimNejstarsi
+            Success(novaTabulka)
         }
-        novaTabulka.forEachIndexed { i, den ->
-            if (den.getOrNull(1)?.singleOrNull() is Cell.DayOff) return@forEachIndexed
-            den.forEachIndexed { j, hodina ->
-                hodina.ifEmpty {
-                    novaTabulka[i][j] += Cell.Empty
-                }
-            }
-        }
-        novaTabulka[0][0][0] = Cell.Header(title = weekParity(type))
-        return if (nejstarsi == null) Uspech(novaTabulka, Online)
-        else Uspech(novaTabulka, OfflineRuzneCasti(nejstarsi))
     }
 
-    private fun emptyTyden(
+    @PublishedApi
+    internal fun emptyTyden(
         target: Timetable,
         classCount: Int = 0,
     ): MutableList<MutableList<MutableList<Cell>>> {
@@ -304,19 +353,13 @@ object TvorbaRozvrhu {
             else -> 5
         }
         val sirka = when (target) {
-            is Timetable.DenVjec -> 10
+            is Timetable.DenVjec -> 13
             is Timetable.HodinaVjec -> classCount
-            else -> 10
+            else -> 13
         }
 
         val newTable = MutableList(vyska + 1) { MutableList(sirka + 1) { mutableListOf<Cell>() } }
         return newTable
-    }
-
-    fun blankTyden() = emptyTyden(Timetable.Class("")).map { den ->
-        den.map {
-            listOf(Cell.Empty)
-        }
     }
 
     private fun date(
@@ -370,25 +413,17 @@ object TvorbaRozvrhu {
 
 //private fun <E> MutableList<E>.takeInPlace(n: Int) = retainAll(take(n))
 
-private fun <E> List<E>.singleOrGet(index: Int) = singleOrNull() ?: get(index)
+fun <E> List<E>.singleOrGet(index: Int) = singleOrNull() ?: get(index)
 
-val Result.tabulka
-    get() = when (this) {
-        is Uspech -> rozvrh
-        else -> null
-    }
-
-fun Result.upravitTabulku(edit: (Week) -> Week) = when (this) {
-    is Uspech -> copy(rozvrh = edit(rozvrh))
-    else -> this
-}
-
-fun Week.filtrovatTabulku(
+fun TimetableData.filtrovatTabulku(
     mujRozvrh: Boolean = false,
     mojeSkupiny: Set<String> = emptySet(),
-) = map { den ->
-    den.filtrovatDen(mujRozvrh, mojeSkupiny)
-}
+): TimetableData =
+    listOf(
+        listOf(listOf(cornerHeader())) + this.topHeaders()
+            .map { listOf(it) }) + startHeaders().zip(this.justTimetable()) { h, day ->
+        listOf(listOf(h)) + day.filtrovatDen(mujRozvrh, mojeSkupiny)
+    }
 
 fun Day.filtrovatDen(
     mujRozvrh: Boolean = false,
@@ -423,4 +458,5 @@ fun Lesson.filtrovatHodinu(
 }
 
 fun String.substringInParentheses() = substringIn("(", ")")
-fun String.substringIn(start: String, end: String) = substringAfter(start, "").substringBefore(end, "")
+fun String.substringIn(start: String, end: String) =
+    substringAfter(start, "").substringBefore(end, "")

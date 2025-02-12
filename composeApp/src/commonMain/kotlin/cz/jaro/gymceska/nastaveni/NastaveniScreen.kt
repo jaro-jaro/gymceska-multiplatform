@@ -1,5 +1,6 @@
 package cz.jaro.gymceska.nastaveni
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -14,14 +15,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -58,13 +65,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import cz.jaro.better_dialog.AlertDialogManager
+import cz.jaro.better_dialog.AlertDialogStyle
+import cz.jaro.better_dialog.show
+import cz.jaro.better_dialog.showMaterial
+import cz.jaro.better_dialog.showSimple
 import cz.jaro.gymceska.BuildKonfig
 import cz.jaro.gymceska.Nastaveni
 import cz.jaro.gymceska.Navigator
 import cz.jaro.gymceska.Platform
 import cz.jaro.gymceska.PrepnoutRozvrhWidget
-import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Route
 import cz.jaro.gymceska.openWebsiteLauncher
 import cz.jaro.gymceska.platform
@@ -74,6 +84,7 @@ import cz.jaro.gymceska.rozvrh.Vybiratko
 import cz.jaro.gymceska.rozvrh.defaultToday
 import cz.jaro.gymceska.theme.Theme
 import cz.jaro.gymceska.theme.areDynamicColorsSupported
+import cz.jaro.gymceska.viewModel
 import cz.jaro.gymceska.widgets.areWidgetsSupported
 import kotlinx.datetime.LocalTime
 import org.koin.core.Koin
@@ -85,15 +96,10 @@ fun Nastaveni(
     navigator: Navigator,
     koin: Koin,
 ) {
-    val repo = koin.get<Repository>()
-    val viewModel = viewModel<NastaveniViewModel> {
-        NastaveniViewModel(
-            repo = repo,
-        )
-    }
+    val viewModel = koin.viewModel<NastaveniViewModel>()
 
     val tridy by viewModel.tridyFlow.collectAsStateWithLifecycle(emptyList())
-    val nastaveni by viewModel.nastaveni.collectAsStateWithLifecycle(null)
+    val nastaveni by viewModel.settings.collectAsStateWithLifecycle(null)
     val skupiny by viewModel.skupiny.collectAsStateWithLifecycle(null)
 
     NastaveniContent(
@@ -105,6 +111,7 @@ fun Nastaveni(
         skupiny = skupiny,
         stahnoutVse = viewModel::stahnoutVse,
         resetRemoteConfig = viewModel::resetRemoteConfig,
+        deleteDownloadedTimetables = viewModel::deleteDownloadedTimetables,
     )
 }
 
@@ -116,8 +123,9 @@ fun NastaveniContent(
     upravitNastaveni: ((Nastaveni) -> Nastaveni) -> Unit,
     tridy: List<Timetable.Class>,
     skupiny: Sequence<String>?,
-    stahnoutVse: (TimetableType, (String) -> Unit, (Boolean) -> Unit) -> Unit,
+    stahnoutVse: (TimetableType, (Float) -> Unit, (Boolean) -> Unit) -> Unit,
     resetRemoteConfig: () -> Unit,
+    deleteDownloadedTimetables: () -> Unit,
 ) = Surface {
     NastaveniNavigation(
         navigateBack = navigateBack,
@@ -138,7 +146,7 @@ fun NastaveniContent(
             ViewSettings(nastaveni, upravitNastaveni)
             if (areWidgetsSupported()) WidgetSettings(nastaveni, upravitNastaveni)
             MyClassAndGroupsSettings(nastaveni, tridy, upravitNastaveni, skupiny)
-            DownloadAndRefresh(stahnoutVse, resetRemoteConfig)
+            DownloadAndRefresh(stahnoutVse, resetRemoteConfig, deleteDownloadedTimetables, navigator)
             VersionAndLinks()
             SimulateCrash()
         }
@@ -316,7 +324,7 @@ private fun WidgetSettings(
             onValueChange = {},
             Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(vertical = 8.dp)
                 .onKeyEvent {
                     if (it.key == Key.Enter) {
                         dialog = true
@@ -356,7 +364,7 @@ private fun WidgetSettings(
             },
             Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(vertical = 8.dp),
             label = {
                 Text("Počet hodin")
             },
@@ -366,6 +374,21 @@ private fun WidgetSettings(
             ),
         )
     }
+    var sliderValue by remember { mutableStateOf(nastaveni.widgetTextScale) }
+    Text(text = "Velikost textu widgetu: ${(sliderValue * 100).roundToInt()} %")
+    Slider(
+        value = sliderValue,
+        onValueChange = {
+            sliderValue = it
+        },
+        valueRange = 0.5F..1.5F,
+        steps = 19,
+        onValueChangeFinished = {
+            upravitNastaveni { nastaveni ->
+                nastaveni.copy(widgetTextScale = sliderValue)
+            }
+        }
+    )
 }
 
 @Composable
@@ -379,10 +402,10 @@ private fun MyClassAndGroupsSettings(
     HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
     Vybiratko(
         value = nastaveni.mojeTrida.nazev,
-        seznam = remember { tridy.map { it.nazev }.drop(1) },
+        seznam = remember { tridy.map { it.nazev } },
         onClick = { i, _ ->
             upravitNastaveni { nastaveni ->
-                nastaveni.copy(mojeTrida = tridy[i + 1])
+                nastaveni.copy(mojeTrida = tridy[i])
             }
         },
         Modifier
@@ -437,77 +460,52 @@ private fun MyClassAndGroupsSettings(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun DownloadAndRefresh(stahnoutVse: (TimetableType, (String) -> Unit, (Boolean) -> Unit) -> Unit, resetRemoteConfig: () -> Unit) {
-    var stahnoutNastaveniDialog by remember { mutableStateOf(false) }
-    var stalost by remember { mutableStateOf(TimetableType.defaultToday()) }
-    var nacitame by remember { mutableStateOf(false) }
-    var podrobnostiNacitani by remember { mutableStateOf("") }
-
-    if (nacitame) AlertDialog(
-        onDismissRequest = {
-            nacitame = false
-        },
-        confirmButton = {},
-        title = {
-            Text(text = podrobnostiNacitani)
-        },
-        text = {
-            CircularProgressIndicator()
-        },
-    )
-    if (stahnoutNastaveniDialog) AlertDialog(
-        onDismissRequest = {
-            stahnoutNastaveniDialog = false
-        },
+private fun DownloadAndRefresh(
+    stahnoutVse: (TimetableType, (Float) -> Unit, (Boolean) -> Unit) -> Unit,
+    resetRemoteConfig: () -> Unit,
+    deleteDownloadedTimetables: () -> Unit,
+    navigator: Navigator,
+) {
+    val downloadAllDialog = AlertDialogStyle.Material<TimetableType>(
         confirmButton = {
             TextButton(
                 onClick = {
-                    nacitame = true
-                    stahnoutNastaveniDialog = false
-                    podrobnostiNacitani = "Generuji text"
+                    val nacitame = AlertDialogManager.Global.showMaterial(
+                        state = 0F,
+                        confirmButton = {},
+                        title = {
+                            Text(text = "Generuji rozvrh")
+                        },
+                        content = {
+                            val progress by animateFloatAsState(customState)
+                            LinearProgressIndicator(progress = { progress }, Modifier.fillMaxWidth())
+                        },
+                    )
+                    hide()
 
                     stahnoutVse(
-                        stalost,
+                        customState,
+                        { nacitame.customState = it },
                         {
-                            podrobnostiNacitani = it
-                        },
-                        {
-                            if (!it) {
-                                podrobnostiNacitani =
-                                    "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd"
-                                return@stahnoutVse
-                            }
-//                                    kopirovatDialog = true
-                            nacitame = false
+                            if (it) nacitame.hide() else AlertDialogManager.Global.showSimple(
+                                confirmButtonText = "Ok",
+                                titleText = "Nejste připojeni k internetu a nemáte staženou offline verzi všech rozvrhů tříd",
+                            )
                         }
                     )
                 }
-            ) {
-                Text(text = "Vygenerovat")
-            }
+            ) { Text("Vygenerovat") }
         },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    stahnoutNastaveniDialog = false
-                }
-            ) {
-                Text(text = "Zrušit")
-            }
-        },
-        title = {
-            Text(text = "Stáhnout rozvrhy")
-        },
-        text = {
-            Column {
-                Vybiratko(
-                    seznam = TimetableType.entries,
-                    value = stalost,
-                    onClick = { _, it ->
-                        stalost = it
-                    },
-                )
-            }
+        dismissButton = { TextButton(::hide) { Text("Zrušit") } },
+        title = { Text("Stáhnout rozvrhy") },
+        content = {
+            Vybiratko(
+                seznam = TimetableType.entries,
+                value = customState,
+                onClick = { _, it ->
+                    customState = it
+                },
+            )
         }
     )
 
@@ -515,24 +513,49 @@ private fun DownloadAndRefresh(stahnoutVse: (TimetableType, (String) -> Unit, (B
 
     TextButton(
         onClick = {
-            stahnoutNastaveniDialog = true
-        }
+            AlertDialogManager.Global.show(downloadAllDialog, TimetableType.defaultToday())
+        },
+        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
     ) {
+        Icon(Icons.Default.Download, null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         Text("Stáhnout rozvrhy")
     }
 
     TextButton(
         onClick = {
-            resetRemoteConfig()
-        }
+            navigator.navigate(Route.RozvrhManual(""))
+        },
+        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
     ) {
+        Icon(Icons.Default.FileOpen, null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        Text("Otevřít rozvrh ze souboru")
+    }
+
+    TextButton(
+        onClick = resetRemoteConfig,
+        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+    ) {
+        Icon(Icons.Default.Refresh, null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         Text("Obnovit seznamy")
+    }
+    TextButton(
+        onClick = deleteDownloadedTimetables,
+        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+    ) {
+        Icon(Icons.Default.Delete, null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        Text("Odstranit stažené rozvrhy")
     }
 }
 
 @OptIn(ExperimentalTextApi::class)
 @Composable
 private fun VersionAndLinks() {
+    HorizontalDivider(Modifier.padding(vertical = 16.dp), thickness = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
+
     Text("Verze aplikace: ${BuildKonfig.versionName} (${BuildKonfig.versionCode})")
 
     TextWithLink(buildAnnotatedString {
@@ -596,17 +619,18 @@ private fun VersionAndLinks() {
 }
 
 @Composable
-private fun TextWithLink(text: AnnotatedString) {
-    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val openUrl = openWebsiteLauncher
+private fun TextWithLink(text: AnnotatedString) = ClickableText(text, openWebsiteLauncher)
 
+@Composable
+private fun ClickableText(text: AnnotatedString, onClick: (String) -> Unit) {
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         text = text,
         modifier = Modifier.pointerInput(Unit) {
             detectTapGestures { pos ->
                 layoutResult?.let { layoutResult ->
                     val offset = layoutResult.getOffsetForPosition(pos)
-                    text.getStringAnnotations(tag = "link", start = offset, end = offset).firstOrNull()?.item?.let(openUrl)
+                    text.getStringAnnotations(tag = "link", start = offset, end = offset).firstOrNull()?.item?.let(onClick)
                 }
             }
         },
@@ -640,12 +664,12 @@ fun TimePickerDialog(
             shape = MaterialTheme.shapes.extraLarge,
             tonalElevation = 6.dp,
             modifier =
-            Modifier.width(IntrinsicSize.Min)
-                .height(IntrinsicSize.Min)
-                .background(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    color = MaterialTheme.colorScheme.surface
-                ),
+                Modifier.width(IntrinsicSize.Min)
+                    .height(IntrinsicSize.Min)
+                    .background(
+                        shape = MaterialTheme.shapes.extraLarge,
+                        color = MaterialTheme.colorScheme.surface
+                    ),
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),

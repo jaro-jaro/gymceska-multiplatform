@@ -12,7 +12,6 @@ fun GymceskaTheme(
     theme: Theme,
     content: @Composable () -> Unit,
 ) {
-
     val colorScheme = when {
         useDynamicColor && areDynamicColorsSupported() -> when {
             useDarkTheme -> dynamicDarkColorScheme()
@@ -24,8 +23,6 @@ fun GymceskaTheme(
             else -> theme.lightColorScheme
         }
     }
-
-    SetStatusBarColor(colorScheme.background, !useDarkTheme)
 
     CompositionLocalProvider(
         LocalIsDynamicThemeUsed provides useDynamicColor,

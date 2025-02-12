@@ -21,9 +21,12 @@ import androidx.navigation.NavGraph
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
-import cz.jaro.compose_dialog.dialogState
+import cz.jaro.better_dialog.AlertDialog
+import cz.jaro.better_dialog.AlertDialogManager
 import cz.jaro.gymceska.nastaveni.Nastaveni
 import cz.jaro.gymceska.rozvrh.Rozvrh
+import cz.jaro.gymceska.rozvrh.editor.RozvrhEditor
+import cz.jaro.gymceska.rozvrh.manual.RozvrhManual
 import cz.jaro.gymceska.ukoly.SpravceUkolu
 import cz.jaro.gymceska.ukoly.Ukoly
 import dev.gitlive.firebase.Firebase
@@ -83,7 +86,7 @@ fun MainContent(
         )
     }
     Surface {
-        cz.jaro.compose_dialog.AlertDialog(dialogState)
+        AlertDialog(AlertDialogManager.Global)
         val navController = rememberNavController()
 
         LaunchedEffect(Unit) {
@@ -137,6 +140,8 @@ fun MainContent(
             },
         ) {
             route<Route.Rozvrh> { Rozvrh(args = it, navigator = navigator, koin = koin) }
+            route<Route.RozvrhManual> { RozvrhManual(args = it, navigator = navigator, koin = koin) }
+            route<Route.RozvrhEditor> { RozvrhEditor(args = it, navigator = navigator, koin = koin) }
             route<Route.Ukoly> { Ukoly(args = it, navigator = navigator, koin = koin) }
             route<Route.SpravceUkolu> { SpravceUkolu(args = it, navigator = navigator, koin = koin) }
             route<Route.Nastaveni> { Nastaveni(args = it, navigator = navigator, koin = koin) }

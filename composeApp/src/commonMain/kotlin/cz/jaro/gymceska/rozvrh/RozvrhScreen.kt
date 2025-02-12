@@ -71,19 +71,19 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.core.layout.WindowHeightSizeClass
 import androidx.window.core.layout.WindowWidthSizeClass
-import cz.jaro.compose_dialog.dialogState
-import cz.jaro.compose_dialog.show
-import cz.jaro.gymceska.Error
+import cz.jaro.better_dialog.AlertDialogManager
+import cz.jaro.better_dialog.showMaterial
+import cz.jaro.gymceska.Downloading
 import cz.jaro.gymceska.Navigator
-import cz.jaro.gymceska.Repository
+import cz.jaro.gymceska.Offline
 import cz.jaro.gymceska.Result
 import cz.jaro.gymceska.Route
-import cz.jaro.gymceska.TridaNeexistuje
-import cz.jaro.gymceska.Uspech
-import cz.jaro.gymceska.ZadnaData
+import cz.jaro.gymceska.Success
+import cz.jaro.gymceska.TimetableData
+import cz.jaro.gymceska.viewModel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalTime
 import org.koin.core.Koin
 
@@ -96,17 +96,11 @@ fun Rozvrh(
     val horScrollState = rememberScrollState(args.x ?: 0)
     val verScrollState = rememberScrollState(args.y ?: 0)
 
-    val repo = koin.get<Repository>()
-    val viewModel = viewModel<RozvrhViewModel> {
-        RozvrhViewModel(
-            repo = repo,
-            params = RozvrhViewModel.Parameters(
-                arg = args.vjec,
-                horScrollState = horScrollState,
-                verScrollState = verScrollState,
-            )
-        )
-    }
+    val viewModel = koin.viewModel<RozvrhViewModel>(RozvrhViewModel.Parameters(
+        arg = args.vjec,
+        horScrollState = horScrollState,
+        verScrollState = verScrollState,
+    ))
 
     LaunchedEffect(Unit) {
         viewModel.navigator = navigator
@@ -133,8 +127,7 @@ fun Rozvrh(
         zmenitStalost = viewModel::zmenitStalost,
         stahnoutVse = viewModel.stahnoutVse,
         navigator = navigator,
-        najdiMiVolnouTridu = viewModel::najdiMivolnouTridu,
-        najdiMiVolnehoUcitele = viewModel::najdiMiVolnehoUcitele,
+        findMe = viewModel::findMe,
         tridy = tridy,
         mistnosti = mistnosti,
         vyucujici = vyucujici,
@@ -152,19 +145,18 @@ fun Rozvrh(
 
 @Composable
 fun RozvrhContent(
-    result: Result?,
+    result: Result<out TimetableData>?,
     vjec: Timetable?,
     stalost: TimetableType,
     vybratRozvrh: (Timetable) -> Unit,
     zmenitStalost: (TimetableType) -> Unit,
     stahnoutVse: () -> Unit,
     navigator: Navigator,
-    najdiMiVolnouTridu: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Room>?) -> Unit) -> Unit,
-    najdiMiVolnehoUcitele: (TimetableType, Int, List<Int>, List<FiltrNajdiMi>, (String) -> Unit, (List<Timetable.Teacher>?) -> Unit) -> Unit,
+    findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     tridy: List<Timetable.Class>,
     mistnosti: List<Timetable.Room>,
     vyucujici: List<Timetable.Teacher>,
-    hodiny: List<ClosedRange<LocalTime>>,
+    hodiny: List<OpenEndRange<LocalTime>>,
     mujRozvrh: Boolean?,
     zmenitMujRozvrh: () -> Unit,
     zobrazitMujRozvrh: Boolean,
@@ -172,12 +164,11 @@ fun RozvrhContent(
     verScrollState: ScrollState,
     zoom: Float,
     alwaysTwoRowCells: Boolean,
-    currentlyDownloading: Timetable.Class?,
+    currentlyDownloading: Boolean,
 ) = RozvrhNavigation(
     stahnoutVse = stahnoutVse,
     navigator = navigator,
-    najdiMiVolnouTridu = najdiMiVolnouTridu,
-    najdiMiVolnehoUcitele = najdiMiVolnehoUcitele,
+    findMe = findMe,
     result = result,
     vybratRozvrh = vybratRozvrh,
     currentlyDownloading = currentlyDownloading,
@@ -205,14 +196,13 @@ fun RozvrhContent(
 
         if (result == null || vjec == null || mujRozvrh == null) LinearProgressIndicator(Modifier.fillMaxWidth())
         else when (result) {
-            is Uspech -> CompositionLocalProvider(LocalCellZoom provides zoom) {
+            is Success -> CompositionLocalProvider(LocalCellZoom provides zoom) {
                 Tabulka(
                     vjec = vjec,
-                    tabulka = result.rozvrh,
+                    tabulka = result.timetable,
                     kliklNaNeco = { vjec ->
                         vybratRozvrh(vjec)
                     },
-                    rozvrhOfflineWarning = result.zdroj,
                     tridy = tridy,
                     mistnosti = mistnosti,
                     vyucujici = vyucujici,
@@ -225,14 +215,13 @@ fun RozvrhContent(
                 )
             }
 
-            Error -> Text("Omlouváme se, ale došlo k chybě při stahování rozvrhu. Zkuste to znovu.")
-            TridaNeexistuje -> Text("Tato třída neexistuje")
-            ZadnaData -> Text("Jste offline a nemáte stažená žádná data z dřívějška.")
+            is Error -> Text("Omlouváme se, ale došlo k chybě při stahování rozvrhu. Zkuste to znovu.")
+            is Downloading -> Text("Stahování rozvrhů...")
+            is Offline -> Text("Jste offline a nemáte stažená žádná data z dřívějška.")
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PrepinatkoStalosti(
     stalost: TimetableType,
@@ -258,7 +247,7 @@ private fun PrepinatkoStalosti(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun Vybiratko(
+fun Vybiratko(
     vjec: Timetable?,
     zobrazitMujRozvrh: Boolean,
     zmenitMujRozvrh: () -> Unit,
@@ -307,6 +296,11 @@ private fun Vybiratko(
                         }
                     ) { Icon(Icons.Default.Home, null) }
 
+                    Box(Modifier.minimumInteractiveComponentSize()) {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    }
+                }
+                else {
                     Box(Modifier.minimumInteractiveComponentSize()) {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     }
@@ -418,10 +412,10 @@ private fun MenuVybiratka(
     vybratRozvrh: (Timetable) -> Unit,
     hide: () -> Unit,
 ) {
-    val dny by lazy { listOf(Timetable.Class("Dny")) + Seznamy.dny }
-    val hodiny by lazy { listOf(Timetable.Class("Hodiny")) + Seznamy.hodiny }
+    val dny by lazy { Seznamy.dny }
+    val hodiny by lazy { Seznamy.hodiny }
     val seznamy = listOf(if (vjec is Timetable.DenVjec) dny else if (vjec is Timetable.HodinaVjec) hodiny else tridy, mistnosti, vyucujici)
-    val nadpisy = seznamy.map { it.first().nazev }
+    val nadpisy = listOf(if (vjec is Timetable.DenVjec) "Dny:" else if (vjec is Timetable.HodinaVjec) "Hodiny:" else "Třídy:", "Mistnosti:", "Učitelé:")
     Row(
         Modifier.height(IntrinsicSize.Max)
     ) {
@@ -445,8 +439,8 @@ private fun MenuVybiratka(
         }
     }
     Column(Modifier.verticalScroll(rememberScrollState())) {
-        repeat(seznamy.maxOf { it.size - 1 }) { i ->
-            val vjeci = seznamy.map { it.getOrNull(i + 1) }
+        repeat(seznamy.maxOf { it.size }) { i ->
+            val vjeci = seznamy.map { it.getOrNull(i) }
             Row(
                 Modifier.height(IntrinsicSize.Max)
             ) {
@@ -474,14 +468,14 @@ private fun MenuVybiratka(
 }
 
 @Composable
-private fun NapovedaKMistostem(mistnosti: List<Timetable.Room>) = IconButton(
+private fun NapovedaKMistostem(mistnosti: List<Timetable.Room>) = if (mistnosti.any { it.napoveda != null }) IconButton(
     onClick = {
-        dialogState.show(
+        AlertDialogManager.Global.showMaterial(
             confirmButton = { TextButton(::hide) { Text("OK") } },
             title = { Text("Nápověda k místnostem") },
             content = {
                 LazyColumn {
-                    items(mistnosti.drop(1)) {
+                    items(mistnosti.filter { it.napoveda != null }.drop(1)) {
                         Text("${it.nazev} - to je${it.napoveda}")
                     }
                 }
@@ -490,4 +484,4 @@ private fun NapovedaKMistostem(mistnosti: List<Timetable.Room>) = IconButton(
     }
 ) {
     Icon(Icons.AutoMirrored.Filled.Help, null)
-}
+} else Unit

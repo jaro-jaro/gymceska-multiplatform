@@ -14,8 +14,8 @@ plugins {
     alias(libs.plugins.buildkonfig)
 }
 
-val appVersionCode = 109
-val appVersionName = "2.5.0"
+val appVersionCode = 120
+val appVersionName = "2.6.0"
 
 kotlin {
     js(IR) {
@@ -55,14 +55,12 @@ kotlin {
             implementation(libs.firebase.crashlytics)
             implementation(libs.androidx.browser)
         }
-        jsMain {
-            dependsOn(commonMain.get())
-            dependencies {
-                implementation(compose.html.core)
-                implementation(libs.multiplatform.settings.make.observable)
-            }
+        jsMain.dependencies {
+            implementation(compose.html.core)
+            implementation(libs.multiplatform.settings.make.observable)
         }
         commonMain.dependencies {
+            implementation(project(":better_dialog"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.ui)
@@ -95,6 +93,7 @@ kotlin {
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     compilerOptions {
         freeCompilerArgs.add("-Xcontext-receivers")
+        freeCompilerArgs.add("-Xwhen-guards")
     }
 }
 
@@ -109,11 +108,11 @@ buildkonfig {
 
 android {
     namespace = "cz.jaro.gymceska"
-    compileSdk = 35
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "cz.jaro.gymceska"
-        minSdk = 26
+        minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName

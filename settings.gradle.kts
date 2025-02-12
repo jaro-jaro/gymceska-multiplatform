@@ -24,8 +24,10 @@ dependencyResolutionManagement {
                 includeGroupAndSubgroups("com.google")
             }
         }
+        maven(url = "https://jitpack.io")
         mavenCentral()
     }
 }
 
 include(":composeApp")
+include(":better_dialog")

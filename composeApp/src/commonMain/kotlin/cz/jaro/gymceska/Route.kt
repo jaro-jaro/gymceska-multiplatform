@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 val routes =
-    listOf(Route.Rozvrh::class, Route.Ukoly::class, Route.SpravceUkolu::class, Route.Nastaveni::class)
+    listOf(Route.Rozvrh::class, Route.Ukoly::class, Route.SpravceUkolu::class, Route.Nastaveni::class, Route.RozvrhManual::class, Route.RozvrhEditor::class)
 
 @Serializable
 @SerialName("Route")
@@ -16,6 +16,18 @@ sealed interface Route {
         val vjec: String,
         val x: Int? = null,
         val y: Int? = null,
+    ) : Route
+
+    @Serializable
+    @SerialName("rozvrh-manual")
+    data class RozvrhManual(
+        val vjec: String,
+    ) : Route
+
+    @Serializable
+    @SerialName("rozvrh-editor")
+    data class RozvrhEditor(
+        val vjec: String,
     ) : Route
 
     @Serializable

@@ -42,10 +42,9 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import cz.jaro.gymceska.Navigator
-import cz.jaro.gymceska.Repository
 import cz.jaro.gymceska.Route
+import cz.jaro.gymceska.viewModel
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -61,12 +60,7 @@ fun SpravceUkolu(
     navigator: Navigator,
     koin: Koin,
 ) {
-    val repo = koin.get<Repository>()
-    val viewModel = viewModel<UkolyViewModel> {
-        UkolyViewModel(
-            repo = repo,
-        )
-    }
+    val viewModel = koin.viewModel<UkolyViewModel>()
 
     val ukoly by viewModel.ukoly.collectAsStateWithLifecycle()
 
