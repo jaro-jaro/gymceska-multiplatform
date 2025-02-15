@@ -59,8 +59,6 @@ fun main() {
             ) {
                 MainContent(
                     deeplink = location,
-                    jePotrebaAktualizovatAplikaci = false,
-                    aktualizovatAplikaci = {},
                     koin = koinApp.koin,
                 )
             }

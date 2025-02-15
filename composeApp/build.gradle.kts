@@ -14,9 +14,6 @@ plugins {
     alias(libs.plugins.buildkonfig)
 }
 
-val appVersionCode = 120
-val appVersionName = "2.6.0"
-
 kotlin {
     js(IR) {
         moduleName = "composeApp"
@@ -101,8 +98,12 @@ buildkonfig {
     packageName = "cz.jaro.gymceska"
 
     defaultConfigs {
-        buildConfigField(FieldSpec.Type.STRING, "versionName", appVersionName)
-        buildConfigField(FieldSpec.Type.INT, "versionCode", "$appVersionCode")
+        buildConfigField(
+            FieldSpec.Type.STRING, "versionName", libs.versions.appVersionName.get()
+        )
+        buildConfigField(
+            FieldSpec.Type.INT, "versionCode", libs.versions.appVersionCode.get()
+        )
     }
 }
 
@@ -114,8 +115,8 @@ android {
         applicationId = "cz.jaro.gymceska"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = 35
-        versionCode = appVersionCode
-        versionName = appVersionName
+        versionCode = libs.versions.appVersionCode.get().toInt()
+        versionName = libs.versions.appVersionName.get()
     }
     packaging {
         resources {
