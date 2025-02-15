@@ -11,12 +11,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,10 +27,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import cz.jaro.better_dialog.AlertDialogManager
@@ -50,6 +56,7 @@ import cz.jaro.gymceska.topHeaders
 import cz.jaro.gymceska.ukoly.time
 import cz.jaro.gymceska.ukoly.today
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock.System
@@ -59,6 +66,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun RozvrhNavigation(
@@ -106,7 +114,7 @@ private fun ActionScope.Actions(
     val coroutineScope = rememberCoroutineScope()
     Action(
         onClick = {
-            findMeSettigs(result, vybratRozvrh, findMe, coroutineScope)
+            findMeSettigns(result, vybratRozvrh, findMe, coroutineScope)
         },
         icon = Icons.Default.Search,
         title = "Najdi mi",
@@ -116,33 +124,35 @@ private fun ActionScope.Actions(
 lateinit var state: MutableState<FindMeSettings>
 
 @OptIn(ExperimentalMaterial3Api::class)
-fun findMeSettigs(
+fun findMeSettigns(
     result: Result<out TimetableData>?,
     chooseTimetable: (Timetable) -> Unit,
     findMe: (FindMeSettings) -> StateFlow<Result<FindMeResult>>,
     coroutineScope: CoroutineScope,
 ): AlertDialogState<Nothing?, AlertDialogStyle.Material<Nothing?>> {
-    if (!::state.isInitialized) state = mutableStateOf(FindMeSettings(
-        findRoom = true,
-        type = TimetableType.defaultByDay(
-            today().dayOfWeek.let { if (time() > LocalTime(15, 45)) it + 1 else it }
-        ),
-        dayIndex = today().dayOfWeek.isoDayNumber
-            .let { if (time() > LocalTime(15, 45)) it + 1 else it }
-            .let { if (it > 5) 1 else it } - 1,
-        lessonIndices = listOf(
-            result?.timetable?.topHeaders()?.indexOfFirst {
-                try {
-                    val cas = it.teacherLike.split(" - ").first()
-                    val hm = cas.split(":")
-                    (System.now() - 10.minutes).toLocalDateTime(TimeZone.currentSystemDefault())
-                        .time < LocalTime(hm[0].toInt(), hm[1].toInt())
-                } catch (_: Exception) {
-                    false
-                }
-            }?.coerceAtLeast(0) ?: 0
-        ),
-    ))
+    if (!::state.isInitialized) state = mutableStateOf(
+        FindMeSettings(
+            findRoom = true,
+            type = TimetableType.defaultByDay(
+                today().dayOfWeek.let { if (time() > LocalTime(15, 45)) it + 1 else it }
+            ),
+            dayIndex = today().dayOfWeek.isoDayNumber
+                .let { if (time() > LocalTime(15, 45)) it + 1 else it }
+                .let { if (it > 5) 1 else it } - 1,
+            lessonIndices = listOf(
+                result?.timetable?.topHeaders()?.indexOfFirst {
+                    try {
+                        val cas = it.teacherLike.split(" - ").first()
+                        val hm = cas.split(":")
+                        (System.now() - 10.minutes).toLocalDateTime(TimeZone.currentSystemDefault())
+                            .time < LocalTime(hm[0].toInt(), hm[1].toInt())
+                    } catch (_: Exception) {
+                        false
+                    }
+                }?.coerceAtLeast(0) ?: 0
+            ),
+        )
+    )
     var state by state
     return AlertDialogManager.Global.showMaterial(
         confirmButton = {
@@ -165,6 +175,7 @@ fun findMeSettigs(
                                     loading.show()
                                     result.hide()
                                 }
+
                                 is Offline -> {
                                     AlertDialogManager.Global.showSimple(
                                         confirmButtonText = "Ok",
@@ -173,6 +184,7 @@ fun findMeSettigs(
                                     loading.hide()
                                     result.hide()
                                 }
+
                                 is Success -> {
                                     result.show()
                                     result.customState = it.timetable
@@ -314,26 +326,42 @@ fun findMeResult(
         Text(text = "Najdi mi ${if (settings.findRoom) "volnou učebnu" else "volného učitele"}")
     },
     content = {
+        val clipboardManager = LocalClipboardManager.current
+        val scope = rememberCoroutineScope()
         LazyColumn {
-            if (settings.findRoom) item {
-                Text(
-                    "Na škole jsou ${settings.type.nameWhen} ${Seznamy.dny4Pad[settings.dayIndex]} ${
-                        settings.lessonIndices.joinToString { "$it." }.replaceLast(", ", " a ")
-                    } hodinu volné tyto ${settings.filters.text()}učebny:"
-                )
+            item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = settings.findMeResultText(),
+                        Modifier.weight(1F),
+                    )
+                    var check by remember { mutableStateOf(false) }
+                    IconButton(
+                        onClick = {
+                            clipboardManager.setText(
+                                AnnotatedString(
+                                    (customState.rooms + customState.teachers).joinToString { it.nazev }
+                                )
+                            )
+                            check = true
+                            scope.launch {
+                                delay(2.seconds)
+                                check = false
+                            }
+                        }
+                    ) {
+                        Icon(if (check) Icons.Default.Check else Icons.Default.ContentCopy, "Copy")
+                    }
+                }
             }
             if (settings.findRoom) items(customState.rooms.toList()) {
                 Text("${it.nazev}, to je${it.napoveda}", Modifier.clickable {
                     hide()
                     chooseTimetable(it)
                 })
-            }
-            if (!settings.findRoom) item {
-                Text(
-                    "Na škole jsou ${settings.type.nameWhen} ${Seznamy.dny4Pad[settings.dayIndex]} ${
-                        settings.lessonIndices.joinToString { "$it." }.replaceLast(", ", " a ")
-                    } hodinu volní tito ${settings.filters.text()}učitelé:"
-                )
             }
             if (!settings.findRoom) items(customState.teachers.toList()) {
                 Text(it.nazev, Modifier.clickable {
@@ -344,6 +372,14 @@ fun findMeResult(
         }
     }
 )
+
+private fun FindMeSettings.findMeResultText(): String =
+    if (findRoom) "Na škole jsou ${type.nameWhen} ${Seznamy.dny4Pad[dayIndex]} ${
+        lessonIndices.joinToString { "$it." }.replaceLast(", ", " a ")
+    } hodinu volné tyto ${filters.text()}učebny:"
+    else "Na škole jsou ${type.nameWhen} ${Seznamy.dny4Pad[dayIndex]} ${
+        lessonIndices.joinToString { "$it." }.replaceLast(", ", " a ")
+    } hodinu volní tito ${filters.text()}učitelé:"
 
 fun String.replaceLast(search: String, replacement: String) =
     reversed().replaceFirst(search.reversed(), replacement).reversed()
