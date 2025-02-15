@@ -68,7 +68,7 @@ class AndroidAppUpdateManager(
     private suspend fun getAppUpdateNeeded(): Boolean {
         val localVersion = BuildKonfig.versionName.toVersion(false)
 
-        if (localVersion.isPreRelease) return true//false
+        if (localVersion.isPreRelease) return false
 
         val latestVersion = latestAppVersion()?.trim()?.toVersion(false) ?: return true
 
@@ -87,7 +87,7 @@ class AndroidAppUpdateManager(
     }.stateIn(scope, SharingStarted.Eagerly, false)
 
     val breakingVersion = configActive.map {
-        120//remoteConfig.get<String>("rozbitAplikaci").toIntOrNull() ?: -1
+        remoteConfig.get<String>("rozbitAplikaci").toIntOrNull() ?: -1
     }.stateIn(scope, SharingStarted.Eagerly, -1)
 }
 
